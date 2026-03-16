@@ -1,6 +1,3 @@
-/**
- * RegisterPage
- */
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -40,13 +37,14 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
-            { key: 'name',     label: 'Full Name',    type: 'text' },
-            { key: 'email',    label: 'Email',         type: 'email' },
-            { key: 'password', label: 'Password',      type: 'password' },
+            { key: 'name',     label: 'Full Name', type: 'text' },
+            { key: 'email',    label: 'Email',     type: 'email' },
+            { key: 'password', label: 'Password',  type: 'password' },
           ].map(({ key, label, type }) => (
             <div key={key}>
-              <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+              <label htmlFor={key} className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
               <input
+                id={key}
                 type={type} required
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 value={form[key]}
