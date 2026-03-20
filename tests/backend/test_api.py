@@ -14,6 +14,13 @@ from bson import ObjectId
 
 from app.main import app
 
+@pytest.fixture(autouse=True)
+def _mock_db_lifecycle():
+    # These API tests mock DB operations per-endpoint; disable real Mongo pings
+    # so unit tests don't depend on an external database being available.
+    with patch("app.main.connect_db", new=AsyncMock()), patch("app.main.close_db", new=AsyncMock()):
+        yield
+
 FAKE_USER_ID = str(ObjectId())
 FAKE_TASK_ID = str(ObjectId())
 
