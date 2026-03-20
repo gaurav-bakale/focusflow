@@ -62,7 +62,12 @@ async def create_block(data: TimeBlockCreate, user=Depends(get_current_user), db
 
 
 @router.put("/blocks/{block_id}", response_model=TimeBlockResponse)
-async def update_block(block_id: str, data: TimeBlockCreate, user=Depends(get_current_user), db=Depends(get_db)):
+async def update_block(
+    block_id: str,
+    data: TimeBlockCreate,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """
     Update an existing time block.
 

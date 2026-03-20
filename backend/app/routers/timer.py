@@ -7,7 +7,6 @@ Handles Pomodoro session logging and retrieval for dashboard analytics.
 from datetime import datetime
 from typing import List
 from fastapi import APIRouter, Depends, status
-from bson import ObjectId
 
 from app.models import PomodoroSessionCreate, PomodoroSessionResponse
 from app.auth import get_current_user
@@ -27,8 +26,16 @@ def _doc_to_session(doc: dict) -> PomodoroSessionResponse:
     )
 
 
-@router.post("/sessions", response_model=PomodoroSessionResponse, status_code=status.HTTP_201_CREATED)
-async def log_session(data: PomodoroSessionCreate, user=Depends(get_current_user), db=Depends(get_db)):
+@router.post(
+    "/sessions",
+    response_model=PomodoroSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def log_session(
+    data: PomodoroSessionCreate,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """
     Log a completed Pomodoro session.
 
@@ -82,7 +89,13 @@ async def get_stats(user=Depends(get_current_user), db=Depends(get_db)):
 
     # Sum focus minutes today
     pipeline = [
-        {"$match": {"user_id": user["_id"], "phase": "FOCUS", "completed_at": {"$gte": today_start}}},
+        {
+            "$match": {
+                "user_id": user["_id"],
+                "phase": "FOCUS",
+                "completed_at": {"$gte": today_start},
+            }
+        },
         {"$group": {"_id": None, "total": {"$sum": "$duration_minutes"}}}
     ]
     result = await db["sessions"].aggregate(pipeline).to_list(1)
