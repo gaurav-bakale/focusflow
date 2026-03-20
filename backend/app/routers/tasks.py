@@ -21,7 +21,13 @@ def _doc_to_task(doc: dict) -> TaskResponse:
     """Convert a raw MongoDB document to a TaskResponse model."""
     subtasks = []
     for i, s in enumerate(doc.get("subtasks", [])):
-        subtasks.append(SubtaskResponse(id=str(i), title=s["title"], status=s.get("status", "TODO")))
+        subtasks.append(
+            SubtaskResponse(
+                id=str(i),
+                title=s["title"],
+                status=s.get("status", "TODO"),
+            )
+        )
     return TaskResponse(
         id=str(doc["_id"]),
         user_id=str(doc["user_id"]),
@@ -92,7 +98,12 @@ async def get_task(task_id: str, user=Depends(get_current_user), db=Depends(get_
 
 
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: str, data: TaskUpdate, user=Depends(get_current_user), db=Depends(get_db)):
+async def update_task(
+    task_id: str,
+    data: TaskUpdate,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """
     Update an existing task's fields (partial update — only provided fields are changed).
 

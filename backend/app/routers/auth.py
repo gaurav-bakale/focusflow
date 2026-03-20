@@ -6,7 +6,6 @@ Returns JWT tokens on successful authentication.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
-from bson import ObjectId
 
 from app.models import UserRegister, UserLogin, TokenResponse, UserResponse
 from app.auth import hash_password, verify_password, create_access_token

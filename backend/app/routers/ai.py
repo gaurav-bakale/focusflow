@@ -15,7 +15,12 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from openai import AsyncOpenAI
 
-from app.models import AIBreakdownRequest, AIBreakdownResponse, AIPrioritizeRequest, AIPrioritizeResponse
+from app.models import (
+    AIBreakdownRequest,
+    AIBreakdownResponse,
+    AIPrioritizeRequest,
+    AIPrioritizeResponse,
+)
 from app.auth import get_current_user
 from app.db import get_db
 
@@ -131,7 +136,10 @@ class BreakdownStrategy(AIStrategy):
             f"Break down this task into 3-6 clear, actionable subtasks:\n"
             f"Task: {title}\n"
             f"Details: {desc}\n\n"
-            f"Return ONLY a numbered list like:\n1. Subtask one\n2. Subtask two\nNo extra explanation."
+            f"Return ONLY a numbered list like:\n"
+            f"1. Subtask one\n"
+            f"2. Subtask two\n"
+            f"No extra explanation."
         )
 
     def parse_response(self, response: str) -> List[str]:
@@ -157,7 +165,12 @@ class PrioritizeStrategy(AIStrategy):
 
     def build_prompt(self, data: dict) -> str:
         tasks = data["tasks"]
-        task_list = "\n".join([f"- {t.get('title', 'Untitled')} (deadline: {t.get('deadline', 'none')})" for t in tasks])
+        task_lines = []
+        for t in tasks:
+            task_lines.append(
+                f"- {t.get('title', 'Untitled')} (deadline: {t.get('deadline', 'none')})"
+            )
+        task_list = "\n".join(task_lines)
         return (
             f"Rank these tasks from highest to lowest priority based on urgency and importance:\n"
             f"{task_list}\n\n"
@@ -179,7 +192,11 @@ class PrioritizeStrategy(AIStrategy):
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/breakdown", response_model=AIBreakdownResponse)
-async def breakdown_task(data: AIBreakdownRequest, user=Depends(get_current_user), db=Depends(get_db)):
+async def breakdown_task(
+    data: AIBreakdownRequest,
+    user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """
     Generate AI subtasks for a complex task using BreakdownStrategy.
 
