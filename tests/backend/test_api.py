@@ -13,6 +13,23 @@ from datetime import datetime
 from bson import ObjectId
 
 from app.main import app
+from app.db import get_db as get_db_dependency
+from app.auth import get_current_user as get_current_user_dependency
+
+@pytest.fixture(autouse=True)
+def _mock_db_lifecycle():
+    # These API tests mock DB operations per-endpoint; disable real Mongo pings
+    # so unit tests don't depend on an external database being available.
+    with patch("app.main.connect_db", new=AsyncMock()), patch("app.main.close_db", new=AsyncMock()):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _clear_dependency_overrides():
+    # Each test sets overrides for `get_db` to keep them deterministic and isolated.
+    app.dependency_overrides.clear()
+    yield
+    app.dependency_overrides.clear()
 
 FAKE_USER_ID = str(ObjectId())
 FAKE_TASK_ID = str(ObjectId())
@@ -55,20 +72,19 @@ async def test_register_new_user():
     Success: status_code == 201 and access_token present
     Failure: non-201 or missing token
     """
-    with patch("app.routers.auth.get_db") as mock_get_db:
-        mock_db_inst = MagicMock()
-        mock_db_inst["users"].find_one = AsyncMock(return_value=None)
-        mock_db_inst["users"].insert_one = AsyncMock(
-            return_value=MagicMock(inserted_id=ObjectId(FAKE_USER_ID))
-        )
-        mock_get_db.return_value = mock_db_inst
+    mock_db_inst = MagicMock()
+    mock_db_inst["users"].find_one = AsyncMock(return_value=None)
+    mock_db_inst["users"].insert_one = AsyncMock(
+        return_value=MagicMock(inserted_id=ObjectId(FAKE_USER_ID))
+    )
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/auth/register", json={
-                "name": "Alice",
-                "email": "alice@focusflow.dev",
-                "password": "securepass123"
-            })
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/auth/register", json={
+            "name": "Alice",
+            "email": "alice@focusflow.dev",
+            "password": "securepass123"
+        })
 
     assert response.status_code == 201
     data = response.json()
@@ -85,17 +101,16 @@ async def test_register_duplicate_email():
     Success: status_code == 400
     Failure: User created or 201 returned
     """
-    with patch("app.routers.auth.get_db") as mock_get_db:
-        mock_db_inst = MagicMock()
-        mock_db_inst["users"].find_one = AsyncMock(return_value=MOCK_USER)
-        mock_get_db.return_value = mock_db_inst
+    mock_db_inst = MagicMock()
+    mock_db_inst["users"].find_one = AsyncMock(return_value=MOCK_USER)
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/api/auth/register", json={
-                "name": "Bob",
-                "email": "test@focusflow.dev",
-                "password": "anotherpass123"
-            })
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/auth/register", json={
+            "name": "Bob",
+            "email": "test@focusflow.dev",
+            "password": "anotherpass123"
+        })
 
     assert response.status_code == 400
     assert "already registered" in response.json()["detail"]
@@ -112,20 +127,22 @@ async def test_create_task_success():
 
     TODO (Sprint 3): Add tests for task update, complete, and delete.
     """
-    with patch("app.routers.tasks.get_db") as mock_get_db, \
-         patch("app.routers.tasks.get_current_user", return_value=MOCK_USER):
-        mock_db_inst = MagicMock()
-        mock_db_inst["tasks"].insert_one = AsyncMock(
-            return_value=MagicMock(inserted_id=ObjectId(FAKE_TASK_ID))
-        )
-        mock_get_db.return_value = mock_db_inst
+    async def _override_get_current_user():
+        return MOCK_USER
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post(
-                "/api/tasks",
-                json={"title": "Write unit tests", "priority": "HIGH"},
-                headers=get_auth_header()
-            )
+    mock_db_inst = MagicMock()
+    mock_db_inst["tasks"].insert_one = AsyncMock(
+        return_value=MagicMock(inserted_id=ObjectId(FAKE_TASK_ID))
+    )
+    app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/tasks",
+            json={"title": "Write unit tests", "priority": "HIGH"},
+            headers=get_auth_header()
+        )
 
     assert response.status_code == 201
     data = response.json()
