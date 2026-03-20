@@ -7,6 +7,7 @@ shared across all repositories via FastAPI dependency injection.
 
 import os
 import asyncio
+from urllib.parse import quote_plus
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 
@@ -23,7 +24,24 @@ async def connect_db():
     if _client is not None and _db is not None:
         return
 
-    url = os.getenv("MONGODB_URL", "mongodb://localhost:27017/focusflow")
+    url = os.getenv("MONGODB_URL")
+    if not url:
+        # Support building a URI from separate env vars (password must come from env/CI secrets).
+        mongo_host = os.getenv("MONGODB_HOST", "localhost")
+        mongo_port = os.getenv("MONGODB_PORT", "27017")
+        mongo_db = os.getenv("MONGODB_DB") or os.getenv("MONGODB_DATABASE") or "focusflow"
+        auth_source = os.getenv("MONGODB_AUTH_SOURCE", "admin")
+        mongo_user = os.getenv("MONGODB_USER")
+        mongo_password = os.getenv("MONGODB_PASSWORD")
+
+        if mongo_user and mongo_password:
+            url = (
+                f"mongodb://{quote_plus(mongo_user)}:{quote_plus(mongo_password)}@"
+                f"{mongo_host}:{mongo_port}/{mongo_db}?authSource={quote_plus(auth_source)}"
+            )
+        else:
+            url = f"mongodb://{mongo_host}:{mongo_port}/{mongo_db}"
+
     server_selection_timeout_ms = int(os.getenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", "5000"))
     connect_timeout_ms = int(os.getenv("MONGODB_CONNECT_TIMEOUT_MS", "5000"))
 
