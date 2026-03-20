@@ -6,6 +6,7 @@ shared across all repositories via FastAPI dependency injection.
 """
 
 import os
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 
@@ -34,7 +35,23 @@ async def connect_db():
 
     try:
         # Force a real round-trip to verify the connection is usable.
-        await _client.admin.command("ping")
+        # In CI, Mongo may not be ready at the exact moment tests start.
+        ping_retries = int(os.getenv("MONGODB_PING_RETRIES", "5"))
+        ping_retry_delay_s = float(os.getenv("MONGODB_PING_RETRY_DELAY_S", "0.5"))
+        last_error: Exception | None = None
+
+        for attempt in range(ping_retries):
+            try:
+                await _client.admin.command("ping")
+                last_error = None
+                break
+            except PyMongoError as e:
+                last_error = e
+                if attempt < ping_retries - 1:
+                    await asyncio.sleep(ping_retry_delay_s)
+
+        if last_error is not None:
+            raise last_error
     except PyMongoError as e:
         _client.close()
         _client = None
