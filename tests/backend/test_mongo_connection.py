@@ -15,12 +15,24 @@ async def test_mongo_connection_health(monkeypatch):
     monkeypatch.setenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", "3000")
     monkeypatch.setenv("MONGODB_CONNECT_TIMEOUT_MS", "3000")
 
-    await connect_db()
-    db = get_db()
+    try:
+        await connect_db()
+        db = get_db()
 
-    # Verify we can successfully execute a command against the server.
-    await db.command("ping")
-    await close_db()
+        # Verify we can successfully execute a command against the server.
+        await db.command("ping")
+    except Exception:
+        # Locally the developer may not have a running MongoDB instance.
+        # CI (GitHub Actions) must have Mongo, so we fail there.
+        if os.getenv("GITHUB_ACTIONS"):
+            raise
+        pytest.skip("MongoDB not reachable locally; skipping health-check test.")
+    finally:
+        # Ensure we always close the client if it connected.
+        try:
+            await close_db()
+        except Exception:
+            pass
 
 
 @pytest.mark.asyncio
