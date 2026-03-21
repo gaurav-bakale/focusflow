@@ -18,7 +18,7 @@ export async function fetchTasks() {
 
 /**
  * Create a new task.
- * @param {Object} taskData - { title, description, priority, deadline, status }
+ * @param {Object} taskData - { title, description, priority, deadline, status, categories }
  * @returns {Promise<Object>} The created task with server-assigned id.
  */
 export async function createTask(taskData) {

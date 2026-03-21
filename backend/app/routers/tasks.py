@@ -40,6 +40,7 @@ def _doc_to_task(doc: dict) -> TaskResponse:
         is_complete=doc.get("status") == "DONE",
         created_at=doc.get("created_at", datetime.utcnow()),
         updated_at=doc.get("updated_at", datetime.utcnow()),
+        categories=doc.get("categories", []),
     )
 
 
@@ -75,6 +76,7 @@ async def create_task(data: TaskCreate, user=Depends(get_current_user), db=Depen
         "deadline": data.deadline,
         "status": data.status,
         "subtasks": [],
+        "categories": data.categories if data.categories else [],
         "created_at": now,
         "updated_at": now,
     }
