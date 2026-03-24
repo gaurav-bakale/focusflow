@@ -108,7 +108,8 @@ jobs:
           MONGODB_URL: mongodb://localhost:27017/focusflow_test
           JWT_SECRET: test-secret-key
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: pytest tests/ -v --cov=app --cov-report=xml
+          PYTHONPATH: .
+        run: pytest ../tests/backend/ -v --cov=app --cov-report=xml
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4

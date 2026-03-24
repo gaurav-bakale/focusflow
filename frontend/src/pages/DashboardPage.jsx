@@ -88,8 +88,22 @@ export default function DashboardPage() {
                 >
                   <span className="text-indigo-500 text-xs hidden group-hover:block">✓</span>
                 </button>
-                <span className="text-sm text-gray-700">{task.title}</span>
-                <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium
+                <div className="flex-1 flex items-center gap-2">
+                  <span className="text-sm text-gray-700">{task.title}</span>
+                  {task.categories && task.categories.length > 0 && (
+                    <div className="flex gap-1">
+                      {task.categories.slice(0, 2).map(cat => (
+                        <span key={cat} className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">
+                          {cat}
+                        </span>
+                      ))}
+                      {task.categories.length > 2 && (
+                        <span className="text-xs text-gray-400">+{task.categories.length - 2}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium
                   ${task.priority === 'HIGH' ? 'bg-red-100 text-red-600' :
                     task.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-600' :
                       'bg-green-100 text-green-600'}`}>
