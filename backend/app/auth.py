@@ -1,73 +1,51 @@
 """
-Authentication Utilities
+Authentication Shim  (backward-compatibility layer)
 
-Handles JWT token creation/verification and bcrypt password hashing.
-Used by AuthService and the get_current_user dependency.
+All JWT / password logic now lives in app.authentication.utils.
+This module re-exports everything so existing routers
+(tasks, timer, calendar, ai) keep working without changes.
 """
 
-import os
-from datetime import datetime, timedelta
-from typing import Optional
+from app.authentication.utils import (   # noqa: F401  re-exports
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token,
+    SECRET_KEY,
+    ALGORITHM,
+    EXPIRE_MINUTES,
+)
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+# ── get_current_user dependency ───────────────────────────────────────────────
+# Kept here (not in the authentication package) to avoid circular imports:
+# router.py  →  auth.py  →  authentication/utils.py  (no cycle).
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError
 
 from app.db import get_db
 
-SECRET_KEY = os.getenv("JWT_SECRET", "fallback-dev-secret")
-ALGORITHM = "HS256"
-EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
-
-def hash_password(plain: str) -> str:
-    """Hash a plain-text password using bcrypt with automatic salting."""
-    return pwd_context.hash(plain)
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plain-text password against a bcrypt hash."""
-    return pwd_context.verify(plain, hashed)
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Create a signed JWT access token.
-
-    Args:
-        data: Payload dict (typically includes 'sub' as user_id).
-        expires_delta: Optional custom expiry; defaults to JWT_EXPIRE_MINUTES.
-
-    Returns:
-        Encoded JWT string.
-    """
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db=Depends(get_db)
+    db=Depends(get_db),
 ):
     """
-    FastAPI dependency: decode JWT and return the authenticated user document.
+    FastAPI dependency: decode the Bearer JWT and return the user document.
 
     Raises:
-        HTTPException 401: If the token is missing, expired, or invalid.
+        HTTPException 401 — token missing, expired, tampered, or user deleted.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_access_token(token)
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception

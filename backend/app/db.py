@@ -5,13 +5,14 @@ Manages a single Motor async MongoDB client instance,
 shared across all repositories via FastAPI dependency injection.
 """
 
-import os
 import asyncio
+import os
 from urllib.parse import quote_plus
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 
-_client: AsyncIOMotorClient = None
+_client: AsyncIOMotorClient | None = None
 _db = None
 
 
@@ -21,12 +22,12 @@ async def connect_db():
     Validates connectivity by issuing a `ping` against the server.
     """
     global _client, _db
+
     if _client is not None and _db is not None:
         return
 
     url = os.getenv("MONGODB_URL")
     if not url:
-        # Support building a URI from separate env vars (password must come from env/CI secrets).
         mongo_host = os.getenv("MONGODB_HOST", "localhost")
         mongo_port = os.getenv("MONGODB_PORT", "27017")
         mongo_db = os.getenv("MONGODB_DB") or os.getenv("MONGODB_DATABASE") or "focusflow"
@@ -42,7 +43,9 @@ async def connect_db():
         else:
             url = f"mongodb://{mongo_host}:{mongo_port}/{mongo_db}"
 
-    server_selection_timeout_ms = int(os.getenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", "5000"))
+    server_selection_timeout_ms = int(
+        os.getenv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", "5000")
+    )
     connect_timeout_ms = int(os.getenv("MONGODB_CONNECT_TIMEOUT_MS", "5000"))
 
     _client = AsyncIOMotorClient(
@@ -52,8 +55,6 @@ async def connect_db():
     )
 
     try:
-        # Force a real round-trip to verify the connection is usable.
-        # In CI, Mongo may not be ready at the exact moment tests start.
         ping_retries = int(os.getenv("MONGODB_PING_RETRIES", "5"))
         ping_retry_delay_s = float(os.getenv("MONGODB_PING_RETRY_DELAY_S", "0.5"))
         last_error: Exception | None = None
@@ -76,20 +77,21 @@ async def connect_db():
         _db = None
         raise RuntimeError(f"MongoDB connection failed: {e}") from e
 
-    # Prefer the DB specified in the connection URI; fall back to MONGODB_DB/default.
     try:
         default_db = _client.get_default_database()
     except Exception:
         default_db = None
 
-    _db = default_db or _client[os.getenv("MONGODB_DB", "focusflow")]
+    db_name = os.getenv("MONGODB_DB", "focusflow")
+    _db = default_db if default_db is not None else _client[db_name]
     print("[DB] MongoDB connection established")
 
 
 async def close_db():
     """Close the MongoDB connection pool at application shutdown."""
     global _client, _db
-    if _client:
+
+    if _client is not None:
         _client.close()
         _client = None
         _db = None
