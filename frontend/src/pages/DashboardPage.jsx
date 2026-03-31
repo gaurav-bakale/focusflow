@@ -2,11 +2,10 @@
  * DashboardPage — Home view after authentication.
  *
  * Sections:
- *   • Greeting + date + active timer callout
- *   • Stats row (tasks done, deep work hours, streak)
- *   • Priority task checklist
- *   • Daily goal progress bar
- *   • Quick actions
+ *   • Greeting + subtitle
+ *   • Stats row (tasks done, deep work, current streak)
+ *   • Priority Checklist with inline add
+ *   • Daily Goal badge
  */
 
 import React, { useEffect, useState } from 'react'
@@ -14,27 +13,14 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer, PHASES } from '../context/TimerContext'
 import { fetchStats } from '../services/otherServices'
-import { fetchTasks, markTaskComplete } from '../services/taskService'
+import { fetchTasks, markTaskComplete, createTask } from '../services/taskService'
 
-function greeting(name) {
-  const hour = new Date().getHours()
-  const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  return `${salutation}, ${name?.split(' ')[0] || 'there'}`
-}
-
-function formatDate() {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-}
-
-function StatCard({ label, value, sub, icon, accent }) {
+function StatCard({ label, value, color }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-xl">{icon}</span>
-        {sub && <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${accent}`}>{sub}</span>}
-      </div>
-      <p className="text-2xl font-bold text-gray-900 mb-0.5">{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+    <div className="bg-white border-2 border-gray-900 rounded-lg p-5 relative overflow-hidden">
+      <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{label}</p>
+      <p className="text-3xl font-extrabold text-gray-900 font-mono">{value}</p>
+      <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${color}`} />
     </div>
   )
 }
@@ -45,26 +31,6 @@ const PRIORITY_CONFIG = {
   LOW:    { bg: 'bg-green-50',  text: 'text-green-600', dot: 'bg-green-400' },
 }
 
-function QuickAction({ to, icon, label, desc }) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl
-                 hover:border-indigo-200 hover:shadow-sm transition-all group"
-    >
-      <span className="text-2xl">{icon}</span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors">{label}</p>
-        <p className="text-xs text-gray-400 truncate">{desc}</p>
-      </div>
-      <svg className="w-4 h-4 text-gray-300 group-hover:text-indigo-400 ml-auto shrink-0 transition-colors"
-        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-      </svg>
-    </Link>
-  )
-}
-
 export default function DashboardPage() {
   const { user } = useAuth()
   const { phase } = useTimer()
@@ -72,6 +38,8 @@ export default function DashboardPage() {
   const [tasks, setTasks]   = useState([])
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(null)
+  const [newItem, setNewItem] = useState('')
+  const [adding, setAdding] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -95,132 +63,126 @@ export default function DashboardPage() {
     setCompleting(null)
   }
 
+  async function handleAddItem(e) {
+    e.preventDefault()
+    const title = newItem.trim()
+    if (!title) return
+    setAdding(true)
+    try {
+      const created = await createTask({ title, priority: 'MEDIUM', status: 'todo' })
+      setTasks(prev => [...prev, created])
+      setNewItem('')
+    } catch (_) { /* non-blocking */ }
+    setAdding(false)
+  }
+
   const totalTasks = tasks.length + stats.tasks_done
   const goalPct    = totalTasks > 0 ? Math.round((stats.tasks_done / totalTasks) * 100) : 0
 
+  // Calculate streak from stats (days with at least one completed task)
+  const streakDays = stats.streak_days ?? 0
+
+  const firstName = user?.name?.split(' ')[0] || 'there'
+
   return (
     <div className="min-h-full">
-      {/* Page header */}
-      <div className="border-b border-gray-100 px-8 py-6">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{greeting(user?.name)}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{formatDate()}</p>
-          </div>
+      <div className="px-10 py-10 max-w-4xl mx-auto">
 
-          {phase !== PHASES.IDLE && (
-            <Link
-              to="/timer"
-              className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 text-indigo-700
-                         text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
-            >
-              <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-              Focus session active
-            </Link>
-          )}
+        {/* Active timer callout */}
+        {phase !== PHASES.IDLE && (
+          <Link
+            to="/timer"
+            className="inline-flex items-center gap-2 bg-gray-900 text-white
+                       text-sm font-medium px-4 py-2 rounded-lg mb-6 hover:bg-gray-800 transition-colors"
+          >
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            Focus session active
+          </Link>
+        )}
+
+        {/* Greeting */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            Hello, {firstName}.
+          </h1>
+          <p className="text-base text-gray-400 mt-1">Let's draw up today's plan.</p>
         </div>
-      </div>
-
-      <div className="px-8 py-8 max-w-4xl mx-auto space-y-8">
 
         {/* Stats row */}
         {loading ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-5 mb-10">
             {[1, 2, 3].map(i => (
-              <div key={i} className="bg-gray-50 rounded-xl h-24 animate-pulse border border-gray-100" />
+              <div key={i} className="bg-gray-50 border-2 border-gray-200 rounded-lg h-28 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-5 mb-10">
             <StatCard
-              icon="✅"
-              label="Tasks completed today"
+              label="Tasks Done"
               value={stats.tasks_done}
-              sub={stats.tasks_done > 0 ? `+${stats.tasks_done}` : null}
-              accent="bg-green-50 text-green-600"
+              color="bg-emerald-400"
             />
             <StatCard
-              icon="⏱"
-              label="Deep work today"
+              label="Deep Work"
               value={`${stats.deep_work_hours}h`}
-              sub={stats.deep_work_hours > 0 ? 'Tracked' : null}
-              accent="bg-indigo-50 text-indigo-600"
+              color="bg-rose-400"
             />
             <StatCard
-              icon="🔥"
-              label="Daily goal progress"
-              value={`${goalPct}%`}
-              sub={goalPct >= 80 ? 'On track' : null}
-              accent="bg-amber-50 text-amber-600"
+              label="Current Streak"
+              value={`${streakDays} Day${streakDays !== 1 ? 's' : ''}`}
+              color="bg-amber-400"
             />
           </div>
         )}
 
-        {/* Priority tasks */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-800">Priority Tasks</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Your most important pending items</p>
-            </div>
-            <Link
-              to="/board"
-              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium hover:underline underline-offset-2"
-            >
-              View all →
-            </Link>
+        {/* Priority Checklist */}
+        <div className="bg-white border-2 border-gray-900 rounded-lg mb-10">
+          <div className="px-6 py-5 border-b-2 border-gray-900">
+            <h2 className="text-lg font-extrabold text-gray-900">Priority Checklist</h2>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="px-6 py-2">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="px-6 py-4 flex items-center gap-3">
-                  <div className="w-4 h-4 rounded bg-gray-100 animate-pulse" />
-                  <div className="flex-1 h-3 bg-gray-100 rounded animate-pulse" />
-                  <div className="w-12 h-5 bg-gray-100 rounded-full animate-pulse" />
+                <div key={i} className="py-3 flex items-center gap-3">
+                  <div className="w-5 h-5 rounded border-2 border-gray-200 animate-pulse" />
+                  <div className="flex-1 h-4 bg-gray-100 rounded animate-pulse" />
                 </div>
               ))
             ) : tasks.length === 0 ? (
-              <div className="px-6 py-10 text-center">
-                <p className="text-2xl mb-2">🎉</p>
-                <p className="text-sm font-medium text-gray-700">All caught up!</p>
-                <p className="text-xs text-gray-400 mt-1">No pending tasks. Time to add some goals.</p>
-                <Link
-                  to="/board"
-                  className="inline-block mt-4 text-xs font-medium text-indigo-600 hover:text-indigo-700"
-                >
-                  Add a task →
-                </Link>
+              <div className="py-8 text-center">
+                <p className="text-sm text-gray-400">No tasks yet. Add one below.</p>
               </div>
             ) : (
               tasks.map(task => {
                 const pc = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.LOW
                 return (
-                  <div key={task.id} className="px-6 py-3.5 flex items-center gap-3 hover:bg-gray-50 transition-colors group">
+                  <div key={task.id} className="py-3 flex items-center gap-3 group border-b border-gray-100 last:border-0">
                     <button
                       onClick={() => handleComplete(task.id)}
                       disabled={completing === task.id}
                       aria-label={`Mark ${task.title} complete`}
-                      className="w-4 h-4 rounded border-2 border-gray-300 group-hover:border-indigo-400
-                                 flex items-center justify-center transition-colors shrink-0
-                                 hover:bg-indigo-50 disabled:opacity-50"
+                      className="w-5 h-5 rounded border-2 border-gray-900 flex items-center justify-center
+                                 shrink-0 hover:bg-gray-900 hover:text-white transition-colors disabled:opacity-50"
                     >
-                      {completing === task.id
-                        ? <span className="w-2 h-2 border border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                        : <span className="text-indigo-500 text-xs opacity-0 group-hover:opacity-100">✓</span>
-                      }
+                      {completing === task.id ? (
+                        <span className="w-2.5 h-2.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
                     </button>
 
-                    <p className="flex-1 text-sm text-gray-700 truncate">{task.title}</p>
+                    <p className="flex-1 text-sm font-medium text-gray-800">{task.title}</p>
 
                     {task.deadline && (
-                      <p className="text-xs text-gray-400 shrink-0">
+                      <p className="text-xs text-gray-400 shrink-0 font-mono">
                         {new Date(task.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
                     )}
 
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 flex items-center gap-1 ${pc.bg} ${pc.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${pc.dot}`} />
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold shrink-0 ${pc.bg} ${pc.text}`}>
                       {task.priority}
                     </span>
                   </div>
@@ -228,40 +190,37 @@ export default function DashboardPage() {
               })
             )}
           </div>
+
+          {/* Add item */}
+          <div className="px-6 py-4 border-t-2 border-gray-900">
+            <form onSubmit={handleAddItem} className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={adding || !newItem.trim()}
+                className="text-sm font-bold text-gray-900 border-2 border-gray-900 rounded px-3 py-1.5
+                           hover:bg-gray-900 hover:text-white transition-colors disabled:opacity-40"
+              >
+                + Add Item
+              </button>
+              <input
+                type="text"
+                value={newItem}
+                onChange={e => setNewItem(e.target.value)}
+                placeholder="What needs to get done?"
+                className="flex-1 text-sm border-0 outline-none bg-transparent text-gray-700 placeholder-gray-300"
+              />
+            </form>
+          </div>
         </div>
 
-        {/* Daily goal progress */}
+        {/* Daily Goal */}
         {!loading && (
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-sm font-semibold text-gray-800">Daily Goal</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{stats.tasks_done} of {totalTasks} tasks complete</p>
-              </div>
-              <span className="text-sm font-bold text-indigo-600">{goalPct}%</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-1.5">
-              <div
-                className="bg-indigo-600 h-1.5 rounded-full transition-all duration-700"
-                style={{ width: `${goalPct}%` }}
-              />
-            </div>
-            {goalPct >= 100 && (
-              <p className="text-xs text-green-600 font-medium mt-2">🎉 You hit your daily goal!</p>
-            )}
+          <div className="inline-block border-2 border-gray-900 rounded-lg px-6 py-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Daily Goal</p>
+            <p className="text-3xl font-extrabold text-gray-900 font-mono">{goalPct}%</p>
           </div>
         )}
 
-        {/* Quick actions */}
-        <div>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <QuickAction to="/timer"    icon="⏱" label="Start Focus Session"  desc="Begin a Pomodoro timer" />
-            <QuickAction to="/board"    icon="✅" label="Manage Tasks"         desc="View and update your board" />
-            <QuickAction to="/calendar" icon="📅" label="View Calendar"        desc="Plan your time blocks" />
-            <QuickAction to="/ai"       icon="✨" label="AI Task Breakdown"    desc="Let AI help prioritize" />
-          </div>
-        </div>
       </div>
     </div>
   )
