@@ -138,55 +138,37 @@ jobs:
           path: backend/coverage.xml
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 3 — Build (skipped until env secrets are configured)
+  # JOB 3 — Build  (PENDING: add DOCKER_USERNAME + DOCKER_PASSWORD secrets)
+  # Uncomment this job once Docker Hub credentials are configured.
   # ──────────────────────────────────────────────────────────────────────────
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: test
-    # Skip on feature branches; only build on main once env is ready.
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build & push backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: focusflow/backend:latest
-
-      - name: Build & push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: focusflow/frontend:latest
+  # build:
+  #   name: Build
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: docker/setup-buildx-action@v3
+  #     - uses: docker/login-action@v3
+  #       with:
+  #         username: ${{ secrets.DOCKER_USERNAME }}
+  #         password: ${{ secrets.DOCKER_PASSWORD }}
+  #     - uses: docker/build-push-action@v5
+  #       with: { context: ./backend, push: true, tags: focusflow/backend:latest }
+  #     - uses: docker/build-push-action@v5
+  #       with: { context: ./frontend, push: true, tags: focusflow/frontend:latest }
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 4 — Deploy (main only, skipped until env is configured)
+  # JOB 4 — Deploy  (PENDING: configure deployment target)
   # ──────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy placeholder
-        run: echo "FocusFlow deployed — configure server target when ready."
+  # deploy:
+  #   name: Deploy
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: echo "Configure deployment target here."
 
   # ──────────────────────────────────────────────────────────────────────────
   # GATE JOB — required status check for branch protection
