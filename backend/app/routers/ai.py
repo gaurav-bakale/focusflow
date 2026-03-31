@@ -8,6 +8,7 @@ The OpenAIAdapter isolates all SDK communication from business logic.
 Rate limiting: 10 AI requests per user per hour (enforced in-memory).
 """
 
+import json
 import os
 import time
 from abc import ABC, abstractmethod
@@ -20,6 +21,10 @@ from app.models import (
     AIBreakdownResponse,
     AIPrioritizeRequest,
     AIPrioritizeResponse,
+    AIGenerateTasksRequest,
+    AIGenerateTasksResponse,
+    AIRefineTasksRequest,
+    GeneratedTask,
 )
 from app.auth import get_current_user
 from app.db import get_db
@@ -247,3 +252,161 @@ async def prioritize_tasks(data: AIPrioritizeRequest, user=Depends(get_current_u
             prioritized.append(t)
 
     return AIPrioritizeResponse(prioritized_tasks=prioritized)
+
+
+# ── Gemini-powered Task Generation ──────────────────────────────────────
+
+GENERATE_PROMPT = """You are a productivity assistant. The user wants to accomplish a goal.
+Break it down into 3-6 actionable tasks.
+
+For each task, provide:
+- title: A clear, actionable task title
+- description: A brief description of what needs to be done
+- priority: HIGH, MEDIUM, or LOW
+- category: A short category label (e.g., "Research", "Development", "Design")
+
+Also provide a one-line summary of the overall plan.
+
+Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+{
+  "summary": "One-line summary of the plan",
+  "tasks": [
+    {"title": "...", "description": "...", "priority": "MEDIUM", "category": "..."}
+  ]
+}
+
+User's goal: """
+
+REFINE_PROMPT = """You are a productivity assistant. The user previously asked to break down a goal
+into tasks. They have reviewed the tasks and want changes.
+
+Original goal: {goal}
+
+Current tasks:
+{tasks_json}
+
+User's feedback: {feedback}
+
+Update the tasks based on the feedback. You may add, remove, or modify tasks.
+
+Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
+{{
+  "summary": "Updated one-line summary of the plan",
+  "tasks": [
+    {{"title": "...", "description": "...", "priority": "MEDIUM", "category": "..."}}
+  ]
+}}"""
+
+
+async def _call_gemini(api_key: str, prompt: str) -> str:
+    """Call Google Gemini API and return the text response."""
+    from google import genai
+
+    client = genai.Client(api_key=api_key)
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        return response.text.strip()
+    except Exception as e:
+        err_str = str(e)
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            raise HTTPException(
+                status_code=429,
+                detail="Gemini API quota exceeded. Please wait a minute and try again, or use a different API key."
+            )
+        raise HTTPException(status_code=502, detail=f"Gemini API error: {err_str}")
+
+
+def _parse_gemini_response(raw: str) -> dict:
+    """Parse the JSON response from Gemini, handling markdown fences."""
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        lines = lines[1:]  # remove opening fence
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=502,
+            detail="AI returned an invalid response. Please try again."
+        )
+
+
+@router.post("/generate-tasks", response_model=AIGenerateTasksResponse)
+async def generate_tasks(
+    data: AIGenerateTasksRequest,
+    user=Depends(get_current_user),
+):
+    """Generate tasks from a goal description using the user's Gemini API key."""
+    _check_rate_limit(str(user["_id"]))
+
+    api_key = user.get("gemini_api_key")
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Please set your Gemini API key first."
+        )
+
+    prompt = GENERATE_PROMPT + data.goal
+    raw = await _call_gemini(api_key, prompt)
+    parsed = _parse_gemini_response(raw)
+
+    tasks = []
+    for t in parsed.get("tasks", []):
+        tasks.append(GeneratedTask(
+            title=t.get("title", "Untitled"),
+            description=t.get("description", ""),
+            priority=t.get("priority", "MEDIUM"),
+            category=t.get("category", ""),
+        ))
+
+    return AIGenerateTasksResponse(
+        tasks=tasks,
+        summary=parsed.get("summary", ""),
+    )
+
+
+@router.post("/refine-tasks", response_model=AIGenerateTasksResponse)
+async def refine_tasks(
+    data: AIRefineTasksRequest,
+    user=Depends(get_current_user),
+):
+    """Refine previously generated tasks based on user feedback."""
+    _check_rate_limit(str(user["_id"]))
+
+    api_key = user.get("gemini_api_key")
+    if not api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Please set your Gemini API key first."
+        )
+
+    tasks_json = json.dumps(
+        [t.model_dump() for t in data.tasks], indent=2
+    )
+    prompt = REFINE_PROMPT.format(
+        goal=data.goal,
+        tasks_json=tasks_json,
+        feedback=data.feedback,
+    )
+    raw = await _call_gemini(api_key, prompt)
+    parsed = _parse_gemini_response(raw)
+
+    tasks = []
+    for t in parsed.get("tasks", []):
+        tasks.append(GeneratedTask(
+            title=t.get("title", "Untitled"),
+            description=t.get("description", ""),
+            priority=t.get("priority", "MEDIUM"),
+            category=t.get("category", ""),
+        ))
+
+    return AIGenerateTasksResponse(
+        tasks=tasks,
+        summary=parsed.get("summary", ""),
+    )

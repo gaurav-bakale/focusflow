@@ -15,6 +15,7 @@ import { useTimer, PHASES } from '../context/TimerContext'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask } from '../services/taskService'
 import SketchLine from '../components/SketchLine'
+import AITaskGenerator from '../components/AITaskGenerator'
 
 function StatCard({ label, value, color }) {
   return (
@@ -213,6 +214,12 @@ export default function DashboardPage() {
             </form>
           </div>
         </div>
+
+        {/* AI Task Planner */}
+        <AITaskGenerator onTasksCreated={() => {
+          // Reload tasks after AI creates them
+          fetchTasks().then(t => setTasks(t.filter(tk => !tk.is_complete).slice(0, 6))).catch(() => {})
+        }} />
 
         {/* Daily Goal */}
         {!loading && (

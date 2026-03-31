@@ -14,6 +14,7 @@ Endpoints follow REST resource semantics:
 from fastapi import APIRouter, Depends, status
 
 from app.authentication.models import (
+    ApiKeyUpdate,
     MessageResponse,
     OnboardingPreferences,
     PasswordChange,
@@ -144,6 +145,37 @@ async def change_password(
     """
     await svc.change_password(current_user, data)
     return MessageResponse(message="Password updated successfully.")
+
+
+# ── Gemini API Key ────────────────────────────────────────────────────────
+
+@router.patch(
+    "/me/apikey",
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Save the user's Gemini API key",
+)
+async def save_api_key(
+    data: ApiKeyUpdate,
+    current_user=Depends(get_current_user),
+    svc: AuthService = Depends(_svc),
+):
+    """Store the user's Gemini API key in their profile."""
+    await svc.save_api_key(current_user, data.gemini_api_key)
+    return MessageResponse(message="API key saved successfully.")
+
+
+@router.get(
+    "/me/apikey",
+    status_code=status.HTTP_200_OK,
+    summary="Check if user has a Gemini API key configured",
+)
+async def check_api_key(
+    current_user=Depends(get_current_user),
+):
+    """Return whether the user has a Gemini API key saved."""
+    has_key = bool(current_user.get("gemini_api_key"))
+    return {"has_key": has_key}
 
 
 # ── Logout ────────────────────────────────────────────────────────────────────

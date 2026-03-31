@@ -56,3 +56,13 @@ export async function prioritizeTasks(tasks) {
   const res = await api.post('/ai/prioritize', { tasks })
   return res.data
 }
+
+export async function generateTasks(goal) {
+  const res = await api.post('/ai/generate-tasks', { goal })
+  return res.data
+}
+
+export async function refineTasks(goal, tasks, feedback) {
+  const res = await api.post('/ai/refine-tasks', { goal, tasks, feedback })
+  return res.data
+}

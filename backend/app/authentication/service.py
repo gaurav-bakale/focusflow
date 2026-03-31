@@ -174,6 +174,15 @@ class AuthService:
             {"$set": {"password_hash": hash_password(data.new_password)}},
         )
 
+    # ── API Key ───────────────────────────────────────────────────────────────
+
+    async def save_api_key(self, user_doc: dict, api_key: str) -> None:
+        """Store the user's Gemini API key."""
+        await self._db["users"].update_one(
+            {"_id": user_doc["_id"]},
+            {"$set": {"gemini_api_key": api_key}},
+        )
+
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def get_by_id(self, user_id: str) -> Optional[dict]:
