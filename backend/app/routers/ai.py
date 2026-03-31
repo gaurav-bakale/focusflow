@@ -14,7 +14,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
-from openai import AsyncOpenAI
 
 from app.models import (
     AIBreakdownRequest,
@@ -64,7 +63,10 @@ class OpenAIAdapter:
 
     def __init__(self):
         api_key = os.getenv("OPENAI_API_KEY")
-        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
+        self.client = None
+        if api_key:
+            from openai import AsyncOpenAI
+            self.client = AsyncOpenAI(api_key=api_key)
         self.model = "gpt-4o-mini"
 
     async def call_llm(self, prompt: str) -> str:
