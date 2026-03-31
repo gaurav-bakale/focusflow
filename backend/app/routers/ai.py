@@ -314,9 +314,14 @@ async def _call_gemini(api_key: str, prompt: str) -> str:
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
             raise HTTPException(
                 status_code=429,
-                detail="Gemini API quota exceeded. Please wait a minute and try again, or use a different API key."
+                detail=(
+                    "Gemini API quota exceeded. Please wait a minute "
+                    "and try again, or use a different API key."
+                ),
             )
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {err_str}")
+        raise HTTPException(
+            status_code=502, detail=f"Gemini API error: {err_str}"
+        )
 
 
 def _parse_gemini_response(raw: str) -> dict:
