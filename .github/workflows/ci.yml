@@ -168,11 +168,13 @@ jobs:
         env:
           DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" && -n "$DOCKER_USER" ]]; then
-            echo "push=true"                                     >> $GITHUB_OUTPUT
-            echo "backend_tag=${DOCKER_USER}/focusflow-backend:latest"  >> $GITHUB_OUTPUT
-            echo "frontend_tag=${DOCKER_USER}/focusflow-frontend:latest" >> $GITHUB_OUTPUT
-            echo "Building + pushing to Docker Hub as ${DOCKER_USER}"
+          # Strip any whitespace/newlines the secret value may carry
+          CLEAN_USER=$(printf '%s' "$DOCKER_USER" | tr -d '[:space:]')
+          if [[ "${{ github.ref }}" == "refs/heads/main" && -n "$CLEAN_USER" ]]; then
+            echo "push=true"                                                    >> $GITHUB_OUTPUT
+            echo "backend_tag=${CLEAN_USER}/focusflow-backend:latest"          >> $GITHUB_OUTPUT
+            echo "frontend_tag=${CLEAN_USER}/focusflow-frontend:latest"        >> $GITHUB_OUTPUT
+            echo "Building + pushing to Docker Hub as ${CLEAN_USER}"
           else
             echo "push=false"                          >> $GITHUB_OUTPUT
             echo "backend_tag=focusflow-backend:ci"   >> $GITHUB_OUTPUT
