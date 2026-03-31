@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "FastAPI Backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "PYTHONPATH=/Users/gauravbakale/Documents/personal/NEU/SoftwareEngineering/focusflow/backend uvicorn app.main:app --host 0.0.0.0 --port 8000"],
+      "port": 8000
+    },
+    {
+      "name": "React Frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/gauravbakale/Documents/personal/NEU/SoftwareEngineering/focusflow/frontend && npm run dev -- --host --port 3000"],
+      "port": 3000
+    }
+  ]
+}

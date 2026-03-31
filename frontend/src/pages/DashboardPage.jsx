@@ -20,9 +20,8 @@ function StatCard({ label, value, color }) {
 export default function DashboardPage() {
   const { user } = useAuth()
   const { phase } = useTimer()
-  const [stats, setStats] = useState({ tasks_done: 0, deep_work_hours: 0 })
+  const [stats, setStats] = useState({ tasks_done: 0, deep_work_hours: 0, streak: 0 })
   const [tasks, setTasks] = useState([])
-  const [streak] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,7 +68,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <StatCard label="Tasks Done" value={stats.tasks_done} color="border-indigo-500" />
           <StatCard label="Deep Work" value={`${stats.deep_work_hours}h`} color="border-amber-400" />
-          <StatCard label="Current Streak" value={`${streak} Days`} color="border-green-500" />
+          <StatCard label="Current Streak" value={`${stats.streak} Days`} color="border-green-500" />
         </div>
       )}
 

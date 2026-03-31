@@ -77,7 +77,7 @@ async def get_stats(user=Depends(get_current_user), db=Depends(get_db)):
     Returns:
         Dict with tasks_done (today), deep_work_minutes (today), and streak (days).
     """
-    from datetime import date
+    from datetime import date, timedelta
     today_start = datetime.combine(date.today(), datetime.min.time())
 
     # Count tasks completed today
@@ -101,8 +101,34 @@ async def get_stats(user=Depends(get_current_user), db=Depends(get_db)):
     result = await db["sessions"].aggregate(pipeline).to_list(1)
     deep_work_minutes = result[0]["total"] if result else 0
 
+    # Calculate streak: consecutive days with at least one completed task
+    streak = 0
+    current_date = date.today()
+    
+    while True:
+        day_start = datetime.combine(current_date, datetime.min.time())
+        day_end = datetime.combine(current_date, datetime.max.time())
+        
+        # Check if user completed any tasks on this day
+        tasks_on_day = await db["tasks"].count_documents({
+            "user_id": user["_id"],
+            "status": "DONE",
+            "updated_at": {"$gte": day_start, "$lte": day_end},
+        })
+        
+        if tasks_on_day > 0:
+            streak += 1
+            current_date -= timedelta(days=1)
+        else:
+            # If today has no tasks yet, don't break the streak
+            if current_date == date.today() and streak == 0:
+                current_date -= timedelta(days=1)
+                continue
+            break
+
     return {
         "tasks_done": tasks_done,
         "deep_work_minutes": deep_work_minutes,
         "deep_work_hours": round(deep_work_minutes / 60, 1),
+        "streak": streak,
     }

@@ -82,7 +82,7 @@ async def connect_db():
     except Exception:
         default_db = None
 
-    _db = default_db or _client[os.getenv("MONGODB_DB", "focusflow")]
+    _db = default_db if default_db is not None else _client[os.getenv("MONGODB_DB", "focusflow")]
     print("[DB] MongoDB connection established")
 
 
