@@ -84,12 +84,14 @@ class TaskCreate(BaseModel):
         priority: Task urgency — LOW, MEDIUM, or HIGH.
         deadline: Optional ISO date string for due date.
         status: Current Kanban column state.
+        categories: Optional list of category tags for organization.
     """
     title: str = Field(..., min_length=1, max_length=300)
     description: Optional[str] = None
     priority: Priority = Priority.MEDIUM
     deadline: Optional[str] = None
     status: TaskStatus = TaskStatus.TODO
+    categories: Optional[List[str]] = []
 
 
 class TaskUpdate(BaseModel):
@@ -100,6 +102,7 @@ class TaskUpdate(BaseModel):
     deadline: Optional[str] = None
     status: Optional[TaskStatus] = None
     subtasks: Optional[List[SubtaskCreate]] = None
+    categories: Optional[List[str]] = None
 
 
 class TaskResponse(BaseModel):
@@ -113,6 +116,7 @@ class TaskResponse(BaseModel):
         is_complete: True when status is DONE.
         created_at: ISO timestamp of task creation.
         updated_at: ISO timestamp of last modification.
+        categories: List of category tags for organization.
     """
     id: str
     user_id: str
@@ -125,6 +129,7 @@ class TaskResponse(BaseModel):
     is_complete: bool = False
     created_at: datetime
     updated_at: datetime
+    categories: List[str] = []
 
 
 # ── Timer Models ──────────────────────────────────────────────────────────────
