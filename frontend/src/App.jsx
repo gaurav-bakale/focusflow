@@ -1,8 +1,10 @@
 /**
- * App.jsx - Root component
+ * App.jsx — Root component
  *
- * Sets up React Router, wraps the app in AuthProvider and TimerProvider,
- * and defines protected vs public routes.
+ * Routing logic:
+ *   Public:    /login, /register
+ *   Onboarding: /onboarding  (requires auth, redirects to / if already done)
+ *   Protected: / and sub-routes (requires auth + onboarding complete)
  */
 
 import React from 'react'
@@ -10,19 +12,48 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TimerProvider } from './context/TimerContext'
 
-import LoginPage    from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import Layout       from './components/Layout'
+import LoginPage      from './pages/LoginPage'
+import RegisterPage   from './pages/RegisterPage'
+import OnboardingPage from './pages/OnboardingPage'
+import Layout         from './components/Layout'
 import DashboardPage  from './pages/DashboardPage'
 import TasksPage      from './pages/TasksPage'
 import TimerPage      from './pages/TimerPage'
 import CalendarPage   from './pages/CalendarPage'
 import CanvasAIPage   from './pages/CanvasAIPage'
 
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center h-screen bg-white">
+      <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+    </div>
+  )
+}
+
+/** Redirect logged-in users away from public pages */
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (!user) return children
+  return <Navigate to={user.onboarding_completed ? '/' : '/onboarding'} replace />
+}
+
+/** Requires auth. If onboarding not done, redirect there first. */
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex items-center justify-center h-screen text-gray-400">Loading…</div>
-  return user ? children : <Navigate to="/login" replace />
+  if (loading) return <Spinner />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.onboarding_completed === false) return <Navigate to="/onboarding" replace />
+  return children
+}
+
+/** Requires auth, but redirects to / if onboarding already completed. */
+function OnboardingRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.onboarding_completed) return <Navigate to="/" replace />
+  return children
 }
 
 export default function App() {
@@ -31,8 +62,14 @@ export default function App() {
       <TimerProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/login"    element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            {/* Public */}
+            <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+
+            {/* Onboarding (auth required, skipped if done) */}
+            <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
+
+            {/* Protected app shell */}
             <Route
               path="/"
               element={
@@ -47,6 +84,9 @@ export default function App() {
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="ai"       element={<CanvasAIPage />} />
             </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </TimerProvider>

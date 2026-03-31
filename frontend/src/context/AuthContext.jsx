@@ -1,53 +1,69 @@
 /**
  * AuthContext
  *
- * Provides global authentication state: current user, login, logout.
- * Persists JWT token to localStorage and re-hydrates on page reload.
+ * Global auth state: user, loading, login, register, logout, completeOnboarding.
+ * Persists JWT + user to localStorage and re-hydrates on page reload.
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { login as apiLogin, register as apiRegister } from '../services/authService'
+import {
+  login as apiLogin,
+  register as apiRegister,
+  completeOnboarding as apiCompleteOnboarding,
+  logout as apiLogout,
+} from '../services/authService'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Rehydrate user from localStorage on mount
+  // Rehydrate from localStorage on mount
   useEffect(() => {
-    const token = localStorage.getItem('ff_token')
+    const token  = localStorage.getItem('ff_token')
     const stored = localStorage.getItem('ff_user')
     if (token && stored) {
-      setUser(JSON.parse(stored))
+      try { setUser(JSON.parse(stored)) } catch (_) { /* corrupt data */ }
     }
     setLoading(false)
   }, [])
 
+  function persist(token, userData) {
+    localStorage.setItem('ff_token', token)
+    localStorage.setItem('ff_user', JSON.stringify(userData))
+    setUser(userData)
+  }
+
   async function login(email, password) {
     const data = await apiLogin(email, password)
-    localStorage.setItem('ff_token', data.access_token)
-    localStorage.setItem('ff_user', JSON.stringify(data.user))
-    setUser(data.user)
+    persist(data.access_token, data.user)
     return data.user
   }
 
   async function register(name, email, password) {
     const data = await apiRegister(name, email, password)
-    localStorage.setItem('ff_token', data.access_token)
-    localStorage.setItem('ff_user', JSON.stringify(data.user))
-    setUser(data.user)
+    persist(data.access_token, data.user)
     return data.user
   }
 
+  async function completeOnboarding(preferences) {
+    const updatedUser = await apiCompleteOnboarding(preferences)
+    const merged = { ...user, ...updatedUser }
+    localStorage.setItem('ff_user', JSON.stringify(merged))
+    setUser(merged)
+    return merged
+  }
+
   function logout() {
+    apiLogout().catch(() => { /* fire-and-forget */ })
     localStorage.removeItem('ff_token')
     localStorage.removeItem('ff_user')
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, completeOnboarding }}>
       {children}
     </AuthContext.Provider>
   )
