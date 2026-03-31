@@ -15,13 +15,14 @@ import { useAuth } from '../context/AuthContext'
 import { useTimer, PHASES } from '../context/TimerContext'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
+import SketchLine from './SketchLine'
 
 const NAV = [
-  { to: '/',         label: 'Dashboard',  end: true,  accent: 'bg-amber-400' },
-  { to: '/board',    label: 'Board',      end: false, accent: 'bg-rose-400' },
-  { to: '/timer',    label: 'Timer',      end: false, accent: 'bg-emerald-400' },
-  { to: '/calendar', label: 'Calendar',   end: false, accent: 'bg-sky-400' },
-  { to: '/ai',       label: 'Canvas AI',  end: false, accent: 'bg-violet-400' },
+  { to: '/',         label: 'Dashboard',  end: true,  color: '#FBBF24' },
+  { to: '/board',    label: 'Board',      end: false, color: '#FB7185' },
+  { to: '/timer',    label: 'Timer',      end: false, color: '#34D399' },
+  { to: '/calendar', label: 'Calendar',   end: false, color: '#38BDF8' },
+  { to: '/ai',       label: 'Canvas AI',  end: false, color: '#A78BFA' },
 ]
 
 const PHASE_CONFIG = {
@@ -75,27 +76,21 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
           <div className="space-y-1">
-            {NAV.map(({ to, label, end, accent }) => (
+            {NAV.map(({ to, label, end, color }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `relative block px-2 py-2 text-sm font-bold transition-colors
+                  `sketch-hover relative block px-2 py-2 text-sm font-bold transition-colors
                    ${isActive
-                     ? 'text-gray-900'
+                     ? 'text-gray-900 sketch-active'
                      : 'text-gray-400 hover:text-gray-900'
                    }`
                 }
               >
-                {({ isActive }) => (
-                  <>
-                    {label}
-                    {isActive && (
-                      <span className={`absolute -bottom-0.5 left-2 right-2 h-1 rounded-full ${accent}`} />
-                    )}
-                  </>
-                )}
+                {label}
+                <SketchLine color={color} thickness={3} />
               </NavLink>
             ))}
           </div>

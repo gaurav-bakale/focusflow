@@ -14,13 +14,14 @@ import { useAuth } from '../context/AuthContext'
 import { useTimer, PHASES } from '../context/TimerContext'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask } from '../services/taskService'
+import SketchLine from '../components/SketchLine'
 
 function StatCard({ label, value, color }) {
   return (
-    <div className="bg-white border-2 border-gray-900 rounded-lg p-5 relative overflow-hidden">
+    <div className="sketch-hover bg-white border-2 border-gray-900 rounded-lg p-5 relative overflow-hidden">
       <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{label}</p>
       <p className="text-3xl font-extrabold text-gray-900 font-mono">{value}</p>
-      <div className={`absolute bottom-0 left-0 right-0 h-1.5 ${color}`} />
+      <SketchLine color={color} thickness={4} />
     </div>
   )
 }
@@ -105,7 +106,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
             Hello, {firstName}.
           </h1>
-          <p className="text-base text-gray-400 mt-1">Let's draw up today's plan.</p>
+          <p className="text-base text-gray-400 mt-1">Let&apos;s draw up today&apos;s plan.</p>
         </div>
 
         {/* Stats row */}
@@ -120,17 +121,17 @@ export default function DashboardPage() {
             <StatCard
               label="Tasks Done"
               value={stats.tasks_done}
-              color="bg-emerald-400"
+              color="#34D399"
             />
             <StatCard
               label="Deep Work"
               value={`${stats.deep_work_hours}h`}
-              color="bg-rose-400"
+              color="#FB7185"
             />
             <StatCard
               label="Current Streak"
               value={`${streakDays} Day${streakDays !== 1 ? 's' : ''}`}
-              color="bg-amber-400"
+              color="#FBBF24"
             />
           </div>
         )}
