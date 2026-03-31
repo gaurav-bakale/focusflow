@@ -11,7 +11,7 @@
 import React, { useState } from 'react'
 import { generateTasks, refineTasks } from '../services/otherServices'
 import { createTask } from '../services/taskService'
-import { saveApiKey, checkApiKey } from '../services/authService'
+import { saveApiKey } from '../services/authService'
 import SketchLine from './SketchLine'
 
 const PRIORITY_COLORS = {
