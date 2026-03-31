@@ -7,9 +7,9 @@ name: FocusFlow CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, karans]
   pull_request:
-    branches: [main]
+    branches: [main, karans]
 
 jobs:
 
@@ -46,7 +46,7 @@ jobs:
         working-directory: ./backend
         run: pip install -r requirements.txt
 
-      - name: flake8
+      - name: flake8 — app (including authentication package)
         working-directory: ./backend
         run: flake8 app/ --max-line-length=100 --exclude=__pycache__
 
@@ -102,14 +102,30 @@ jobs:
         working-directory: ./backend
         run: pip install -r requirements.txt
 
+      - name: Seed demo user
+        working-directory: ./backend
+        env:
+          PYTHONPATH: .
+          MONGODB_URL: mongodb://localhost:27017/focusflow_test
+          JWT_SECRET: test-secret-key
+          JWT_EXPIRE_MINUTES: '60'
+        run: python seed_demo_user.py
+
       - name: pytest with coverage
         working-directory: ./backend
         env:
           PYTHONPATH: .
           MONGODB_URL: mongodb://localhost:27017/focusflow_test
           JWT_SECRET: test-secret-key
+          JWT_EXPIRE_MINUTES: '60'
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: pytest ../tests/ -v --cov=app --cov-report=xml:../backend/coverage.xml
+          GITHUB_ACTIONS: 'true'
+        run: |
+          pytest ../tests/ -v \
+            --cov=app \
+            --cov-report=xml:../backend/coverage.xml \
+            --cov-report=term-missing \
+            -p no:warnings
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
@@ -165,4 +181,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy placeholder
-        run: echo "✅ FocusFlow deployed successfully — configure server later."
+        run: echo "FocusFlow deployed successfully — configure server later."

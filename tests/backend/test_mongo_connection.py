@@ -14,6 +14,8 @@ ATLAS_URI = (
 
 @pytest.mark.asyncio
 async def test_mongo_connection_health(monkeypatch):
+    # On CI use the already-configured MONGODB_URL (local mongo service).
+    # Locally, fall back to the Atlas URI so the test is still useful.
     if "MONGODB_URL" not in os.environ:
         monkeypatch.setenv("MONGODB_URL", ATLAS_URI)
 
