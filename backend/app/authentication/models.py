@@ -37,6 +37,11 @@ class ProfileUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
 
 
+class ApiKeyUpdate(BaseModel):
+    """Request model for saving a user's Gemini API key."""
+    gemini_api_key: str = Field(..., min_length=1)
+
+
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=8)

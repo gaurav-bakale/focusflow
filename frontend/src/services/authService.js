@@ -39,3 +39,13 @@ export async function changePassword(currentPassword, newPassword) {
 export async function logout() {
   await api.post('/auth/logout')
 }
+
+export async function saveApiKey(geminiApiKey) {
+  const res = await api.patch('/auth/me/apikey', { gemini_api_key: geminiApiKey })
+  return res.data
+}
+
+export async function checkApiKey() {
+  const res = await api.get('/auth/me/apikey')
+  return res.data
+}
