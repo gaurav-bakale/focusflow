@@ -16,14 +16,14 @@ from app.main import app  # noqa: E402
 from app.db import connect_db, close_db, get_db  # noqa: E402
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def db():
     await connect_db()
     yield get_db()
     await close_db()
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def client(db):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
@@ -37,7 +37,7 @@ def _make_user(tag: str) -> dict:
     }
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def registered_user(client, db):
     """Register a fresh test user; clean up after the test."""
     payload = _make_user("primary")
@@ -59,7 +59,7 @@ async def registered_user(client, db):
     await db["tasks"].delete_many({"user_id": {"$regex": "^"}})  # only test tasks
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def second_user(client, db):
     """A second independent user for cross-user tests."""
     payload = _make_user("secondary")

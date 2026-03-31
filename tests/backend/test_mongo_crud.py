@@ -25,7 +25,7 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def db():
     if not ATLAS_URI:
         pytest.skip("MONGODB_URL not set; skipping CRUD tests.")

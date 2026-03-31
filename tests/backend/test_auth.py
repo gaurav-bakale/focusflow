@@ -33,20 +33,20 @@ BASE = "http://test"
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def db():
     await connect_db()
     yield get_db()
     await close_db()
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def client(db):
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE) as ac:
         yield ac
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def registered_user(client, db):
     """Create a fresh test user and return (token, user_id, email, password)."""
     payload = {
@@ -56,7 +56,7 @@ async def registered_user(client, db):
     }
     resp = await client.post("/api/auth/register", json=payload)
     # If already exists from a previous run, login instead
-    if resp.status_code == 400:
+    if resp.status_code == 409:
         resp = await client.post("/api/auth/login", json={
             "email": payload["email"],
             "password": payload["password"],
@@ -72,7 +72,7 @@ async def registered_user(client, db):
     await db["tasks"].delete_many({"user_id": {"$exists": True}})
 
 
-@pytest_asyncio.fixture(loop_scope="function")
+@pytest_asyncio.fixture
 async def second_user(client, db):
     """A second independent user for cross-user authorization tests."""
     payload = {
@@ -81,7 +81,7 @@ async def second_user(client, db):
         "password": "OtherPass1!",
     }
     resp = await client.post("/api/auth/register", json=payload)
-    if resp.status_code == 400:
+    if resp.status_code == 409:
         resp = await client.post("/api/auth/login", json={
             "email": payload["email"],
             "password": payload["password"],
@@ -124,7 +124,7 @@ async def test_register_duplicate_email(client, registered_user):
         "email": registered_user["email"],
         "password": "AnotherPass1!",
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 409
     assert "already registered" in resp.json()["detail"].lower()
 
 

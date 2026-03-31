@@ -97,8 +97,8 @@ async def test_register_duplicate_email():
     """
     TC-B02: Register with an already-used email.
     Input: email that already exists
-    Oracle: 400 error
-    Success: status_code == 400
+    Oracle: 409 Conflict error
+    Success: status_code == 409
     Failure: User created or 201 returned
     """
     mock_db_inst = MagicMock()
@@ -112,7 +112,7 @@ async def test_register_duplicate_email():
             "password": "anotherpass123"
         })
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     assert "already registered" in response.json()["detail"]
 
 
