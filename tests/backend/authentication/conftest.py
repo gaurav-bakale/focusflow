@@ -1,30 +1,23 @@
 """
 Shared fixtures for all authentication tests.
+Uses the session-scoped _mock_db from tests/conftest.py — no local override.
 """
 
-import os
-from pathlib import Path
-
-import pytest
 import pytest_asyncio
-from dotenv import load_dotenv
 from httpx import AsyncClient, ASGITransport
 
-load_dotenv(Path(__file__).parent.parent.parent.parent / "backend" / ".env")
-
-from app.main import app  # noqa: E402
-from app.db import connect_db, close_db, get_db  # noqa: E402
+from app.main import app
 
 
 @pytest_asyncio.fixture
-async def db():
-    await connect_db()
-    yield get_db()
-    await close_db()
+async def db(_mock_db):
+    """Return the shared in-memory DB handle for per-test cleanup."""
+    db, _mongo = _mock_db
+    yield db
 
 
 @pytest_asyncio.fixture
-async def client(db):
+async def client(_mock_db):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
@@ -56,7 +49,7 @@ async def registered_user(client, db):
         "name": payload["name"],
     }
     await db["users"].delete_many({"email": payload["email"]})
-    await db["tasks"].delete_many({"user_id": {"$regex": "^"}})  # only test tasks
+    await db["tasks"].delete_many({"user_id": {"$regex": "^"}})
 
 
 @pytest_asyncio.fixture

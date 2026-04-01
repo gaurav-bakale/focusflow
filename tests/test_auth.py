@@ -53,7 +53,6 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
-from app.db import connect_db, close_db, get_db  # noqa: E402
 
 BASE = "http://test"
 
@@ -64,21 +63,20 @@ _EMAIL_SUFFIX = "@auth-test.focusflow.internal"
 # ── Module fixtures ───────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture(scope="module")
-async def client():
+async def client(_mock_db):
     """
     Input    : none
-    Expected : AsyncClient connected to the ASGI app.
-    Pass     : yields without error; DB is connected.
+    Expected : AsyncClient connected to the ASGI app backed by mock DB.
+    Pass     : yields without error.
     """
-    await connect_db()
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE) as ac:
         yield ac
-    await close_db()
 
 
 @pytest_asyncio.fixture(scope="module")
-async def db(client):
-    return get_db()
+async def db(_mock_db):
+    db, _mongo = _mock_db
+    return db
 
 
 @pytest_asyncio.fixture(scope="module")

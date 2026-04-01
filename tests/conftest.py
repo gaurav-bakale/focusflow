@@ -1,20 +1,11 @@
 """
 Shared test fixtures for the FocusFlow backend test suite.
 
-Design Patterns exercised here
---------------------------------
-Dependency Injection — FastAPI's app.dependency_overrides lets us swap the
-                       real DB and auth dependencies for test doubles without
-                       touching production code.
-Factory              — The `client` fixture acts as a factory: it constructs
-                       a fresh AsyncClient wrapping the ASGI app for each
-                       test module.
+Uses mongomock-motor (in-memory) for all tests — no real MongoDB needed.
 
-Environment
------------
-Set MONGODB_URL=mongodb://localhost:27017/focusflow_test to use a real local
-MongoDB.  When running with mocked dependencies (see individual test files)
-no real DB connection is required.
+Each test module gets its own mock client (module-scoped) so mongomock_motor's
+WorkerThread is always created inside the module's running event loop, avoiding
+"attached to a different loop" errors on Python 3.12+.
 
 Usage
 -----
@@ -25,72 +16,125 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
 import pytest_asyncio
+import mongomock_motor
 from dotenv import load_dotenv
 from httpx import AsyncClient, ASGITransport
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-# Ensure `backend/` is on sys.path so `from app.xxx import …` works.
 BACKEND_DIR = Path(__file__).parent.parent / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-# Load env — prefer a backend/.env if present, then fall back to root .env
 load_dotenv(BACKEND_DIR / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 
-# Point tests at an isolated test database by default
-os.environ.setdefault("MONGODB_URL", "mongodb://localhost:27017/focusflow_test")
 os.environ.setdefault("MONGODB_DB", "focusflow_test")
 
 # ── Imports (after path setup) ────────────────────────────────────────────────
 from app.main import app  # noqa: E402
-from app.db import connect_db, close_db, get_db  # noqa: E402
+import app.db as _db_module  # noqa: E402
+import app.main as _main_module  # noqa: E402
+from app.db import get_db  # noqa: E402
+from app.auth import hash_password  # noqa: E402
+
+# ── Patch app.main's lifespan so it never touches real MongoDB ────────────────
+# The ASGI lifespan calls connect_db() on startup and close_db() on shutdown.
+# By replacing these references in app.main's namespace the lifespan becomes
+# a no-op, which keeps the module-scoped mock alive between fixture calls.
+
+async def _mock_connect_db():
+    pass  # mock client is set by _mock_db fixture; this is a no-op
+
+
+async def _mock_close_db():
+    pass  # keep mock alive; don't clear _db_module._client
+
+
+_main_module.connect_db = _mock_connect_db
+_main_module.close_db = _mock_close_db
+
+
+# ── Module-scoped mock DB (autouse = runs for every module automatically) ─────
+
+@pytest_asyncio.fixture(scope="session")
+async def _mock_db():
+    """
+    Single in-memory MongoDB for the whole test session.
+    Session scope means one persistent event loop — no per-module loop teardown
+    that would strand mongomock_motor's WorkerThread on a dead loop.
+    """
+    mock_mongo = mongomock_motor.AsyncMongoMockClient()
+    db = mock_mongo["focusflow_test"]
+
+    # Wire into app.db globals so direct connect_db() calls return early
+    _db_module._client = mock_mongo
+    _db_module._db = db
+
+    # Override FastAPI dependency so all route handlers get the mock DB
+    app.dependency_overrides[get_db] = lambda: db
+
+    # Seed demo user (needed by test_login_demo_user)
+    existing = await db["users"].find_one({"email": "demo@focusflow.app"})
+    if not existing:
+        await db["users"].insert_one({
+            "name": "Demo User",
+            "email": "demo@focusflow.app",
+            "password_hash": hash_password("Demo@1234"),
+            "onboarding_completed": True,
+            "preferences": {
+                "pomodoro_duration": 25,
+                "short_break": 5,
+                "long_break": 15,
+                "theme": "light",
+            },
+        })
+
+    yield db, mock_mongo
+
+    app.dependency_overrides.pop(get_db, None)
+    _db_module._client = None
+    _db_module._db = None
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _rewire_mock_db(_mock_db):
+    """
+    Re-wire app.db globals and dependency override before every test.
+    Some legacy test files call app.db.close_db() directly, which clears the
+    module-level _client/_db; this fixture silently restores them so subsequent
+    tests are not affected.
+    """
+    db, mock_mongo = _mock_db
+    _db_module._client = mock_mongo
+    _db_module._db = db
+    app.dependency_overrides[get_db] = lambda: db
+    yield
 
 
 # ── Module-scoped HTTP client ─────────────────────────────────────────────────
 
 @pytest_asyncio.fixture(scope="module")
-async def client():
-    """
-    Async HTTP client wired directly to the FastAPI ASGI app.
-
-    Design pattern: Factory — produces a ready-to-use client for each test
-    module without spinning up a real HTTP server.
-
-    Arrange: connect to the test DB via the app lifespan.
-    Yield:   the configured AsyncClient.
-    Teardown: lifespan closes the DB connection.
-    """
-    await connect_db()
+async def client(_mock_db):
+    """Async HTTP client wired to the FastAPI ASGI app, backed by mock DB."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
-    await close_db()
 
 
 @pytest_asyncio.fixture(scope="module")
-async def db(client):  # noqa: F811  (client triggers connect_db)
-    """Return the live test-database handle (used for teardown cleanup)."""
-    return get_db()
+async def db(_mock_db):
+    """Return the mock test-database handle (used for teardown cleanup)."""
+    db, _mongo = _mock_db
+    return db
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture(scope="module")
 async def auth_headers(client):
-    """
-    Register (or re-login) a test user and return Bearer auth headers.
-
-    Design pattern: Dependency Injection — the token is derived once per
-    module and injected into any test that needs authenticated requests.
-
-    Input    : POST /api/auth/register or /api/auth/login.
-    Expected : HTTP 201 or 200 → access_token in response body.
-    Pass     : Returns {"Authorization": "Bearer <token>"}.
-    """
+    """Register (or re-login) a test user and return Bearer auth headers."""
     payload = {
         "name": "Fixture User",
         "email": "fixture_user@focusflow-test.internal",
@@ -108,13 +152,7 @@ async def auth_headers(client):
 
 @pytest_asyncio.fixture(scope="module")
 async def test_task(client, auth_headers):
-    """
-    Create a single task for the fixture user and return its response dict.
-
-    Input    : POST /api/tasks with minimal payload.
-    Expected : HTTP 201 with task id set.
-    Pass     : Returns full task response dict.
-    """
+    """Create a single task for the fixture user and return its response dict."""
     resp = await client.post(
         "/api/tasks",
         json={"title": "Fixture Task", "priority": "MEDIUM"},
