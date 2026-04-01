@@ -598,7 +598,9 @@ describe('analytics panel', () => {
 
     // Assert
     await waitFor(() => {
-      expect(screen.getByText('50%')).toBeInTheDocument()
+      // 50% appears in both ProgressRing and StatCard — use getAllByText
+      const pctEls = screen.getAllByText('50%')
+      expect(pctEls.length).toBeGreaterThanOrEqual(1)
     })
   })
 

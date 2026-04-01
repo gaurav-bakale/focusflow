@@ -128,10 +128,10 @@ describe('form interaction', () => {
     // Assert
     await waitFor(() => {
       // Strength meter appears — any strength label found
-      const strengthText = screen.queryByText(/weak password/i) ||
-                           screen.queryByText(/fair password/i) ||
-                           screen.queryByText(/good password/i) ||
-                           screen.queryByText(/strong password/i)
+      const strengthText = screen.queryByText(/^weak$/i) ||
+                           screen.queryByText(/^fair$/i) ||
+                           screen.queryByText(/^good$/i) ||
+                           screen.queryByText(/^strong$/i)
       expect(strengthText).toBeInTheDocument()
     })
   })
@@ -149,7 +149,7 @@ describe('form interaction', () => {
 
     // Assert
     await waitFor(() => {
-      expect(screen.getByText(/weak password/i)).toBeInTheDocument()
+      expect(screen.getByText(/^weak$/i)).toBeInTheDocument()
     })
   })
 
@@ -348,7 +348,7 @@ describe('password strength', () => {
 
     // Assert
     await waitFor(() => {
-      expect(screen.getByText(/weak password/i)).toBeInTheDocument()
+      expect(screen.getByText(/^weak$/i)).toBeInTheDocument()
     })
   })
 

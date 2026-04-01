@@ -386,7 +386,7 @@ export default function TasksPage() {
       </div>
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div data-testid="analytics-strip" className="grid grid-cols-5 gap-4 mb-8">
         <div className="bg-white border-2 border-gray-900 rounded-lg px-4 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">Total</p>
           <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.total}</p>
@@ -507,7 +507,9 @@ export default function TasksPage() {
           </div>
 
           {hasFilters && (
-            <button onClick={() => { setSearchText(''); setFilterPriority('ALL'); setFilterDeadline('ALL'); setFilterStatus('ALL'); setFilterRecurrence('ALL') }}
+            <button
+              aria-label="Clear all filters"
+              onClick={() => { setSearchText(''); setFilterPriority('ALL'); setFilterDeadline('ALL'); setFilterStatus('ALL'); setFilterRecurrence('ALL') }}
               className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 border-2 border-red-200 hover:border-red-400 px-3 py-1 rounded transition-colors">
               Clear All
             </button>
@@ -678,8 +680,8 @@ export default function TasksPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Title</label>
-                <input type="text" value={formData.title} required
+                <label htmlFor="task-title" className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Title</label>
+                <input id="task-title" type="text" value={formData.title} required
                   onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
                   className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
               </div>

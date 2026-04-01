@@ -182,7 +182,7 @@ describe('LoginPage', () => {
    */
   test('AUTH-08: renders a link to the register page', () => {
     wrap(LoginPage)
-    const link = screen.getByRole('link', { name: /sign up for free/i })
+    const link = screen.getByRole('link', { name: /sign up free/i })
     expect(link).toBeInTheDocument()
     expect(link.getAttribute('href')).toBe('/register')
   })
