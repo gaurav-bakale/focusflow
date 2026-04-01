@@ -11,6 +11,22 @@ Endpoints follow REST resource semantics:
   POST   /logout            — client-side token discard (200 OK)
 """
 
+# ── Design Patterns ───────────────────────────────────────────────────────────
+# Facade          — this router is a thin facade over AuthService.  Each
+#                   handler does one thing: delegate to the matching service
+#                   method.  No hashing, no DB queries, no token creation
+#                   happens here; all that lives in service.py.
+#
+# Dependency Inj. — `get_current_user` and `get_db` are resolved by FastAPI's
+#                   Depends() system at request time.  This removes boilerplate
+#                   from handlers and lets tests override dependencies cleanly
+#                   via app.dependency_overrides.
+#
+# Factory         — `_svc` is a factory/provider: it receives the injected `db`
+#                   and constructs a fresh AuthService for each request,
+#                   centralising object creation and keeping handlers stateless.
+# ─────────────────────────────────────────────────────────────────────────────
+
 from fastapi import APIRouter, Depends, status
 
 from app.authentication.models import (
@@ -31,6 +47,13 @@ router = APIRouter()
 
 
 def _svc(db=Depends(get_db)) -> AuthService:
+    """
+    Factory pattern — constructs an AuthService for the current request.
+
+    FastAPI resolves `db` via Depends(get_db) (Dependency Injection) and
+    passes it here.  The resulting AuthService is injected into each handler
+    via Depends(_svc), keeping handlers stateless and fully testable.
+    """
     return AuthService(db)
 
 

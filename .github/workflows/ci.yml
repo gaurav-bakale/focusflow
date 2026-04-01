@@ -6,7 +6,8 @@ name: FocusFlow CI/CD
 
 on:
   push:
-    branches: [main, develop, karans]
+    branches: [main, develop, karans, feature/task-board-calendar]
+    tags: ['v*']
   pull_request:
     branches: [main, karans]
 
