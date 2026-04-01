@@ -22,7 +22,7 @@ from app.authentication.utils import (   # noqa: F401  re-exports
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.db import get_db
 

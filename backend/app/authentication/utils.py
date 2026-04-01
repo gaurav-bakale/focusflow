@@ -10,7 +10,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from jose import jwt
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError  # noqa: F401 — re-exported
 from passlib.context import CryptContext
 
 SECRET_KEY: str = os.getenv("JWT_SECRET") or "fallback-dev-secret"
@@ -64,6 +65,6 @@ def decode_access_token(token: str) -> dict:
         The decoded payload dict.
 
     Raises:
-        JWTError: If the token is expired, tampered, or otherwise invalid.
+        jwt.exceptions.InvalidTokenError: If the token is expired, tampered, or otherwise invalid.
     """
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
