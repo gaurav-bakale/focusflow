@@ -144,8 +144,8 @@ describe('form interaction', () => {
     // Arrange
     wrap()
 
-    // Act
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abc' } })
+    // Act — 'abcdefgh' meets only length criterion (score=1) → shows "Weak password"
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abcdefgh' } })
 
     // Assert
     await waitFor(() => {
