@@ -6,16 +6,17 @@ and manages the MongoDB connection lifecycle.
 """
 
 from contextlib import asynccontextmanager
-from dotenv import load_dotenv
-load_dotenv()  # load backend/.env before any os.getenv() calls
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import connect_db, close_db
 from app.authentication.router import router as auth_router
-from app.tasks.router import router as tasks_router
+from app.db import connect_db, close_db
 from app.routers import timer, calendar, ai
+from app.tasks.router import router as tasks_router
+
+load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
 
 
 @asynccontextmanager

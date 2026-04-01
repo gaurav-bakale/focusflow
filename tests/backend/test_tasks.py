@@ -70,18 +70,28 @@ def _auth_override():
     return _get_user
 
 
+async def _async_iter(items):
+    """Helper: async generator wrapping a list for use as a Motor cursor mock."""
+    for item in items:
+        yield item
+
+
 def _mock_db(task_doc=None):
     """Return a pre-wired mock DB instance."""
     db = MagicMock()
 
-    # find() returns an async iterable cursor for list endpoints
-    mock_cursor = MagicMock()
-    mock_cursor.__aiter__ = MagicMock(
-        return_value=iter([task_doc] if task_doc else [])
-    )
-    mock_cursor.sort = MagicMock(return_value=mock_cursor)
-    mock_cursor.to_list = AsyncMock(return_value=[task_doc] if task_doc else [])
-    db["tasks"].find.return_value = mock_cursor
+    # find() returns an async iterable cursor — must support `async for`
+    items = [task_doc] if task_doc else []
+    mock_cursor = _async_iter(items)
+    # Wrap in a MagicMock that chains .sort() back to a fresh async iterable
+    sortable = MagicMock()
+    sortable.__aiter__ = lambda self: _async_iter(items).__aiter__()
+    sortable.to_list = AsyncMock(return_value=items)
+    real_cursor = MagicMock()
+    real_cursor.sort = MagicMock(return_value=sortable)
+    real_cursor.to_list = AsyncMock(return_value=items)
+    real_cursor.__aiter__ = lambda self: _async_iter(items).__aiter__()
+    db["tasks"].find.return_value = real_cursor
 
     # Individual document operations
     db["tasks"].find_one      = AsyncMock(return_value=task_doc)

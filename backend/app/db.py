@@ -9,7 +9,6 @@ import asyncio
 import os
 from urllib.parse import quote_plus
 
-import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 
