@@ -45,7 +45,18 @@ jest.mock('../services/otherServices', () => ({
   fetchStats:    (...a) => mockFetchStats(...a),
   logSession:    jest.fn().mockResolvedValue({}),
   fetchSessions: jest.fn().mockResolvedValue([]),
+  generateTasks: jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
+  refineTasks:   jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
 }))
+
+jest.mock('../services/authService', () => ({
+  login:      jest.fn(),
+  register:   jest.fn(),
+  saveApiKey: jest.fn().mockResolvedValue({}),
+}))
+
+// ── Mock AITaskGenerator (tested separately) ──────────────────────────────────
+jest.mock('../components/AITaskGenerator', () => () => <div data-testid="ai-task-generator" />)
 
 // ── Mock SketchLine (SVG component not needed in tests) ───────────────────────
 jest.mock('../components/SketchLine', () => () => <div data-testid="sketch-line" />)

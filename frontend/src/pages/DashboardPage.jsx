@@ -18,6 +18,7 @@ import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, fetchTaskAnalytics } from '../services/taskService'
 import SketchLine from '../components/SketchLine'
+import AITaskGenerator from '../components/AITaskGenerator'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const PRIORITY_DOT = {
@@ -512,6 +513,11 @@ export default function DashboardPage() {
               </div>
             ) : null}
           </div>
+
+          {/* AI Task Planner */}
+          <AITaskGenerator onTasksCreated={() => {
+            fetchTasks().then(t => setTasks(t.filter(tk => !tk.is_complete).slice(0, 8))).catch(() => {})
+          }} />
 
           {/* This week */}
           <div className="bg-white border-2 border-gray-900 rounded-lg p-6">
