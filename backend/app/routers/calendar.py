@@ -23,6 +23,7 @@ def _doc_to_block(doc: dict) -> TimeBlockResponse:
         start_time=doc["start_time"],
         end_time=doc["end_time"],
         task_id=doc.get("task_id"),
+        color=doc.get("color"),
     )
 
 

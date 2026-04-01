@@ -21,8 +21,9 @@ import { AuthProvider } from '../context/AuthContext'
 
 // Mock services that make real HTTP calls
 jest.mock('../services/otherServices', () => ({
-  logSession: jest.fn().mockResolvedValue({}),
-  fetchStats: jest.fn().mockResolvedValue({ tasks_done: 0, deep_work_hours: 0 }),
+  logSession:    jest.fn().mockResolvedValue({}),
+  fetchStats:    jest.fn().mockResolvedValue({ tasks_done: 0, deep_work_hours: 0 }),
+  fetchSessions: jest.fn().mockResolvedValue([]),
 }))
 
 jest.mock('../services/taskService', () => ({

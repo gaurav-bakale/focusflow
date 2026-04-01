@@ -5,6 +5,13 @@
  * Persists JWT + user to localStorage and re-hydrates on page reload.
  */
 
+// ── Design Patterns ──────────────────────────────────────────────────────────
+// Observer     — AuthContext provides global auth state; all consumers re-render
+//                on login/logout automatically (React Context = pub/sub).
+// Facade       — login(), register(), logout() facade the raw authService calls,
+//                handling localStorage persistence transparently to callers.
+// Singleton    — a single AuthProvider at the app root ensures one auth state.
+// ─────────────────────────────────────────────────────────────────────────────
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import {
   login as apiLogin,

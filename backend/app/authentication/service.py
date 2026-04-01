@@ -6,6 +6,23 @@ Handlers in router.py are thin — they validate input, call a service
 method, and return the shaped response.
 """
 
+# ── Design Patterns ───────────────────────────────────────────────────────────
+# Service Layer    — all user-account business logic (hashing, token creation,
+#                    duplicate-email guard, onboarding state management) is
+#                    concentrated in AuthService.  The router delegates entirely
+#                    to this class and performs no DB queries of its own.
+#
+# Template Method  — `_doc_to_profile` is a module-level template converter: it
+#                    defines the fixed sequence of steps for translating a raw
+#                    MongoDB user document into a UserProfile response.  Every
+#                    service method that needs to return a profile calls this
+#                    single function, ensuring a consistent conversion contract.
+#
+# Dependency Inj.  — `db` is supplied to AuthService.__init__ by the FastAPI
+#                    Depends() factory (_svc) in the router, allowing tests to
+#                    inject a fake DB without patching globals.
+# ─────────────────────────────────────────────────────────────────────────────
+
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -37,6 +54,15 @@ _DEFAULT_PREFERENCES = {
 
 
 def _doc_to_profile(doc: dict) -> UserProfile:
+    """
+    Template Method converter — maps a raw MongoDB user document to UserProfile.
+
+    This function is the single canonical template for the document-to-profile
+    conversion.  Every service method (register, login, get_profile, …) that
+    must return a UserProfile delegates to this one function, guaranteeing a
+    uniform output shape and a single place to apply defaults (e.g.,
+    onboarding_completed=False, preferences=_DEFAULT_PREFERENCES).
+    """
     return UserProfile(
         id=str(doc["_id"]),
         name=doc["name"],
@@ -48,9 +74,24 @@ def _doc_to_profile(doc: dict) -> UserProfile:
 
 
 class AuthService:
-    """Encapsulates all user-account operations against the *users* collection."""
+    """
+    Encapsulates all user-account operations against the *users* collection.
+
+    Design patterns applied
+    -----------------------
+    Service Layer   : All authentication and onboarding business rules live
+                      here.  The router's handlers are kept intentionally thin —
+                      they parse HTTP inputs, call a single AuthService method,
+                      and return the result.
+
+    Template Method : Every path that returns user data calls the module-level
+                      `_doc_to_profile` template converter, ensuring a uniform
+                      document-to-API translation across all methods.
+    """
 
     def __init__(self, db):
+        # Dependency Injection: `db` is supplied by the FastAPI Depends()
+        # factory in router.py, making it easy to pass a mock DB in tests.
         self._db = db
 
     # ── Registration ──────────────────────────────────────────────────────────

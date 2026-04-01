@@ -229,7 +229,7 @@ async def test_protected_route_with_expired_token(client, registered_user):
 
 @pytest.mark.asyncio
 async def test_protected_route_with_wrong_secret(client, registered_user):
-    from jose import jwt as jose_jwt
+    import jwt as jose_jwt
     fake_token = jose_jwt.encode(
         {"sub": registered_user["user_id"], "exp": datetime.now(timezone.utc) + timedelta(hours=1)},
         "wrong-secret",

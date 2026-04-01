@@ -12,7 +12,8 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useTimer, PHASES } from '../context/TimerContext'
+import { useTimer } from '../context/TimerContext'
+import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
 import SketchLine from './SketchLine'
@@ -35,7 +36,6 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const { phase, display } = useTimer()
   const navigate = useNavigate()
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [goalPct, setGoalPct] = useState(0)
 
   useEffect(() => {
@@ -66,7 +66,8 @@ export default function Layout() {
         {/* Logo */}
         <div className="px-6 py-6 border-b-2 border-gray-900">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a78bfa)' }}>
               <span className="text-white text-xs font-extrabold">F</span>
             </div>
             <span className="text-base font-extrabold text-gray-900 tracking-tight">FocusFlow</span>
@@ -82,15 +83,25 @@ export default function Layout() {
                 to={to}
                 end={end}
                 className={({ isActive }) =>
-                  `sketch-hover relative block px-2 py-2 text-sm font-bold transition-colors
+                  `sketch-hover relative block px-2 py-2 text-sm font-bold transition-colors rounded-md
                    ${isActive
                      ? 'text-gray-900 sketch-active'
                      : 'text-gray-400 hover:text-gray-900'
                    }`
                 }
               >
-                {label}
-                <SketchLine color={color} thickness={3} />
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+                        style={{ background: color }}
+                      />
+                    )}
+                    <span className="pl-2">{label}</span>
+                    <SketchLine color={color} thickness={3} />
+                  </>
+                )}
               </NavLink>
             ))}
           </div>
@@ -115,45 +126,46 @@ export default function Layout() {
           <div className="border-2 border-gray-900 rounded-lg px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">Daily Goal</p>
             <p className="text-2xl font-extrabold text-gray-900 font-mono">{goalPct}%</p>
+            <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${goalPct}%`, background: 'linear-gradient(90deg, #6366f1, #a78bfa)' }}
+              />
+            </div>
           </div>
         </div>
 
-        {/* User footer */}
-        <div className="border-t-2 border-gray-900 p-3">
-          <div className="relative">
-            <button
-              onClick={() => setUserMenuOpen(o => !o)}
-              className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              <div className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-extrabold shrink-0">
-                {user?.name ? user.name[0].toUpperCase() : '?'}
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-xs font-bold text-gray-900 truncate">{user?.name}</p>
-              </div>
-              <svg className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {userMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border-2 border-gray-900 rounded-lg py-1 z-50">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </aside>
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto bg-white" onClick={() => userMenuOpen && setUserMenuOpen(false)}>
-        <Outlet />
+      <main className="flex-1 flex flex-col overflow-hidden bg-white">
+        {/* Top header bar */}
+        <header className="shrink-0 border-b-2 border-gray-900 px-8 py-3 flex items-center justify-end gap-3 bg-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-extrabold shrink-0"
+              style={{ background: 'linear-gradient(135deg, #6366f1, #a78bfa)' }}>
+              {user?.name ? user.name[0].toUpperCase() : '?'}
+            </div>
+            <span className="text-sm font-bold text-gray-900">{user?.name}</span>
+          </div>
+          <div className="w-px h-5 bg-gray-200" />
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-gray-500
+                       border-2 border-gray-200 rounded-lg hover:border-gray-900 hover:text-gray-900 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </button>
+        </header>
+
+        {/* Page content */}
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   )

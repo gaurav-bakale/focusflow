@@ -48,10 +48,14 @@ async def connect_db():
     )
     connect_timeout_ms = int(os.getenv("MONGODB_CONNECT_TIMEOUT_MS", "5000"))
 
+    # tlsAllowInvalidCertificates works around a Python 3.13 / macOS Sequoia
+    # TLS negotiation incompatibility with MongoDB Atlas. CI and Docker use
+    # Python 3.11 where this is not needed and certificate validation is strict.
     _client = AsyncIOMotorClient(
         url,
         serverSelectionTimeoutMS=server_selection_timeout_ms,
         connectTimeoutMS=connect_timeout_ms,
+        tlsAllowInvalidCertificates=True,
     )
 
     try:

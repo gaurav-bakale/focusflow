@@ -9,7 +9,8 @@ Bearer-token middleware is wired up correctly.
 from datetime import timedelta
 
 import pytest
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.authentication.utils import (
     ALGORITHM,

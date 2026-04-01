@@ -55,3 +55,12 @@ export async function markTaskComplete(taskId) {
 export async function deleteTask(taskId) {
   await api.delete(`/tasks/${taskId}`)
 }
+
+/**
+ * Fetch aggregate analytics for the current user's tasks.
+ * @returns {Promise<Object>} { total, by_status, by_priority, overdue, completion_rate, completed_today, completed_this_week }
+ */
+export async function fetchTaskAnalytics() {
+  const res = await api.get('/tasks/analytics')
+  return res.data
+}

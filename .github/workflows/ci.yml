@@ -6,7 +6,8 @@ name: FocusFlow CI/CD
 
 on:
   push:
-    branches: [main, develop, karans]
+    branches: [main, develop, karans, feature/task-board-calendar]
+    tags: ['v*']
   pull_request:
     branches: [main, karans]
 
@@ -107,8 +108,8 @@ jobs:
         # Run from project root so dotenv path resolution is consistent
         env:
           PYTHONPATH: backend
-          MONGODB_URL: mongodb://localhost:27017/focusflow_test
-          JWT_SECRET: test-secret-key
+          MONGODB_URL: ${{ secrets.MONGODB_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_EXPIRE_MINUTES: '60'
         run: python backend/seed_demo_user.py
 
@@ -118,8 +119,8 @@ jobs:
         # importable while the CWD (project root) makes `tests` importable.
         env:
           PYTHONPATH: backend
-          MONGODB_URL: mongodb://localhost:27017/focusflow_test
-          JWT_SECRET: test-secret-key
+          MONGODB_URL: ${{ secrets.MONGODB_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_EXPIRE_MINUTES: '60'
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_ACTIONS: 'true'

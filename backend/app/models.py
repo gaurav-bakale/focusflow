@@ -1,9 +1,8 @@
 """
-Pydantic Data Models for FocusFlow
+Pydantic Data Models for FocusFlow — non-task schemas.
 
-Defines all request/response schemas and internal database models
-used across the application. Pydantic enforces strict validation
-at every API boundary.
+Task models have moved to app.tasks.models (self-contained package).
+They are re-exported here so any existing import paths continue to work.
 """
 
 from datetime import datetime
@@ -11,20 +10,20 @@ from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
+# ── Task model re-exports (backward-compat) ───────────────────────────────────
+# These now live in app.tasks.models — import from there for new code.
+from app.tasks.models import (          # noqa: F401
+    Priority,
+    TaskStatus,
+    SubtaskCreate,
+    SubtaskResponse,
+    TaskCreate,
+    TaskUpdate,
+    TaskResponse,
+)
 
-# ── Enums ─────────────────────────────────────────────────────────────────────
 
-class Priority(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-
-
-class TaskStatus(str, Enum):
-    TODO = "TODO"
-    IN_PROGRESS = "IN_PROGRESS"
-    DONE = "DONE"
-
+# ── Timer Enum ────────────────────────────────────────────────────────────────
 
 class TimerPhase(str, Enum):
     FOCUS = "FOCUS"
@@ -61,77 +60,6 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
-# ── Task Models ───────────────────────────────────────────────────────────────
-
-class SubtaskCreate(BaseModel):
-    """Schema for creating a subtask inline within a task."""
-    title: str = Field(..., min_length=1)
-    status: TaskStatus = TaskStatus.TODO
-
-
-class SubtaskResponse(SubtaskCreate):
-    """Response model for a subtask, includes server-assigned id."""
-    id: str
-
-
-class TaskCreate(BaseModel):
-    """
-    Request model for creating a new task.
-
-    Args:
-        title: The task title (required).
-        description: Optional detail text.
-        priority: Task urgency — LOW, MEDIUM, or HIGH.
-        deadline: Optional ISO date string for due date.
-        status: Current Kanban column state.
-        categories: Optional list of category tags for organization.
-    """
-    title: str = Field(..., min_length=1, max_length=300)
-    description: Optional[str] = None
-    priority: Priority = Priority.MEDIUM
-    deadline: Optional[str] = None
-    status: TaskStatus = TaskStatus.TODO
-    categories: Optional[List[str]] = []
-
-
-class TaskUpdate(BaseModel):
-    """Request model for partial task updates — all fields optional."""
-    title: Optional[str] = None
-    description: Optional[str] = None
-    priority: Optional[Priority] = None
-    deadline: Optional[str] = None
-    status: Optional[TaskStatus] = None
-    subtasks: Optional[List[SubtaskCreate]] = None
-    categories: Optional[List[str]] = None
-
-
-class TaskResponse(BaseModel):
-    """
-    Full task response model returned from the API.
-
-    Attributes:
-        id: MongoDB document id as string.
-        user_id: Owner's user id.
-        subtasks: List of AI-generated or manually added subtasks.
-        is_complete: True when status is DONE.
-        created_at: ISO timestamp of task creation.
-        updated_at: ISO timestamp of last modification.
-        categories: List of category tags for organization.
-    """
-    id: str
-    user_id: str
-    title: str
-    description: Optional[str]
-    priority: Priority
-    deadline: Optional[str]
-    status: TaskStatus
-    subtasks: List[SubtaskResponse] = []
-    is_complete: bool = False
-    created_at: datetime
-    updated_at: datetime
-    categories: List[str] = []
-
-
 # ── Timer Models ──────────────────────────────────────────────────────────────
 
 class PomodoroSessionCreate(BaseModel):
@@ -155,15 +83,17 @@ class TimeBlockCreate(BaseModel):
     Request model for creating a calendar time block.
 
     Args:
-        title: Label shown on the calendar block.
+        title:      Label shown on the calendar block.
         start_time: ISO datetime string for block start.
-        end_time: ISO datetime string for block end.
-        task_id: Optional linked task ID.
+        end_time:   ISO datetime string for block end.
+        task_id:    Optional linked task ID.
+        color:      Optional hex color string persisted per block.
     """
     title: str = Field(..., min_length=1)
     start_time: str
     end_time: str
     task_id: Optional[str] = None
+    color: Optional[str] = None
 
 
 class TimeBlockResponse(TimeBlockCreate):

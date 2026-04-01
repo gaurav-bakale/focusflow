@@ -4,7 +4,7 @@ Login flow tests
 """
 
 import pytest
-from jose import jwt
+import jwt
 
 from app.authentication.utils import SECRET_KEY, ALGORITHM
 from tests.backend.authentication.conftest import auth_headers
