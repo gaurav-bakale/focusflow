@@ -13,7 +13,7 @@ from typing import Optional
 from jose import jwt
 from passlib.context import CryptContext
 
-SECRET_KEY: str = os.getenv("JWT_SECRET", "fallback-dev-secret")
+SECRET_KEY: str = os.getenv("JWT_SECRET") or "fallback-dev-secret"
 ALGORITHM: str = "HS256"
 EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
