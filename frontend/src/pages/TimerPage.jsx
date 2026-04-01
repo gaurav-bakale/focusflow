@@ -178,7 +178,7 @@ export default function TimerPage() {
   const {
     phase, secondsLeft, cycleCount, activeTaskId, isRunning,
     focusMins, shortMins, longMins,
-    display, startFocus, startBreak, pause, reset, skipPhase, selectPhase,
+    display, startFocus, startBreak, pause, resume, reset, skipPhase, selectPhase,
     setActiveTaskId, setFocusMins, setShortMins, setLongMins,
   } = useTimer()
 
@@ -349,7 +349,19 @@ export default function TimerPage() {
             {/* Controls */}
             <div className="flex items-center gap-3">
               {/* Primary action: Start / Pause */}
-              {!isRunning ? (
+              {!isRunning && !isIdle ? (
+                <button
+                  onClick={resume}
+                  className="flex items-center gap-2 text-white font-bold text-sm
+                             px-8 py-3.5 rounded-xl transition-all duration-300"
+                  style={{ background: cfg.color }}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  Resume
+                </button>
+              ) : !isRunning ? (
                 <button
                   onClick={() => {
                     if (isIdle || isFocus) {
