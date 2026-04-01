@@ -195,7 +195,7 @@ function ScheduleSide() {
       {/* Header */}
       <div className="w-full flex items-center justify-between mb-1">
         <div>
-          <p className="text-white/60 text-sm font-semibold">Today's plan</p>
+          <p className="text-white/60 text-sm font-semibold">Today&apos;s plan</p>
           <p className="text-white/30 text-xs mt-0.5">Your schedule, visualised</p>
         </div>
         <div className="flex items-center gap-1.5">

@@ -20,7 +20,6 @@ import {
   fireEvent,
   waitFor,
   act,
-  within,
 } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import DashboardPage from '../pages/DashboardPage'
@@ -56,10 +55,16 @@ jest.mock('../services/authService', () => ({
 }))
 
 // ── Mock AITaskGenerator (tested separately) ──────────────────────────────────
-jest.mock('../components/AITaskGenerator', () => () => <div data-testid="ai-task-generator" />)
+jest.mock('../components/AITaskGenerator', () => {
+  function AITaskGeneratorMock() { return <div data-testid="ai-task-generator" /> }
+  return AITaskGeneratorMock
+})
 
 // ── Mock SketchLine (SVG component not needed in tests) ───────────────────────
-jest.mock('../components/SketchLine', () => () => <div data-testid="sketch-line" />)
+jest.mock('../components/SketchLine', () => {
+  function SketchLineMock() { return <div data-testid="sketch-line" /> }
+  return SketchLineMock
+})
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().split('T')[0]

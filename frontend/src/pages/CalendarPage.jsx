@@ -756,7 +756,7 @@ export default function CalendarPage() {
               d.setMinutes(d.getMinutes() + (t.estimated_minutes || 30))
               endDT = d.toISOString()
             }
-          } catch (_) {}
+          } catch (_e) { /* ignore date parse errors */ }
         }
 
         taskEvts.push({
@@ -818,7 +818,7 @@ export default function CalendarPage() {
             if (endH > maxH) maxH = Math.min(24, Math.ceil(endH + 0.5))
           }
         }
-      } catch (_) {}
+      } catch (_e) { /* ignore slot range errors */ }
     })
     // clamp
     minH = Math.max(0, minH)
@@ -870,7 +870,7 @@ export default function CalendarPage() {
 
   // ── Custom event renderer ─────────────────────────────────────────────────
   const eventContent = useCallback((info) => {
-    const { type, linkedTask, color } = info.event.extendedProps
+    const { type, linkedTask } = info.event.extendedProps
 
     if (type === 'task') {
       const ps = P[info.event.extendedProps.task?.priority] || P.LOW
@@ -963,7 +963,7 @@ export default function CalendarPage() {
       await markTaskComplete(taskId)
       setTasks(prev => prev.filter(t => t.id !== taskId))
       setPopover(null)
-    } catch (_) {}
+    } catch (_e) { /* non-blocking */ }
     setCompleting(false)
   }
 

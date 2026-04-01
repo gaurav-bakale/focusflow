@@ -30,12 +30,12 @@ import { TimerProvider } from '../context/TimerContext'
 // ── Mock @hello-pangea/dnd (not JSDOM-compatible) ────────────────────────────
 jest.mock('@hello-pangea/dnd', () => ({
   DragDropContext: ({ children }) => <div>{children}</div>,
-  Droppable: ({ children, droppableId }) =>
+  Droppable: ({ children }) =>
     children(
       { innerRef: jest.fn(), droppableProps: {}, placeholder: null },
       { isDraggingOver: false },
     ),
-  Draggable: ({ children, draggableId }) =>
+  Draggable: ({ children }) =>
     children(
       { innerRef: jest.fn(), draggableProps: {}, dragHandleProps: {} },
       { isDragging: false },

@@ -178,7 +178,7 @@ export default function TimerPage() {
   const {
     phase, secondsLeft, cycleCount, activeTaskId, isRunning,
     focusMins, shortMins, longMins,
-    display, startFocus, startBreak, pause, resume, reset, skipPhase, selectPhase,
+    display, startFocus, startBreak, pause, reset, skipPhase, selectPhase,
     setActiveTaskId, setFocusMins, setShortMins, setLongMins,
   } = useTimer()
 
@@ -482,7 +482,7 @@ export default function TimerPage() {
                   <DurationInput
                     label="Focus"
                     value={focusMins}
-                    onChange={v => { setFocusMins(v); if (isIdle) {} }}
+                    onChange={v => { setFocusMins(v) }}
                     disabled={!isIdle}
                   />
                   <DurationInput
@@ -512,7 +512,7 @@ export default function TimerPage() {
             <div className="bg-white border-2 border-gray-900 rounded-2xl flex-1 overflow-hidden flex flex-col">
               <div className="px-5 py-4 border-b border-gray-100">
                 <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                  Today's Sessions
+                  Today&apos;s Sessions
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto">

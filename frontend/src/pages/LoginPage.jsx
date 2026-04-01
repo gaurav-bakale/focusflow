@@ -308,7 +308,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-center text-sm" style={{ color:'rgba(255,255,255,0.45)' }}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link to="/register" className="font-semibold" style={{ color:'#a78bfa' }}
                 onMouseEnter={e => e.target.style.color='#c4b5fd'}
                 onMouseLeave={e => e.target.style.color='#a78bfa'}>

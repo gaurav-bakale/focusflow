@@ -43,8 +43,8 @@ jest.mock('axios', () => ({
   },
 }))
 
-// Import api AFTER mock is set up so the interceptors are registered
-const { default: api } = require('../services/api')
+// Import api AFTER mock is set up so the interceptors are registered (side-effect only)
+require('../services/api')
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function invokeRequestInterceptor(config) {

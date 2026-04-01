@@ -64,9 +64,8 @@ jest.mock('../services/otherServices', () => ({
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const fmt = (d) => d.toISOString().split('T')[0]
-const NOW      = new Date()
-const TODAY    = fmt(NOW)
-const TOMORROW = fmt(new Date(NOW.getTime() + 86400000))
+const NOW   = new Date()
+const TODAY = fmt(NOW)
 
 // ── Sample data ───────────────────────────────────────────────────────────────
 const SAMPLE_BLOCKS = []
