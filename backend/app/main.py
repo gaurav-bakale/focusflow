@@ -17,6 +17,7 @@ from app.routers import timer, calendar, ai
 from app.comments.router import router as comments_router
 from app.sharing.router import router as sharing_router
 from app.tasks.router import router as tasks_router
+from app.workspaces.router import router as workspaces_router
 
 load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
 
@@ -33,6 +34,11 @@ async def lifespan(app: FastAPI):
         [("task_id", 1), ("shared_with_id", 1)], background=True
     )
     await db["task_shares"].create_index("shared_with_email", background=True)
+    # Indexes for workspace_members — speeds up membership lookups
+    await db["workspace_members"].create_index(
+        [("workspace_id", 1), ("user_id", 1)], unique=True, background=True
+    )
+    await db["workspace_members"].create_index("user_id", background=True)
     yield
     await close_db()
 
@@ -61,6 +67,7 @@ app.include_router(calendar.router,  prefix="/api/calendar", tags=["Calendar"])
 app.include_router(ai.router,        prefix="/api/ai",       tags=["AI"])
 app.include_router(sharing_router,   prefix="/api/sharing",  tags=["Sharing"])
 app.include_router(comments_router,  prefix="/api",          tags=["Comments"])
+app.include_router(workspaces_router, prefix="/api/workspaces", tags=["Workspaces"])
 
 
 @app.get("/", tags=["Health"])
