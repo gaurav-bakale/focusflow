@@ -532,8 +532,10 @@ async def test_complete_task_non_recurring():
 
     assert resp.status_code == 200
     body = resp.json()
-    assert body["status"] == "DONE"
-    assert body["is_complete"] is True
+    # Response is now CompleteTaskResponse: {"completed": {...}, "next_task": null}
+    assert body["completed"]["status"] == "DONE"
+    assert body["completed"]["is_complete"] is True
+    assert body["next_task"] is None
     # No recurrence insert should have been triggered
     db["tasks"].insert_one.assert_not_called()
 
@@ -565,7 +567,9 @@ async def test_complete_task_recurring_daily():
         resp = await c.patch(f"/api/tasks/{FAKE_TASK_ID}/complete")
 
     assert resp.status_code == 200
-    assert resp.json()["status"] == "DONE"
+    body = resp.json()
+    assert body["completed"]["status"] == "DONE"
+    assert body["next_task"] is not None
     db["tasks"].insert_one.assert_called_once()
     inserted = db["tasks"].insert_one.call_args[0][0]
     assert inserted["deadline"] == "2025-06-11"
@@ -596,6 +600,7 @@ async def test_complete_task_recurring_weekly():
         resp = await c.patch(f"/api/tasks/{FAKE_TASK_ID}/complete")
 
     assert resp.status_code == 200
+    assert resp.json()["completed"]["status"] == "DONE"
     inserted = db["tasks"].insert_one.call_args[0][0]
     assert inserted["deadline"] == "2025-06-17"
 
@@ -624,6 +629,7 @@ async def test_complete_task_recurring_monthly():
         resp = await c.patch(f"/api/tasks/{FAKE_TASK_ID}/complete")
 
     assert resp.status_code == 200
+    assert resp.json()["completed"]["status"] == "DONE"
     inserted = db["tasks"].insert_one.call_args[0][0]
     assert inserted["deadline"] == "2025-02-28"
 
@@ -654,6 +660,7 @@ async def test_complete_task_recurring_weekdays_friday_to_monday():
         resp = await c.patch(f"/api/tasks/{FAKE_TASK_ID}/complete")
 
     assert resp.status_code == 200
+    assert resp.json()["completed"]["status"] == "DONE"
     inserted = db["tasks"].insert_one.call_args[0][0]
     assert inserted["deadline"] == "2025-06-09"  # Monday
 

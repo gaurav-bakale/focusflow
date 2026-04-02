@@ -34,6 +34,7 @@ const mockCreateTask         = jest.fn()
 const mockFetchTaskAnalytics = jest.fn()
 const mockFetchBlocks        = jest.fn()
 const mockCreateBlock        = jest.fn()
+const mockCreateBlocksBulk   = jest.fn()
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:         (...a) => mockFetchTasks(...a),
@@ -43,13 +44,16 @@ jest.mock('../services/taskService', () => ({
 }))
 
 jest.mock('../services/otherServices', () => ({
-  fetchStats:    (...a) => mockFetchStats(...a),
-  fetchBlocks:   (...a) => mockFetchBlocks(...a),
-  createBlock:   (...a) => mockCreateBlock(...a),
-  logSession:    jest.fn().mockResolvedValue({}),
-  fetchSessions: jest.fn().mockResolvedValue([]),
-  generateTasks: jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
-  refineTasks:   jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
+  fetchStats:        (...a) => mockFetchStats(...a),
+  fetchBlocks:       (...a) => mockFetchBlocks(...a),
+  createBlock:       (...a) => mockCreateBlock(...a),
+  createBlocksBulk:  (...a) => mockCreateBlocksBulk(...a),
+  updateBlock:       jest.fn().mockResolvedValue({}),
+  deleteBlock:       jest.fn().mockResolvedValue(undefined),
+  logSession:        jest.fn().mockResolvedValue({}),
+  fetchSessions:     jest.fn().mockResolvedValue([]),
+  generateTasks:     jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
+  refineTasks:       jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
 }))
 
 jest.mock('../services/authService', () => ({
@@ -888,5 +892,158 @@ describe('auto-schedule on task creation', () => {
     })
     // No error message shown to user
     expect(screen.queryByText(/could not add task/i)).not.toBeInTheDocument()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 8 — Dynamic focusMins (onboarding preference respected)
+// Tests: block duration = 4 × user-configured pomodoro_duration
+// ─────────────────────────────────────────────────────────────────────────────
+describe('dynamic focusMins from user preferences', () => {
+
+  const FUTURE_DATE = fmt(TOMORROW)
+
+  /**
+   * DASH-31: User with pomodoro_duration=30 → block duration = 4×30 = 120 min
+   * Oracle: createBlock called with end - start == 120 minutes
+   *
+   * This validates the full path: onboarding pref → TimerContext → smartSchedule
+   * → block creation. A 30-min pomodoro should produce a 120-min block, not 100.
+   */
+  it('DASH-31: focusMins=30 (from onboarding) → auto-scheduled block duration = 120 min', async () => {
+    // Arrange — inject user with 30-min pomodoro preference
+    const user30 = {
+      id: 'u-30', name: 'Bob Builder', email: 'bob@focusflow.dev',
+      onboarding_completed: true,
+      preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+    }
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockResolvedValue({ id: 'b-30' })
+    mockCreateTask.mockResolvedValue({
+      id: 'task-30', title: 'Long Session',
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      recurrence: 'NONE', is_complete: false,
+    })
+
+    await renderDashboard({ user: user30 })
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Long Session' },
+    })
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FUTURE_DATE } })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time, end_time } = mockCreateBlock.mock.calls[0][0]
+    const [sdp, stp] = start_time.split('T')
+    const [edp, etp] = end_time.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    // 4 × 30 = 120 min, NOT 100 (the old hardcoded 4 × 25)
+    expect(diffMins).toBe(120)
+  })
+
+  /**
+   * DASH-32: DAILY recurring task → createBlocksBulk called (not createBlock)
+   * Oracle: createBlocksBulk called with >1 payloads, all sharing a recurrence_group_id
+   *
+   * Validates that the recurring-series path is taken when recurrence != 'NONE'.
+   */
+  it('DASH-32: recurring DAILY task → createBlocksBulk called with multiple blocks', async () => {
+    const bulkBlocks = [
+      { id: 'b-rec-1', start_time: `${FUTURE_DATE}T06:00`, end_time: `${FUTURE_DATE}T07:40` },
+      { id: 'b-rec-2' },
+      { id: 'b-rec-3' },
+    ]
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlocksBulk.mockResolvedValue(bulkBlocks)
+    mockCreateBlock.mockResolvedValue({ id: 'b-single' })
+    mockCreateTask.mockResolvedValue({
+      id: 'daily-task', title: 'Daily Standup',
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      recurrence: 'DAILY', is_complete: false,
+    })
+
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Daily Standup' },
+    })
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FUTURE_DATE } })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    await waitFor(() => expect(mockCreateBlocksBulk).toHaveBeenCalled())
+
+    // createBlock (single) should NOT have been called for a recurring task
+    const singleArgs = mockCreateBlock.mock.calls.filter(
+      c => c[0]?.recurrence === 'DAILY'
+    )
+    expect(singleArgs).toHaveLength(0)
+
+    // Bulk payload must contain multiple blocks
+    const [bulkArg] = mockCreateBlocksBulk.mock.calls[0]
+    expect(bulkArg.length).toBeGreaterThan(1)
+  })
+
+  /**
+   * DASH-33: Completing a recurring task auto-schedules the next occurrence
+   * Oracle: markTaskComplete returns {completed, next_task}; createBlock or
+   *         createBlocksBulk is called for the next_task
+   */
+  it('DASH-33: completing recurring task auto-schedules block for next occurrence', async () => {
+    const NEXT_DATE = fmt(new Date(TOMORROW.getTime() + 86400000)) // day after TOMORROW
+    const nextTask = {
+      id: 'next-daily', title: 'Daily Standup',
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: NEXT_DATE, due_time: null,
+      recurrence: 'DAILY', is_complete: false,
+    }
+
+    mockMarkTaskComplete.mockResolvedValue({
+      completed: {
+        id: 'daily-done', title: 'Daily Standup',
+        priority: 'MEDIUM', status: 'DONE',
+        recurrence: 'DAILY', is_complete: true,
+        deadline: FUTURE_DATE,
+      },
+      next_task: nextTask,
+    })
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockResolvedValue({ id: 'b-next-single' })
+    mockCreateBlocksBulk.mockResolvedValue([{ id: 'b-next-bulk-1' }, { id: 'b-next-bulk-2' }])
+
+    const tasksWithRecurring = [
+      {
+        id: 'daily-done', title: 'Daily Standup', priority: 'MEDIUM',
+        status: 'TODO', deadline: FUTURE_DATE,
+        recurrence: 'DAILY', is_complete: false,
+      },
+    ]
+    await renderDashboard({ tasks: tasksWithRecurring })
+
+    await waitFor(() => screen.getByText('Daily Standup'))
+
+    const completeBtn = screen.getAllByRole('button').find(
+      b => /complete|done|✓|check/i.test(b.getAttribute('title') || b.textContent || '')
+    )
+    if (completeBtn) {
+      fireEvent.click(completeBtn)
+      // Either createBlock or createBlocksBulk should be called for next occurrence
+      await waitFor(() => {
+        const singleCalled = mockCreateBlock.mock.calls.length > 0
+        const bulkCalled   = mockCreateBlocksBulk.mock.calls.length > 0
+        expect(singleCalled || bulkCalled).toBe(true)
+      }, { timeout: 3000 })
+    }
   })
 })

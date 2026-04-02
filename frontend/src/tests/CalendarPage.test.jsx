@@ -29,10 +29,33 @@ import { TimerProvider } from '../context/TimerContext'
 // ── FullCalendar mock (not JSDOM-compatible) ──────────────────────────────────
 jest.mock('@fullcalendar/react', () => ({
   __esModule: true,
-  default: ({ events }) => (
+  default: ({ events, eventClick }) => (
     <div data-testid="fullcalendar">
       {events?.map(e => (
-        <div key={e.id} data-testid="cal-event" data-event-id={e.id}>
+        <div
+          key={e.id}
+          data-testid="cal-event"
+          data-event-id={e.id}
+          onClick={(domEvent) => {
+            if (eventClick) {
+              // Build a minimal FC event object that CalendarPage's handleEventClick expects
+              eventClick({
+                event: {
+                  id: e.id,
+                  title: e.title,
+                  startStr: e.start || '',
+                  endStr:   e.end   || '',
+                  extendedProps: e.extendedProps || {},
+                },
+                jsEvent: {
+                  stopPropagation: () => {},
+                  clientX: 200,
+                  clientY: 200,
+                },
+              })
+            }
+          }}
+        >
           {e.title}
         </div>
       ))}
@@ -44,22 +67,26 @@ jest.mock('@fullcalendar/daygrid',     () => ({ __esModule: true, default: {} })
 jest.mock('@fullcalendar/interaction', () => ({ __esModule: true, default: {} }))
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
-const mockFetchTasks  = jest.fn()
-const mockFetchBlocks = jest.fn()
+const mockFetchTasks       = jest.fn()
+const mockFetchBlocks      = jest.fn()
+const mockUpdateBlock      = jest.fn()
+const mockDeleteBlock      = jest.fn()
+const mockCreateBlocksBulk = jest.fn()
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:       (...a) => mockFetchTasks(...a),
-  markTaskComplete: jest.fn().mockResolvedValue({}),
+  markTaskComplete: jest.fn().mockResolvedValue({ completed: {}, next_task: null }),
 }))
 
 jest.mock('../services/otherServices', () => ({
-  fetchBlocks:   (...a) => mockFetchBlocks(...a),
-  createBlock:   jest.fn().mockResolvedValue({}),
-  updateBlock:   jest.fn().mockResolvedValue({}),
-  deleteBlock:   jest.fn().mockResolvedValue({}),
-  logSession:    jest.fn().mockResolvedValue({}),
-  fetchSessions: jest.fn().mockResolvedValue([]),
-  fetchStats:    jest.fn().mockResolvedValue({ tasks_done: 0, deep_work_hours: 0 }),
+  fetchBlocks:       (...a) => mockFetchBlocks(...a),
+  createBlock:       jest.fn().mockResolvedValue({ id: 'b-created' }),
+  updateBlock:       (...a) => mockUpdateBlock(...a),
+  deleteBlock:       (...a) => mockDeleteBlock(...a),
+  createBlocksBulk:  (...a) => mockCreateBlocksBulk(...a),
+  logSession:        jest.fn().mockResolvedValue({}),
+  fetchSessions:     jest.fn().mockResolvedValue([]),
+  fetchStats:        jest.fn().mockResolvedValue({ tasks_done: 0, deep_work_hours: 0 }),
 }))
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
@@ -134,6 +161,10 @@ async function renderCalendar(tasks = SAMPLE_TASKS, blocks = SAMPLE_BLOCKS) {
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
+  // Reset new mocks to safe defaults so existing tests are unaffected
+  mockUpdateBlock.mockResolvedValue({ id: 'b-updated', title: 'Updated', start_time: '', end_time: '', recurrence: 'NONE', recurrence_group_id: null })
+  mockDeleteBlock.mockResolvedValue(undefined)
+  mockCreateBlocksBulk.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -707,5 +738,223 @@ describe('BlockModal', () => {
     await waitFor(() => {
       expect(screen.queryByText(/overlaps with/i)).not.toBeInTheDocument()
     })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 7 — Dynamic focusMins (pomodoro duration from onboarding preferences)
+// Tests: TimerContext seeds focusMins from user.preferences.pomodoro_duration
+// ─────────────────────────────────────────────────────────────────────────────
+describe('dynamic focusMins from user preferences', () => {
+
+  /**
+   * CAL-25: User with pomodoro_duration=30 → modal default duration = 120 min (4×30)
+   *
+   * New-block modal opens with end = start + 4 × focusMins.
+   * When focusMins=30 the gap must be 120 min, not 100 (default 4×25).
+   */
+  it('CAL-25: user with pomodoro_duration=30 → new block default duration = 120 min', async () => {
+    const user30 = {
+      id: 'u-30', name: 'Alice', email: 'alice@focusflow.dev',
+      onboarding_completed: true,
+      preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+    }
+
+    mockFetchTasks.mockResolvedValue([])
+    mockFetchBlocks.mockResolvedValue([])
+    localStorage.setItem('ff_token', 'test-token')
+    localStorage.setItem('ff_user', JSON.stringify(user30))
+
+    await act(async () => {
+      render(<CalendarPage />, { wrapper: Wrapper })
+    })
+
+    await openNewModal()
+
+    const startVal = document.querySelector('input[type="datetime-local"]')?.value ?? ''
+    const endVal   = document.querySelectorAll('input[type="datetime-local"]')[1]?.value ?? ''
+    expect(startVal).toBeTruthy()
+    expect(endVal).toBeTruthy()
+
+    const [sdp, stp] = startVal.split('T')
+    const [edp, etp] = endVal.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    // 4 × 30 = 120, not the default 100 (4 × 25)
+    expect(diffMins).toBe(120)
+  })
+
+  /**
+   * CAL-26: Pomodoro preset "1 🍅" respects dynamic focusMins=30 → end = start + 30 min
+   *
+   * When the user has pomodoro_duration=30 the single-pomodoro preset should set
+   * the block duration to 30 minutes, not 25.
+   */
+  it('CAL-26: "1 🍅" preset with pomodoro_duration=30 sets end = start + 30 min', async () => {
+    const user30 = {
+      id: 'u-30b', name: 'Bob', email: 'bob@focusflow.dev',
+      onboarding_completed: true,
+      preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+    }
+
+    mockFetchTasks.mockResolvedValue([])
+    mockFetchBlocks.mockResolvedValue([])
+    localStorage.setItem('ff_token', 'test-token')
+    localStorage.setItem('ff_user', JSON.stringify(user30))
+
+    await act(async () => {
+      render(<CalendarPage />, { wrapper: Wrapper })
+    })
+
+    await openNewModal()
+
+    const startInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(startInputs[0], { target: { value: '2026-08-01T10:00' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /1 🍅/i }))
+
+    await waitFor(() => {
+      const endVal = document.querySelectorAll('input[type="datetime-local"]')[1]?.value ?? ''
+      expect(endVal).toBe('2026-08-01T10:30') // +30 min, not +25
+    })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 8 — Recurring block edit and delete scope
+// Tests: edit scope radio UI, scope-aware updateBlock/deleteBlock calls
+// ─────────────────────────────────────────────────────────────────────────────
+describe('recurring block edit and delete scope', () => {
+
+  // A recurring block in FullCalendar event format
+  const RECURRING_BLOCK = {
+    id:    'b-rec-1',
+    title: 'Morning Standup',
+    start_time: '2026-07-07T09:00',
+    end_time:   '2026-07-07T10:40',
+    color: '#6366f1',
+    recurrence: 'DAILY',
+    recurrence_group_id: 'grp-standup-abc',
+  }
+
+  // As stored in blocks array (from fetchBlocks)
+  const FC_BLOCKS = [RECURRING_BLOCK]
+
+  /** Open the popover for a block event by clicking on its cal-event div */
+  async function openBlockPopover(title) {
+    const events = await screen.findAllByTestId('cal-event')
+    const target = events.find(e => e.textContent.includes(title))
+    expect(target).toBeTruthy()
+    await act(async () => { fireEvent.click(target) })
+  }
+
+  /**
+   * CAL-27: Clicking "Edit" in a recurring block's popover opens the BlockModal
+   * with edit-scope radio buttons visible.
+   *
+   * Oracle: "Edit recurring event" section and "Just this event" radio are present.
+   */
+  it('CAL-27: editing a recurring block shows edit-scope radio UI', async () => {
+    await renderCalendar([], FC_BLOCKS)
+    await openBlockPopover('Morning Standup')
+
+    // Click "Edit" pencil button in the popover
+    const editBtn = await screen.findByTitle('Edit')
+    await act(async () => { fireEvent.click(editBtn) })
+
+    // The BlockModal should open in edit mode showing recurrence scope options
+    await waitFor(() => {
+      expect(screen.getByText(/edit recurring event/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/just this event/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/this and all following/i)).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-28: Selecting "This and all following" and saving calls updateBlock
+   * with scope='this_and_future'.
+   *
+   * Oracle: mockUpdateBlock called with third argument 'this_and_future'.
+   */
+  it('CAL-28: save with "this and all following" scope → updateBlock called with this_and_future', async () => {
+    mockUpdateBlock.mockResolvedValue({
+      id: 'b-rec-1', title: 'Morning Standup',
+      start_time: '2026-07-07T09:00', end_time: '2026-07-07T10:40',
+      recurrence: 'DAILY', recurrence_group_id: 'grp-standup-abc',
+    })
+    // fetchBlocks also called on this_and_future refresh
+    mockFetchBlocks.mockResolvedValue(FC_BLOCKS)
+
+    await renderCalendar([], FC_BLOCKS)
+    await openBlockPopover('Morning Standup')
+
+    const editBtn = await screen.findByTitle('Edit')
+    await act(async () => { fireEvent.click(editBtn) })
+
+    // Select "This and all following events"
+    await waitFor(() => screen.getByLabelText(/this and all following/i))
+    fireEvent.click(screen.getByLabelText(/this and all following/i))
+
+    // Submit the form
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateBlock).toHaveBeenCalled()
+      const scopeArg = mockUpdateBlock.mock.calls[0][2]
+      expect(scopeArg).toBe('this_and_future')
+    })
+  })
+
+  /**
+   * CAL-29: Deleting a recurring block with "this_and_future" choice calls
+   * deleteBlock with scope='this_and_future'.
+   *
+   * Oracle: mockDeleteBlock called with (blockId, 'this_and_future').
+   * window.confirm is mocked to return true (= this_and_future).
+   */
+  it('CAL-29: deleting recurring block (OK=this_and_future) calls deleteBlock with this_and_future', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true) // OK → this_and_future
+
+    await renderCalendar([], FC_BLOCKS)
+    await openBlockPopover('Morning Standup')
+
+    const deleteBtn = await screen.findByTitle('Delete')
+    await act(async () => { fireEvent.click(deleteBtn) })
+
+    await waitFor(() => {
+      expect(mockDeleteBlock).toHaveBeenCalled()
+      const [, scopeArg] = mockDeleteBlock.mock.calls[0]
+      expect(scopeArg).toBe('this_and_future')
+    })
+
+    window.confirm.mockRestore()
+  })
+
+  /**
+   * CAL-30: Deleting a recurring block with "Cancel" (just-this) calls
+   * deleteBlock with scope='this'.
+   *
+   * Oracle: mockDeleteBlock called with (blockId, 'this').
+   * window.confirm mocked to return false (= just this).
+   */
+  it('CAL-30: deleting recurring block (Cancel=just this) calls deleteBlock with this', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(false) // Cancel → just this
+
+    await renderCalendar([], FC_BLOCKS)
+    await openBlockPopover('Morning Standup')
+
+    const deleteBtn = await screen.findByTitle('Delete')
+    await act(async () => { fireEvent.click(deleteBtn) })
+
+    await waitFor(() => {
+      expect(mockDeleteBlock).toHaveBeenCalled()
+      const [, scopeArg] = mockDeleteBlock.mock.calls[0]
+      expect(scopeArg).toBe('this')
+    })
+
+    window.confirm.mockRestore()
   })
 })
