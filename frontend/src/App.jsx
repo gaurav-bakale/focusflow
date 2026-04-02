@@ -12,6 +12,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TimerProvider } from './context/TimerContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { NotificationProvider } from './context/NotificationContext'
+import ToastContainer from './components/ToastContainer'
 
 import LoginPage      from './pages/LoginPage'
 import RegisterPage   from './pages/RegisterPage'
@@ -64,8 +66,10 @@ export default function App() {
   return (
     <ThemeProvider>
     <AuthProvider>
+      <NotificationProvider>
       <TimerProvider>
         <BrowserRouter>
+          <ToastContainer />
           <Routes>
             {/* Public */}
             <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -98,6 +102,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </TimerProvider>
+      </NotificationProvider>
     </AuthProvider>
     </ThemeProvider>
   )
