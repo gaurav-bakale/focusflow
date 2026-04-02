@@ -36,7 +36,7 @@ jest.mock('@fullcalendar/react', () => ({
           key={e.id}
           data-testid="cal-event"
           data-event-id={e.id}
-          onClick={(domEvent) => {
+          onClick={() => {
             if (eventClick) {
               // Build a minimal FC event object that CalendarPage's handleEventClick expects
               eventClick({
