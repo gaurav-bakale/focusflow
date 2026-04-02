@@ -21,7 +21,7 @@ import {
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
 import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
-import { prioritizeTasks } from '../services/otherServices'
+import { prioritizeTasks, breakdownTask } from '../services/otherServices'
 import CommentThread from '../components/CommentThread'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
@@ -157,9 +157,12 @@ export default function TasksPage() {
   const [filterStatus,     setFilterStatus]     = useState('ALL')
   const [filterRecurrence, setFilterRecurrence] = useState('ALL')
 
-  // ── AI Prioritize state ─────────────────────────────────────────────────
+  // ── AI state ────────────────────────────────────────────────────────────
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError]     = useState('')
+  const [breakdownTaskId, setBreakdownTaskId]     = useState(null)
+  const [breakdownResult, setBreakdownResult]     = useState([])
+  const [breakdownLoading, setBreakdownLoading]   = useState(false)
 
   useEffect(() => { loadTasks() }, [])
 
@@ -499,6 +502,29 @@ export default function TasksPage() {
       setAiError(msg)
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  // ── AI Breakdown handler ─────────────────────────────────────────────
+  async function handleBreakdown(task) {
+    if (breakdownTaskId === task.id) {
+      // Toggle off
+      setBreakdownTaskId(null)
+      setBreakdownResult([])
+      return
+    }
+    setBreakdownTaskId(task.id)
+    setBreakdownResult([])
+    setBreakdownLoading(true)
+    try {
+      const res = await breakdownTask(task.id, task.title, task.description || '')
+      setBreakdownResult(res.subtasks || [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'AI breakdown failed.'
+      setAiError(msg)
+      setBreakdownTaskId(null)
+    } finally {
+      setBreakdownLoading(false)
     }
   }
 
@@ -846,11 +872,31 @@ export default function TasksPage() {
                                       {isRecurring ? 'Complete (↻ next)' : 'Complete'}
                                     </button>
                                   )}
+                                  <button onClick={() => handleBreakdown(task)}
+                                    disabled={breakdownLoading && breakdownTaskId === task.id}
+                                    className={`text-xs font-bold ${breakdownTaskId === task.id ? 'text-purple-600' : 'text-purple-500 hover:text-purple-700'}`}>
+                                    {breakdownLoading && breakdownTaskId === task.id ? 'Loading…' : breakdownTaskId === task.id ? 'Hide AI' : 'AI Breakdown'}
+                                  </button>
                                   <button onClick={() => openShareModal(task)}
                                     className="text-xs font-bold text-indigo-500 hover:text-indigo-700">Share</button>
                                   <button onClick={() => handleDelete(task.id)}
                                     className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
                                 </div>
+
+                                {/* AI Breakdown results */}
+                                {breakdownTaskId === task.id && breakdownResult.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                                    <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-2">AI-Suggested Subtasks</p>
+                                    <ul className="space-y-1">
+                                      {breakdownResult.map((sub, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+                                          <span className="text-purple-400 mt-0.5 shrink-0">-</span>
+                                          <span>{sub}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Draggable>
