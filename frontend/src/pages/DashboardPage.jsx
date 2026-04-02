@@ -15,8 +15,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
-import { fetchStats } from '../services/otherServices'
+import { fetchStats, fetchBlocks, createBlock } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, fetchTaskAnalytics } from '../services/taskService'
+import { smartScheduleTask } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
 
@@ -67,8 +68,8 @@ function ProgressRing({ pct }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { user }   = useAuth()
-  const { phase }  = useTimer()
+  const { user }               = useAuth()
+  const { phase, focusMins }   = useTimer()
 
   const [stats, setStats]         = useState({ tasks_done: 0, deep_work_hours: 0 })
   const [tasks, setTasks]         = useState([])
@@ -78,12 +79,14 @@ export default function DashboardPage() {
 
   // Quick-add
   const [newTitle, setNewTitle]           = useState('')
+  const [newDescription, setNewDescription] = useState('')
   const [newPriority, setNewPriority]     = useState('MEDIUM')
   const [newDeadline, setNewDeadline]     = useState('')
   const [newTime, setNewTime]             = useState('')
   const [newRecurrence, setNewRecurrence] = useState('NONE')
   const [adding, setAdding]               = useState(false)
   const [addError, setAddError]           = useState('')
+  const [scheduleMsg, setScheduleMsg]     = useState('')
 
   useEffect(() => {
     async function load() {
@@ -118,9 +121,11 @@ export default function DashboardPage() {
     if (!title) return
     setAdding(true)
     setAddError('')
+    setScheduleMsg('')
     try {
       const created = await createTask({
         title,
+        description: newDescription.trim() || null,
         priority: newPriority,
         status: 'TODO',
         deadline: newDeadline || null,
@@ -128,7 +133,36 @@ export default function DashboardPage() {
         recurrence: newRecurrence,
       })
       setTasks(prev => [created, ...prev].slice(0, 8))
+
+      // Auto-schedule: find a free slot on the deadline date and create a
+      // calendar block automatically. Non-critical — task is already saved.
+      if (created.deadline) {
+        try {
+          const blocks = await fetchBlocks()
+          const slot   = smartScheduleTask(created, focusMins, blocks)
+          if (slot) {
+            await createBlock({
+              title:      created.title,
+              start_time: slot.start_time,
+              end_time:   slot.end_time,
+              task_id:    created.id,
+              color:      '#6366f1',
+            })
+            const [, tp] = slot.start_time.split('T')
+            const [h, m] = tp.split(':').map(Number)
+            const label  = new Date(2000, 0, 1, h, m)
+              .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+            setScheduleMsg(`Block scheduled on calendar at ${label}`)
+          } else {
+            setScheduleMsg('Day fully booked — open Calendar to pick a slot.')
+          }
+        } catch (_) {
+          // Auto-schedule failed silently; task was still created
+        }
+      }
+
       setNewTitle('')
+      setNewDescription('')
       setNewPriority('MEDIUM')
       setNewDeadline('')
       setNewTime('')
@@ -218,6 +252,18 @@ export default function DashboardPage() {
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                            focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
                            placeholder-gray-300 dark:placeholder-gray-600 mb-3"
+              />
+
+              {/* Description textarea */}
+              <textarea
+                value={newDescription}
+                onChange={e => setNewDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                           placeholder-gray-300 dark:placeholder-gray-600 mb-3 resize-none"
               />
 
               {/* Date + Time row */}
@@ -311,6 +357,11 @@ export default function DashboardPage() {
 
               {addError && (
                 <p className="mt-2 text-xs text-red-500 font-medium">{addError}</p>
+              )}
+              {scheduleMsg && (
+                <p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                  ✓ {scheduleMsg}
+                </p>
               )}
             </form>
           </div>

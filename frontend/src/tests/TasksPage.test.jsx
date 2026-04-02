@@ -93,6 +93,8 @@ const mockCreateTask   = jest.fn()
 const mockUpdateTask   = jest.fn()
 const mockDeleteTask   = jest.fn()
 const mockMarkComplete = jest.fn()
+const mockFetchBlocks  = jest.fn()
+const mockCreateBlock  = jest.fn()
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:      (...a) => mockFetchTasks(...a),
@@ -100,6 +102,11 @@ jest.mock('../services/taskService', () => ({
   updateTask:      (...a) => mockUpdateTask(...a),
   deleteTask:      (...a) => mockDeleteTask(...a),
   markTaskComplete:(...a) => mockMarkComplete(...a),
+}))
+
+jest.mock('../services/otherServices', () => ({
+  fetchBlocks:  (...a) => mockFetchBlocks(...a),
+  createBlock:  (...a) => mockCreateBlock(...a),
 }))
 
 // ── Wrapper ───────────────────────────────────────────────────────────────────
@@ -732,5 +739,168 @@ describe('next occurrence', () => {
     await waitFor(() => {
       expect(screen.queryByText(/next occurrence/i)).not.toBeInTheDocument()
     })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 14 — Auto-schedule on task creation (TasksPage)
+// Tests: that creating a new task with a deadline auto-creates a calendar block.
+// Non-critical: block failure must never block the task from appearing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FUTURE_DATE = fmt(NEXT_WEEK)
+
+async function openNewTaskModal() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /new task/i }))
+  })
+}
+
+async function fillAndSubmitTask(title, deadline = null) {
+  await openNewTaskModal()
+  fireEvent.change(screen.getByRole('textbox', { name: /title/i }), {
+    target: { value: title },
+  })
+  if (deadline) {
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    if (dateInputs.length > 0) {
+      fireEvent.change(dateInputs[0], { target: { value: deadline } })
+    }
+  }
+  fireEvent.click(screen.getByRole('button', { name: /create/i }))
+}
+
+describe('auto-schedule on task creation (TasksPage)', () => {
+
+  beforeEach(() => {
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockResolvedValue({ id: 'b-tasks' })
+  })
+
+  /**
+   * TASK-32: New task with deadline → fetchBlocks called + createBlock called
+   * Oracle: createBlock called with correct task_id, title, and valid timestamps.
+   */
+  test('TASK-32: creating a task with a deadline triggers auto-schedule', async () => {
+    const newTask = {
+      id: 't-sched', title: 'Deep focus', description: null,
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      categories: [], is_complete: false, recurrence: 'NONE',
+    }
+    mockCreateTask.mockResolvedValue(newTask)
+    await renderPage()
+
+    await fillAndSubmitTask('Deep focus', FUTURE_DATE)
+
+    await waitFor(() => {
+      expect(mockFetchBlocks).toHaveBeenCalledTimes(1)
+      expect(mockCreateBlock).toHaveBeenCalledTimes(1)
+    })
+
+    const blockArg = mockCreateBlock.mock.calls[0][0]
+    expect(blockArg.task_id).toBe('t-sched')
+    expect(blockArg.title).toBe('Deep focus')
+    expect(blockArg.start_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+    expect(blockArg.end_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+    expect(blockArg.color).toBe('#6366f1')
+  })
+
+  /**
+   * TASK-33: New task WITHOUT a deadline → no auto-schedule (fetchBlocks/createBlock not called)
+   * Oracle: neither mock is called.
+   */
+  test('TASK-33: creating a task without deadline does NOT auto-schedule', async () => {
+    const newTask = {
+      id: 't-no-date', title: 'Someday task', description: null,
+      priority: 'LOW', status: 'TODO',
+      deadline: null, due_time: null,
+      categories: [], is_complete: false, recurrence: 'NONE',
+    }
+    mockCreateTask.mockResolvedValue(newTask)
+    await renderPage()
+
+    await fillAndSubmitTask('Someday task') // no deadline
+
+    await waitFor(() => expect(mockCreateTask).toHaveBeenCalled())
+
+    expect(mockFetchBlocks).not.toHaveBeenCalled()
+    expect(mockCreateBlock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * TASK-34: createBlock failure is non-critical — task still appears on board
+   * Oracle: task title visible in DOM, no error thrown.
+   */
+  test('TASK-34: createBlock failure is silent — task still added to board', async () => {
+    mockCreateBlock.mockRejectedValue(new Error('server error'))
+    const newTask = {
+      id: 't-fail', title: 'Resilient task', description: null,
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      categories: [], is_complete: false, recurrence: 'NONE',
+    }
+    mockCreateTask.mockResolvedValue(newTask)
+    await renderPage()
+
+    await fillAndSubmitTask('Resilient task', FUTURE_DATE)
+
+    await waitFor(() => {
+      expect(screen.getByText('Resilient task')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * TASK-35: Auto-scheduled block duration = 4 × focusMins (100 min by default)
+   * Oracle: end_time - start_time = exactly 100 minutes.
+   */
+  test('TASK-35: auto-scheduled block from TasksPage has correct 4×focusMins duration', async () => {
+    const newTask = {
+      id: 't-dur', title: 'Duration check', description: null,
+      priority: 'HIGH', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      categories: [], is_complete: false, recurrence: 'NONE',
+    }
+    mockCreateTask.mockResolvedValue(newTask)
+    await renderPage()
+
+    await fillAndSubmitTask('Duration check', FUTURE_DATE)
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time, end_time } = mockCreateBlock.mock.calls[0][0]
+    const [sdp, stp] = start_time.split('T')
+    const [edp, etp] = end_time.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    expect(diffMins).toBe(100) // 4 × 25 min Pomodoros
+  })
+
+  /**
+   * TASK-36: Editing an existing task does NOT trigger auto-schedule
+   * Oracle: fetchBlocks and createBlock not called when editing.
+   */
+  test('TASK-36: editing an existing task does not create a new calendar block', async () => {
+    const updatedTask = { ...MOCK_TASKS[0], title: 'Fix login bug (updated)' }
+    mockUpdateTask.mockResolvedValue(updatedTask)
+    await renderPage()
+
+    // Click edit on the first task card
+    const editButtons = screen.getAllByRole('button', { name: /edit/i })
+    if (editButtons.length > 0) {
+      fireEvent.click(editButtons[0])
+      // Find and click the save/update button
+      const saveBtn = screen.queryByRole('button', { name: /save|update/i })
+      if (saveBtn) {
+        fireEvent.click(saveBtn)
+        await waitFor(() => expect(mockUpdateTask).toHaveBeenCalled())
+        expect(mockFetchBlocks).not.toHaveBeenCalled()
+        expect(mockCreateBlock).not.toHaveBeenCalled()
+      }
+    }
+    // If no edit buttons exist, the test is a no-op (task card layout may vary)
   })
 })

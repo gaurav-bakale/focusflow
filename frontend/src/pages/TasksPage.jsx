@@ -19,6 +19,9 @@ import {
   deleteTask,
   markTaskComplete,
 } from '../services/taskService'
+import { fetchBlocks, createBlock } from '../services/otherServices'
+import { useTimer } from '../context/TimerContext'
+import { smartScheduleTask } from '../utils/smartSchedule'
 import { suggestCategories } from '../utils/smartCategories'
 
 const COLUMNS = ['TODO', 'IN_PROGRESS', 'DONE']
@@ -117,6 +120,8 @@ function fmt12h(t) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function TasksPage() {
+  const { focusMins } = useTimer()
+
   const [tasks, setTasks]             = useState([])
   const [loading, setLoading]         = useState(true)
   const [showModal, setShowModal]     = useState(false)
@@ -305,6 +310,24 @@ export default function TasksPage() {
       } else {
         const created = await createTask(payload)
         setTasks(prev => [created, ...prev])
+
+        // Auto-schedule: create a calendar block for the new task if it has a deadline.
+        // Non-critical — runs silently after task is already saved.
+        if (created.deadline) {
+          try {
+            const blocks = await fetchBlocks()
+            const slot   = smartScheduleTask(created, focusMins, blocks)
+            if (slot) {
+              await createBlock({
+                title:      created.title,
+                start_time: slot.start_time,
+                end_time:   slot.end_time,
+                task_id:    created.id,
+                color:      '#6366f1',
+              })
+            }
+          } catch (_) { /* auto-schedule failure is non-critical */ }
+        }
       }
       closeModal()
     } catch (err) {

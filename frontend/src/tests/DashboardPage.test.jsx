@@ -32,6 +32,8 @@ const mockFetchTasks         = jest.fn()
 const mockMarkTaskComplete   = jest.fn()
 const mockCreateTask         = jest.fn()
 const mockFetchTaskAnalytics = jest.fn()
+const mockFetchBlocks        = jest.fn()
+const mockCreateBlock        = jest.fn()
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:         (...a) => mockFetchTasks(...a),
@@ -42,6 +44,8 @@ jest.mock('../services/taskService', () => ({
 
 jest.mock('../services/otherServices', () => ({
   fetchStats:    (...a) => mockFetchStats(...a),
+  fetchBlocks:   (...a) => mockFetchBlocks(...a),
+  createBlock:   (...a) => mockCreateBlock(...a),
   logSession:    jest.fn().mockResolvedValue({}),
   fetchSessions: jest.fn().mockResolvedValue([]),
   generateTasks: jest.fn().mockResolvedValue({ tasks: [], summary: '' }),
@@ -638,5 +642,251 @@ describe('analytics panel', () => {
     await waitFor(() => {
       expect(screen.getByText(/1 overdue/i)).toBeInTheDocument()
     })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 7 — Auto-schedule (calendar block created on task add)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('auto-schedule on task creation', () => {
+
+  const FUTURE_DATE = fmt(TOMORROW)
+
+  function setupAutoSchedule({ taskDeadline = FUTURE_DATE, blocks = [], blockCreated = { id: 'b1' } } = {}) {
+    mockFetchBlocks.mockResolvedValue(blocks)
+    mockCreateBlock.mockResolvedValue(blockCreated)
+    mockCreateTask.mockResolvedValue({
+      id: 'new-task',
+      title: 'New Task',
+      priority: 'MEDIUM',
+      status: 'TODO',
+      deadline: taskDeadline,
+      due_time: null,
+      recurrence: 'NONE',
+      is_complete: false,
+    })
+  }
+
+  async function submitTask(title = 'New Task', deadline = FUTURE_DATE) {
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: title },
+    })
+    if (deadline) {
+      const dateInputs = document.querySelectorAll('input[type="date"]')
+      fireEvent.change(dateInputs[0], { target: { value: deadline } })
+    }
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+  }
+
+  /**
+   * DASH-23: Task with deadline triggers fetchBlocks + createBlock
+   * Oracle: createBlock called once with correct task_id and a valid start_time
+   */
+  it('DASH-23: task with deadline auto-creates a calendar block', async () => {
+    setupAutoSchedule()
+
+    await submitTask('Gym session', FUTURE_DATE)
+
+    await waitFor(() => {
+      expect(mockFetchBlocks).toHaveBeenCalledTimes(1)
+      expect(mockCreateBlock).toHaveBeenCalledTimes(1)
+    })
+
+    const blockArg = mockCreateBlock.mock.calls[0][0]
+    expect(blockArg.task_id).toBe('new-task')
+    expect(blockArg.title).toBe('New Task')
+    expect(blockArg.start_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+    expect(blockArg.end_time).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+  })
+
+  /**
+   * DASH-24: Block end_time is exactly 100 min (4×25) after start_time
+   * Oracle: end - start = 100 minutes
+   */
+  it('DASH-24: auto-created block duration = 4 × focusMins (100 min)', async () => {
+    setupAutoSchedule()
+
+    await submitTask('Deep work', FUTURE_DATE)
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time, end_time } = mockCreateBlock.mock.calls[0][0]
+    const [sdp, stp] = start_time.split('T')
+    const [edp, etp] = end_time.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    expect(diffMins).toBe(100)
+  })
+
+  /**
+   * DASH-25: Task without deadline does NOT trigger auto-schedule
+   * Oracle: fetchBlocks and createBlock never called
+   */
+  it('DASH-25: task without deadline does not auto-create a block', async () => {
+    mockCreateTask.mockResolvedValue({
+      id: 'no-deadline-task', title: 'Buy groceries',
+      priority: 'LOW', status: 'TODO',
+      deadline: null, due_time: null,
+      recurrence: 'NONE', is_complete: false,
+    })
+    mockFetchBlocks.mockResolvedValue([])
+
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Buy groceries' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    await waitFor(() => expect(mockCreateTask).toHaveBeenCalled())
+
+    expect(mockFetchBlocks).not.toHaveBeenCalled()
+    expect(mockCreateBlock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * DASH-26: Auto-schedule shows confirmation message to user
+   * Oracle: "Block scheduled on calendar" text appears after add
+   */
+  it('DASH-26: shows schedule confirmation message after auto-scheduling', async () => {
+    setupAutoSchedule()
+
+    await submitTask('Morning run', FUTURE_DATE)
+
+    await waitFor(() => {
+      expect(screen.getByText(/block scheduled on calendar/i)).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * DASH-27: Fully booked day → shows "Day fully booked" message, block NOT created
+   * Oracle: createBlock not called, "fully booked" text shown
+   */
+  it('DASH-27: fully booked deadline day shows fallback message, no block created', async () => {
+    // Fill the entire active window (6 AM–11 PM) with one big block
+    const bigBlock = {
+      id: 'b-full',
+      start_time: `${FUTURE_DATE}T06:00`,
+      end_time:   `${FUTURE_DATE}T23:00`,
+    }
+    setupAutoSchedule({ blocks: [bigBlock] })
+
+    await submitTask('Therapy session', FUTURE_DATE)
+
+    await waitFor(() => {
+      expect(screen.getByText(/day fully booked/i)).toBeInTheDocument()
+    })
+    expect(mockCreateBlock).not.toHaveBeenCalled()
+  })
+
+  /**
+   * DASH-28: Auto-schedule avoids existing blocks (no overlap)
+   * Existing block: 6:00–7:40. Oracle: new block starts at 8:00 (after gap check).
+   */
+  it('DASH-28: auto-scheduled block avoids existing block — no overlap', async () => {
+    const existing = [{
+      id: 'b-existing',
+      start_time: `${FUTURE_DATE}T06:00`,
+      end_time:   `${FUTURE_DATE}T07:40`,
+    }]
+    setupAutoSchedule({ blocks: existing })
+
+    await submitTask('Focus session', FUTURE_DATE)
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time } = mockCreateBlock.mock.calls[0][0]
+    // Must start at or after 8:00 AM (not at 6:00 which is taken)
+    const [, tp] = start_time.split('T')
+    const startMins = parseInt(tp.split(':')[0]) * 60 + parseInt(tp.split(':')[1])
+    expect(startMins).toBeGreaterThanOrEqual(8 * 60) // 8:00 AM
+  })
+
+  /**
+   * DASH-30: Task with due_time → auto-scheduled at EXACT due_time (not smart-slotted)
+   * Oracle: createBlock called with start_time = "FUTURE_DATE T due_time" exactly.
+   * This validates the pinned-time path in smartScheduleTask.
+   */
+  it('DASH-30: task with due_time is auto-scheduled at exact due_time, not smart-slotted', async () => {
+    const DUE_TIME = '14:30'
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockResolvedValue({ id: 'b-pinned' })
+    mockCreateTask.mockResolvedValue({
+      id: 'pinned-task',
+      title: 'Standup',
+      priority: 'MEDIUM',
+      status: 'TODO',
+      deadline: FUTURE_DATE,
+      due_time: DUE_TIME,
+      recurrence: 'NONE',
+      is_complete: false,
+    })
+
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Standup' },
+    })
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FUTURE_DATE } })
+    // Simulate time input after date is selected
+    const timeInput = document.querySelector('input[type="time"]')
+    fireEvent.change(timeInput, { target: { value: DUE_TIME } })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time, end_time } = mockCreateBlock.mock.calls[0][0]
+    // Start must be exactly the pinned due_time
+    expect(start_time).toBe(`${FUTURE_DATE}T${DUE_TIME}`)
+    // End must be 100 min (4×25) later
+    const [sdp, stp] = start_time.split('T')
+    const [edp, etp] = end_time.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    expect(diffMins).toBe(100)
+  })
+
+  /**
+   * DASH-29: createBlock failure is silent — task still added to list
+   * Oracle: task appears in list even when createBlock throws
+   */
+  it('DASH-29: createBlock failure is non-critical — task still added', async () => {
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockRejectedValue(new Error('network error'))
+    mockCreateTask.mockResolvedValue({
+      id: 'task-x', title: 'Resilient task',
+      priority: 'MEDIUM', status: 'TODO',
+      deadline: FUTURE_DATE, due_time: null,
+      recurrence: 'NONE', is_complete: false,
+    })
+
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Resilient task' },
+    })
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FUTURE_DATE } })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    // Task should still appear in the list
+    await waitFor(() => {
+      expect(screen.getByText('Resilient task')).toBeInTheDocument()
+    })
+    // No error message shown to user
+    expect(screen.queryByText(/could not add task/i)).not.toBeInTheDocument()
   })
 })
