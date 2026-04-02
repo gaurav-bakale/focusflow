@@ -83,7 +83,7 @@ async def test_register_new_user():
         response = await client.post("/api/auth/register", json={
             "name": "Alice",
             "email": "alice@focusflow.dev",
-            "password": "securepass123"
+            "password": "SecurePass1!"
         })
 
     assert response.status_code == 201
@@ -109,7 +109,7 @@ async def test_register_duplicate_email():
         response = await client.post("/api/auth/register", json={
             "name": "Bob",
             "email": "test@focusflow.dev",
-            "password": "anotherpass123"
+            "password": "AnotherPass1!"
         })
 
     assert response.status_code == 409
