@@ -9,19 +9,26 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { logSession } from '../services/otherServices'
 import { PHASES } from './timerPhases'
+import { useAuth } from './AuthContext'
 
 const CYCLES_BEFORE_LONG = 4
 
 const TimerContext = createContext(null)
 
 export function TimerProvider({ children }) {
-  // Customisable durations (minutes)
-  const [focusMins, setFocusMins]   = useState(25)
-  const [shortMins, setShortMins]   = useState(5)
-  const [longMins,  setLongMins]    = useState(15)
+  const { user } = useAuth()
+
+  // Seed durations from user's onboarding preferences (fallback to defaults)
+  const prefFocus = user?.preferences?.pomodoro_duration ?? 25
+  const prefShort = user?.preferences?.short_break ?? 5
+  const prefLong  = user?.preferences?.long_break  ?? 15
+
+  const [focusMins, setFocusMins]   = useState(prefFocus)
+  const [shortMins, setShortMins]   = useState(prefShort)
+  const [longMins,  setLongMins]    = useState(prefLong)
 
   const [phase,       setPhase]       = useState(PHASES.IDLE)
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60)
+  const [secondsLeft, setSecondsLeft] = useState(prefFocus * 60)
   const [cycleCount,  setCycleCount]  = useState(0)
   const [activeTaskId, setActiveTaskId] = useState(null)
   const [isRunning,   setIsRunning]   = useState(false)
@@ -40,6 +47,21 @@ export function TimerProvider({ children }) {
   useEffect(() => { shortRef.current  = shortMins },   [shortMins])
   useEffect(() => { longRef.current   = longMins },    [longMins])
   useEffect(() => { taskRef.current   = activeTaskId },[activeTaskId])
+
+  // When user loads async (token rehydration), apply their preferences
+  // Only update if the timer hasn't started yet
+  useEffect(() => {
+    if (!user?.preferences) return
+    const { pomodoro_duration: f = 25, short_break: s = 5, long_break: l = 15 } = user.preferences
+    setFocusMins(f)
+    setShortMins(s)
+    setLongMins(l)
+    setSecondsLeft(prev => {
+      // Only reset the clock if timer is idle (not mid-session)
+      if (phaseRef.current === PHASES.IDLE) return f * 60
+      return prev
+    })
+  }, [user?.id])
 
   // Keep page title in sync
   useEffect(() => {

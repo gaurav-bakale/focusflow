@@ -17,19 +17,20 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import { useTimer } from '../context/TimerContext'
+import { useTheme } from '../context/ThemeContext'
 import { PHASES } from '../context/timerPhases'
 import { fetchTasks, updateTask } from '../services/taskService'
 import { fetchSessions } from '../services/otherServices'
 
-// ── Phase config ──────────────────────────────────────────────────────────────
-// Strategy pattern — PHASE_CONFIG maps each phase to a strategy object
-// (color, label, ring color) consumed uniformly by the UI. Switching
-// phases swaps the active strategy without if/else chains.
-const PHASE_CONFIG = {
-  [PHASES.IDLE]:        { label: 'Ready',       color: '#1e293b', ring: '#1e293b', bg: 'bg-slate-50 dark:bg-slate-900',       tab: 'Focus'       },
-  [PHASES.FOCUS]:       { label: 'Focus',        color: '#6366f1', ring: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/40',  tab: 'Focus'       },
-  [PHASES.SHORT_BREAK]: { label: 'Short Break',  color: '#10b981', ring: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/40', tab: 'Short Break' },
-  [PHASES.LONG_BREAK]:  { label: 'Long Break',   color: '#0ea5e9', ring: '#0ea5e9', bg: 'bg-sky-50 dark:bg-sky-950/40',       tab: 'Long Break'  },
+// ── Phase config factory ───────────────────────────────────────────────────────
+// IDLE uses different colors in dark vs light so the ring is always visible.
+function buildPhaseConfig(dark) {
+  return {
+    [PHASES.IDLE]:        { label: 'Ready',       color: dark ? '#94a3b8' : '#1e293b', bg: 'bg-slate-50 dark:bg-slate-900',        tab: 'Focus'       },
+    [PHASES.FOCUS]:       { label: 'Focus',        color: '#6366f1',                    bg: 'bg-indigo-50 dark:bg-indigo-950/40',   tab: 'Focus'       },
+    [PHASES.SHORT_BREAK]: { label: 'Short Break',  color: '#10b981',                    bg: 'bg-emerald-50 dark:bg-emerald-950/40', tab: 'Short Break' },
+    [PHASES.LONG_BREAK]:  { label: 'Long Break',   color: '#0ea5e9',                    bg: 'bg-sky-50 dark:bg-sky-950/40',         tab: 'Long Break'  },
+  }
 }
 
 const PRIORITY_DOT = { HIGH: 'bg-red-400', MEDIUM: 'bg-amber-400', LOW: 'bg-gray-300' }
@@ -205,7 +206,11 @@ export default function TimerPage() {
     }
   }, [phase])
 
-  const cfg         = PHASE_CONFIG[phase]
+
+  const { dark } = useTheme()
+  const PHASE_CONFIG = buildPhaseConfig(dark)
+  const cfg = PHASE_CONFIG[phase] || PHASE_CONFIG[PHASES.IDLE]
+
   const isIdle      = phase === PHASES.IDLE
   const isFocus     = phase === PHASES.FOCUS
   const isBreak     = phase === PHASES.SHORT_BREAK || phase === PHASES.LONG_BREAK
@@ -214,6 +219,7 @@ export default function TimerPage() {
   // SVG ring
   const R    = 130
   const CIRC = 2 * Math.PI * R
+  const trackColor = dark ? '#1e293b' : '#f1f5f9'
   const totalSecs = (isIdle || isFocus) ? focusMins * 60
                   : phase === PHASES.SHORT_BREAK ? shortMins * 60
                   : longMins * 60
@@ -280,7 +286,7 @@ export default function TimerPage() {
             <div className="relative mb-6" style={{ width: 300, height: 300 }}>
               <svg width="300" height="300" className="-rotate-90" viewBox="0 0 300 300">
                 {/* Track */}
-                <circle cx="150" cy="150" r={R} fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                <circle cx="150" cy="150" r={R} fill="none" stroke={trackColor} strokeWidth="12" />
                 {/* Progress */}
                 <circle
                   cx="150" cy="150" r={R}

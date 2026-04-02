@@ -104,6 +104,36 @@ const FC_CSS = `
   /* Projected recurring events — lighter/dashed to signal "future occurrence" */
   .fc .fc-projected { opacity: 0.65 !important; }
   .fc .fc-projected .fc-event-main { font-style: italic; }
+
+  /* ── Dark mode overrides ─────────────────────────────────────────────────── */
+  .dark .fc .fc-scrollgrid-section-header > * { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-timegrid-slot        { border-color: #1e293b !important; }
+  .dark .fc .fc-timegrid-slot-minor  { border-color: transparent !important; }
+  .dark .fc .fc-timegrid-slot-label-cushion { color: #475569 !important; }
+  .dark .fc .fc-timegrid-col { border-color: #1e293b !important; }
+  .dark .fc .fc-col-header-cell { border: none !important; background: #0f172a !important; }
+  .dark .fc .fc-col-header { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-col-header-cell-cushion { color: #94a3b8 !important; text-decoration: none !important; }
+  .dark .fc .fc-day-today .fc-col-header-cell-cushion { color: #818cf8 !important; }
+  .dark .fc .fc-day-today                  { background: rgba(99,102,241,0.08) !important; }
+  .dark .fc .fc-timegrid-col.fc-day-today  { background: rgba(99,102,241,0.06) !important; }
+  .dark .fc .fc-scrollgrid { background: #0f172a !important; }
+  .dark .fc .fc-timegrid-body { background: #0f172a !important; }
+  .dark .fc .fc-view-harness { background: #0f172a !important; }
+  .dark .fc .fc-daygrid-body   { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-daygrid-day    { border-color: #1e293b !important; background: #0f172a; }
+  .dark .fc .fc-day-today.fc-daygrid-day { background: rgba(99,102,241,0.08) !important; }
+  .dark .fc .fc-daygrid-day-number  { color: #94a3b8 !important; }
+  .dark .fc .fc-day-today .fc-daygrid-day-number { background: #6366f1; color: white !important; }
+  .dark .fc .fc-now-indicator-line { border-color: #f87171 !important; }
+  .dark .fc .fc-now-indicator-arrow { background: #f87171; }
+  .dark .fc .fc-highlight { background: rgba(99,102,241,0.15) !important; }
+  .dark .fc .fc-more-popover { background: #1e293b !important; border: 1px solid #334155 !important; }
+  .dark .fc .fc-more-popover .fc-popover-header { background: #1e293b !important; color: #e2e8f0 !important; }
+  .dark .fc .fc-all-day-text { color: #475569 !important; }
+  .dark .fc .fc-timegrid-axis-cushion { color: #475569 !important; }
+  .dark .fc-theme-standard td, .dark .fc-theme-standard th { border-color: #1e293b !important; }
+  .dark .fc-theme-standard .fc-scrollgrid { border-color: #1e293b !important; }
 `
 
 // ── Recurrence expansion helpers ─────────────────────────────────────────────
