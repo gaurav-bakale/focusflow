@@ -114,18 +114,6 @@ class BulkBlockCreate(BaseModel):
     blocks: List[TimeBlockCreate]
 
 
-class CompleteTaskResponse(BaseModel):
-    """
-    Response returned when a task is marked complete.
-
-    Fields:
-        completed:  The task that was just marked DONE.
-        next_task:  The newly auto-created next occurrence task (only present when
-                    the completed task had a non-NONE recurrence pattern).
-    """
-    completed: "TaskResponse"
-    next_task: Optional["TaskResponse"] = None
-
 
 # ── AI Models ─────────────────────────────────────────────────────────────────
 

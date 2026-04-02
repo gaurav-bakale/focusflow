@@ -38,8 +38,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.auth import get_current_user
 from app.db import get_db
-from app.models import CompleteTaskResponse
-from app.tasks.models import TaskCreate, TaskResponse, TaskUpdate
+from app.tasks.models import CompleteTaskResponse, TaskCreate, TaskResponse, TaskUpdate
 from app.tasks.service import TaskService
 
 router = APIRouter()
