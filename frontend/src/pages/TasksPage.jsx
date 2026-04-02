@@ -609,11 +609,23 @@ export default function TasksPage() {
                                       {task.estimated_minutes}m
                                     </span>
                                   )}
-                                  {task.categories && task.categories.map(cat => (
-                                    <span key={cat} className="text-xs font-bold bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
-                                      {cat}
-                                    </span>
-                                  ))}
+                                  {(() => {
+                                    const saved = task.categories || []
+                                    const display = saved.length > 0
+                                      ? { cats: saved, inferred: false }
+                                      : { cats: suggestCategories(task.title, [], 3), inferred: true }
+                                    return display.cats.map(cat => (
+                                      <span key={cat}
+                                        title={display.inferred ? 'Auto-suggested (not saved)' : undefined}
+                                        className={`text-xs font-bold px-1.5 py-0.5 rounded border ${
+                                          display.inferred
+                                            ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400 opacity-70'
+                                            : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                                        }`}>
+                                        {cat}
+                                      </span>
+                                    ))
+                                  })()}
                                   {task.deadline && (
                                     <span className={`text-xs font-mono ml-auto shrink-0 ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-300'}`}>
                                       {isOverdue && '⚠ '}
@@ -684,37 +696,19 @@ export default function TasksPage() {
               <div>
                 <label htmlFor="task-title" className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Title</label>
                 <input id="task-title" type="text" value={formData.title} required
-                  onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                  onChange={e => {
+                    const newTitle = e.target.value
+                    setFormData(p => {
+                      // Auto-apply suggestions for new tasks only
+                      // Keep manually-added categories when editing
+                      const suggested = suggestCategories(newTitle)
+                      const next = editingTask
+                        ? { ...p, title: newTitle }
+                        : { ...p, title: newTitle, categories: suggested }
+                      return next
+                    })
+                  }}
                   className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
-
-                {/* Smart category suggestions — appear as user types */}
-                {(() => {
-                  const suggestions = suggestCategories(formData.title, formData.categories)
-                  if (!suggestions.length) return null
-                  return (
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">✦ Suggested</span>
-                      {suggestions.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setFormData(p => ({
-                            ...p,
-                            categories: p.categories.includes(cat) ? p.categories : [...p.categories, cat]
-                          }))}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold
-                                     border border-indigo-300 dark:border-indigo-700
-                                     bg-indigo-50 dark:bg-indigo-950/50
-                                     text-indigo-600 dark:text-indigo-400
-                                     hover:bg-indigo-100 dark:hover:bg-indigo-900/50
-                                     transition-colors"
-                        >
-                          + {cat}
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })()}
               </div>
 
               {/* Description */}
