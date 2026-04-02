@@ -70,7 +70,7 @@ def _dt(offset_days=1, hour=9, minute=0):
 
 # ── Second user fixture ───────────────────────────────────────────────────────
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def auth_headers_2(client):
     """Register a *second* test user and return their Bearer auth headers."""
     payload = {

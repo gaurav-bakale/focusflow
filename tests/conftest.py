@@ -114,7 +114,7 @@ async def _rewire_mock_db(_mock_db):
 
 # ── Module-scoped HTTP client ─────────────────────────────────────────────────
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def client(_mock_db):
     """Async HTTP client wired to the FastAPI ASGI app, backed by mock DB."""
     async with AsyncClient(
@@ -123,7 +123,7 @@ async def client(_mock_db):
         yield ac
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def db(_mock_db):
     """Return the mock test-database handle (used for teardown cleanup)."""
     db, _mongo = _mock_db
@@ -132,7 +132,7 @@ async def db(_mock_db):
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def auth_headers(client):
     """Register (or re-login) a test user and return Bearer auth headers."""
     payload = {
@@ -150,7 +150,7 @@ async def auth_headers(client):
     return {"Authorization": f"Bearer {token}"}
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def test_task(client, auth_headers):
     """Create a single task for the fixture user and return its response dict."""
     resp = await client.post(
