@@ -415,16 +415,6 @@ function toMins(datetimeLocal) {
 /** Parse date part from "YYYY-MM-DDTHH:MM" → "YYYY-MM-DD" */
 function datePart(datetimeLocal) { return datetimeLocal.slice(0, 10) }
 
-/** Add `mins` minutes to a "YYYY-MM-DDTHH:MM" string, returns new string */
-function addMins(datetimeLocal, mins) {
-  const [dp, tp = '00:00'] = datetimeLocal.slice(0, 16).split('T')
-  const [y, mo, d] = dp.split('-').map(Number)
-  const [h, mi] = tp.split(':').map(Number)
-  const endMs = new Date(y, mo - 1, d, h, mi).getTime() + mins * 60000
-  const end = new Date(endMs)
-  const pad = n => String(n).padStart(2, '0')
-  return `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
-}
 
 /** Open the BlockModal via the "New Task Block" sidebar button */
 async function openNewModal() {

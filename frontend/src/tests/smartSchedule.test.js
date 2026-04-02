@@ -15,12 +15,11 @@
  *   nowAt(date, HH, MM)  — build a Date object for the injectable `now` param
  */
 
-import { findFreeSlot, smartScheduleTask, ACTIVE_START_HOUR, ACTIVE_END_HOUR, SLOT_STEP_MINS } from '../utils/smartSchedule'
+import { findFreeSlot, smartScheduleTask, ACTIVE_START_HOUR, ACTIVE_END_HOUR } from '../utils/smartSchedule'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const DATE = '2026-05-10' // Sunday — a fixed future date for deterministic tests
-const TODAY_DATE = new Date(2026, 4, 10) // May 10 2026 — matches DATE
 
 function blk(id, start, end) {
   return { id, start_time: start, end_time: end, title: `Block ${id}` }

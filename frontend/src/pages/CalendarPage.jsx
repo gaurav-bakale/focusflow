@@ -577,7 +577,7 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 // ── Block create / edit modal ─────────────────────────────────────────────────
 function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   const isNew = !block.id
-  const { focusMins, shortMins } = useTimer()
+  const { focusMins } = useTimer()
 
   const [form, setForm] = useState({
     title:      block.title      || '',
