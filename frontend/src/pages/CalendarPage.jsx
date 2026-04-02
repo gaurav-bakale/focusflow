@@ -26,6 +26,7 @@ import dayGridPlugin  from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { fetchBlocks, createBlock, updateBlock, deleteBlock } from '../services/otherServices'
 import { fetchTasks, markTaskComplete } from '../services/taskService'
+import { useTimer } from '../context/TimerContext'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
@@ -572,8 +573,10 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 }
 
 // ── Block create / edit modal ─────────────────────────────────────────────────
-function BlockModal({ block, tasks, onSave, onClose }) {
+function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   const isNew = !block.id
+  const { focusMins, shortMins } = useTimer()
+
   const [form, setForm] = useState({
     title:      block.title      || '',
     start_time: block.start_time || '',
@@ -581,7 +584,56 @@ function BlockModal({ block, tasks, onSave, onClose }) {
     task_id:    block.task_id    || '',
     color:      block.color      || '#6366f1',
   })
-  const [saving, setSaving] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [overlap,  setOverlap]  = useState(null) // warning message or null
+
+  // Pomodoro cycle presets: 1, 2, 4 cycles (focus + short break between each)
+  // 1 cycle = focusMins; 2 cycles = 2*focus + 1*short; 4 cycles = 4*focus + 3*short
+  const pomodoroDurations = [
+    { label: '1 🍅',  mins: focusMins,                          desc: `${focusMins}m focus` },
+    { label: '2 🍅',  mins: focusMins * 2 + shortMins,          desc: `${focusMins * 2 + shortMins}m` },
+    { label: '4 🍅',  mins: focusMins * 4 + shortMins * 3,      desc: `${focusMins * 4 + shortMins * 3}m` },
+  ]
+
+  function applyDuration(mins) {
+    if (!form.start_time) return
+    const start = new Date(form.start_time)
+    if (isNaN(start.getTime())) return
+    const end = new Date(start.getTime() + mins * 60000)
+    const pad = n => String(n).padStart(2, '0')
+    const endStr = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
+    setForm(f => ({ ...f, end_time: endStr }))
+    checkOverlap(form.start_time, endStr)
+  }
+
+  function checkOverlap(start, end) {
+    if (!start || !end) { setOverlap(null); return }
+    const s = new Date(start), e = new Date(end)
+    if (isNaN(s) || isNaN(e) || e <= s) { setOverlap(null); return }
+
+    const conflict = existingBlocks.find(b => {
+      if (b.id === block.id) return false // skip self when editing
+      const bs = new Date(b.start_time), be = new Date(b.end_time)
+      if (isNaN(bs) || isNaN(be)) return false
+      return s < be && e > bs
+    })
+    if (conflict) {
+      const cfmtTime = iso => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      setOverlap(`Overlaps with "${conflict.title}" (${cfmtTime(conflict.start_time)} – ${cfmtTime(conflict.end_time)}). Pick a different time.`)
+    } else {
+      setOverlap(null)
+    }
+  }
+
+  function handleStartChange(val) {
+    setForm(f => ({ ...f, start_time: val }))
+    checkOverlap(val, form.end_time)
+  }
+
+  function handleEndChange(val) {
+    setForm(f => ({ ...f, end_time: val }))
+    checkOverlap(form.start_time, val)
+  }
 
   function handleTaskChange(id) {
     const task = tasks.find(t => t.id === id)
@@ -596,15 +648,18 @@ function BlockModal({ block, tasks, onSave, onClose }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (overlap) return // block save when overlap exists
     setSaving(true)
     try { await onSave({ ...form, task_id: form.task_id || null }) }
     finally { setSaving(false) }
   }
 
+  const inputCls = "w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center z-[150]" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Color top bar */}
@@ -616,39 +671,69 @@ function BlockModal({ block, tasks, onSave, onClose }) {
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Title */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Title</label>
               <input
                 required placeholder="e.g. Deep Work Session"
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
-                           focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
-                           outline-none transition-all"
+                className={inputCls}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Start</label>
-                <input type="datetime-local" required
-                  value={form.start_time}
-                  onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
-                             focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">End</label>
-                <input type="datetime-local" required
-                  value={form.end_time}
-                  onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
-                             focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                />
-              </div>
+            {/* Start — full width so AM/PM is never clipped */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Start</label>
+              <input type="datetime-local" required
+                value={form.start_time}
+                onChange={e => handleStartChange(e.target.value)}
+                className={inputCls}
+              />
             </div>
 
+            {/* Pomodoro duration presets */}
+            {form.start_time && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+                  Duration presets <span className="font-normal text-gray-400">(based on your Pomodoro settings)</span>
+                </label>
+                <div className="flex gap-2">
+                  {pomodoroDurations.map(p => (
+                    <button
+                      key={p.label} type="button"
+                      onClick={() => applyDuration(p.mins)}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all"
+                    >
+                      <div>{p.label}</div>
+                      <div className="text-[10px] font-normal text-gray-400 dark:text-gray-500">{p.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* End — full width */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">End</label>
+              <input type="datetime-local" required
+                value={form.end_time}
+                onChange={e => handleEndChange(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Overlap warning */}
+            {overlap && (
+              <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#dc2626' }}>
+                <span className="shrink-0 mt-0.5">⚠</span>
+                <span>{overlap}</span>
+              </div>
+            )}
+
+            {/* Link to task */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
                 Link to Task <span className="font-normal text-gray-400 dark:text-gray-500">(optional — auto-fills title)</span>
@@ -656,14 +741,14 @@ function BlockModal({ block, tasks, onSave, onClose }) {
               <select
                 value={form.task_id}
                 onChange={e => handleTaskChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
-                           focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 outline-none transition-all"
+                className={inputCls}
               >
                 <option value="">— No linked task —</option>
                 {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
               </select>
             </div>
 
+            {/* Color */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Color</label>
               <div className="flex gap-2 flex-wrap">
@@ -685,9 +770,9 @@ function BlockModal({ block, tasks, onSave, onClose }) {
                 className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Cancel
               </button>
-              <button type="submit" disabled={saving}
-                style={{ background: form.color }}
-                className="flex-1 py-2.5 text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50">
+              <button type="submit" disabled={saving || !!overlap}
+                style={{ background: overlap ? undefined : form.color }}
+                className={`flex-1 py-2.5 text-white text-sm font-bold rounded-xl transition-opacity ${overlap ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed opacity-50' : 'hover:opacity-90 disabled:opacity-50'}`}>
                 {saving ? 'Saving…' : isNew ? 'Create' : 'Save'}
               </button>
             </div>
@@ -1220,6 +1305,7 @@ export default function CalendarPage() {
         <BlockModal
           block={modal}
           tasks={tasks}
+          existingBlocks={blocks}
           onSave={handleSave}
           onClose={() => setModal(null)}
         />
