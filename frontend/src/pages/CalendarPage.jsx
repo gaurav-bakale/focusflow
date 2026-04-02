@@ -637,14 +637,51 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleTaskChange(id) {
-    const task = tasks.find(t => t.id === id)
-    setForm(f => ({
-      ...f,
-      task_id: id,
-      title: (!f.title || f.title === (tasks.find(t => t.id === f.task_id)?.title ?? ''))
+    const task     = tasks.find(t => t.id === id)
+    const prevTask = tasks.find(t => t.id === form.task_id)
+
+    // Build a datetime-local string from the task's deadline + due_time if both exist
+    let autoStart = null
+    if (task?.deadline && task?.due_time) {
+      autoStart = `${task.deadline}T${task.due_time}`
+    }
+
+    // Auto-compute end_time = autoStart + 1 Pomodoro cycle
+    let autoEnd = null
+    if (autoStart) {
+      const [dp, tp] = autoStart.split('T')
+      const [y, mo, d] = dp.split('-').map(Number)
+      const [h, mi] = tp.split(':').map(Number)
+      const endMs = new Date(y, mo - 1, d, h, mi).getTime() + focusMins * 60000
+      const end = new Date(endMs)
+      const pad = n => String(n).padStart(2, '0')
+      autoEnd = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
+    }
+
+    setForm(f => {
+      // Only auto-fill title if it's blank or was auto-filled from the previous task
+      const prevAutoTitle = prevTask?.title ?? ''
+      const newTitle = (!f.title || f.title === prevAutoTitle)
         ? (task?.title || f.title)
-        : f.title,
-    }))
+        : f.title
+
+      // Only auto-fill times if the start is empty or was auto-filled from the previous task
+      const prevAutoStart = (prevTask?.deadline && prevTask?.due_time)
+        ? `${prevTask.deadline}T${prevTask.due_time}`
+        : null
+      const shouldFillTime = !f.start_time || f.start_time === prevAutoStart
+
+      return {
+        ...f,
+        task_id:    id,
+        title:      newTitle,
+        start_time: (shouldFillTime && autoStart) ? autoStart : f.start_time,
+        end_time:   (shouldFillTime && autoEnd)   ? autoEnd   : f.end_time,
+      }
+    })
+
+    // Re-check overlap with new times
+    if (autoStart && autoEnd) checkOverlap(autoStart, autoEnd)
   }
 
   async function handleSubmit(e) {
