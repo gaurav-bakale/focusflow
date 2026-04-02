@@ -114,7 +114,6 @@ class BulkBlockCreate(BaseModel):
     blocks: List[TimeBlockCreate]
 
 
-
 # ── AI Models ─────────────────────────────────────────────────────────────────
 
 class AIBreakdownRequest(BaseModel):
