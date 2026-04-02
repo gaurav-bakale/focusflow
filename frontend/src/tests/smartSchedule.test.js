@@ -347,3 +347,96 @@ describe('smartScheduleTask', () => {
     expect(result.start_time).toBe(at(14, 30))
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edge cases & invalid inputs
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('edge cases — invalid inputs and boundary conditions', () => {
+
+  /**
+   * SS-26: findFreeSlot with NaN duration returns null (no crash)
+   * Scenario: developer bug passes NaN as durationMins.
+   */
+  test('SS-26: findFreeSlot with NaN duration returns null', () => {
+    expect(findFreeSlot(DATE, NaN, [])).toBeNull()
+  })
+
+  /**
+   * SS-27: findFreeSlot with invalid (rolled-over) dateStr returns null
+   * "2026-02-30" would silently become March 2 without validation.
+   */
+  test('SS-27: findFreeSlot with dateStr "2026-02-30" (Feb rollover) returns null', () => {
+    expect(findFreeSlot('2026-02-30', 100, [])).toBeNull()
+  })
+
+  /**
+   * SS-28: smartScheduleTask with NaN focusMins returns null
+   * Scenario: TimerContext provides NaN (corrupt state).
+   */
+  test('SS-28: smartScheduleTask with focusMins=NaN returns null', () => {
+    const task = { deadline: DATE, due_time: null }
+    expect(smartScheduleTask(task, NaN, [])).toBeNull()
+  })
+
+  /**
+   * SS-29: smartScheduleTask with focusMins=0 returns null
+   */
+  test('SS-29: smartScheduleTask with focusMins=0 returns null', () => {
+    const task = { deadline: DATE, due_time: null }
+    expect(smartScheduleTask(task, 0, [])).toBeNull()
+  })
+
+  /**
+   * SS-30: smartScheduleTask with due_time="25:00" (hour out of range) returns null
+   * Scenario: user or API sends a malformed time string that looks numeric but is invalid.
+   */
+  test('SS-30: due_time with hour=25 (out of range) returns null', () => {
+    const task = { deadline: DATE, due_time: '25:00' }
+    expect(smartScheduleTask(task, FOCUS, [])).toBeNull()
+  })
+
+  /**
+   * SS-31: smartScheduleTask with due_time="09:60" (minute out of range) returns null
+   */
+  test('SS-31: due_time with minute=60 (out of range) returns null', () => {
+    const task = { deadline: DATE, due_time: '09:60' }
+    expect(smartScheduleTask(task, FOCUS, [])).toBeNull()
+  })
+
+  /**
+   * SS-32: smartScheduleTask with due_time="abc" (non-numeric) returns null
+   */
+  test('SS-32: due_time="abc" (non-numeric) returns null', () => {
+    const task = { deadline: DATE, due_time: 'abc' }
+    expect(smartScheduleTask(task, FOCUS, [])).toBeNull()
+  })
+
+  /**
+   * SS-33: smartScheduleTask with invalid deadline "2026-02-30" returns null
+   * Scenario: date validation catches Feb 30 before JS silently rolls to March 2.
+   */
+  test('SS-33: invalid deadline "2026-02-30" (Feb rollover) returns null', () => {
+    const task = { deadline: '2026-02-30', due_time: null }
+    expect(smartScheduleTask(task, FOCUS, [], null, nowOnDifferentDay())).toBeNull()
+  })
+
+  /**
+   * SS-34: due_time "00:00" (midnight) is a valid edge case — produces a block
+   * Midnight is a legitimate time (hour=0, minute=0), not invalid.
+   */
+  test('SS-34: due_time="00:00" (midnight) is valid and produces a block', () => {
+    const task = { deadline: DATE, due_time: '00:00' }
+    const result = smartScheduleTask(task, FOCUS, [])
+    expect(result).not.toBeNull()
+    expect(result.start_time).toBe(`${DATE}T00:00`)
+  })
+
+  /**
+   * SS-35: smartScheduleTask with negative focusMins returns null
+   */
+  test('SS-35: smartScheduleTask with focusMins=-5 returns null', () => {
+    const task = { deadline: DATE, due_time: null }
+    expect(smartScheduleTask(task, -5, [])).toBeNull()
+  })
+})

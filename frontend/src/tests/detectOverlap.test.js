@@ -243,3 +243,45 @@ describe('detectOverlap', () => {
     expect(detectOverlap('2026-04-04T00:30', '2026-04-04T01:00', blocks)).toBeNull()
   })
 })
+
+// ── parseLocalDateTime — invalid / rollover inputs ─────────────────────────────
+
+describe('parseLocalDateTime — invalid and rollover inputs', () => {
+
+  /**
+   * OVL-22: Invalid month (13) returns NaN — no silent rollover to next year
+   * JS Date: new Date(2026, 12, 1) rolls to Jan 2027 — we must reject this.
+   */
+  test('OVL-22: invalid month (13) returns NaN — no silent year rollover', () => {
+    expect(parseLocalDateTime('2026-13-01T09:00')).toBeNaN()
+  })
+
+  /**
+   * OVL-23: Invalid day (30) for February 2026 returns NaN
+   * 2026 is not a leap year; Feb 30 → March 2 in JS — we must reject this.
+   */
+  test('OVL-23: Feb 30 in a non-leap year returns NaN — no silent date rollover', () => {
+    expect(parseLocalDateTime('2026-02-30T09:00')).toBeNaN()
+  })
+
+  /**
+   * OVL-24: Block with an invalid date in start_time is skipped (treated as non-overlapping)
+   * If the stored block has a corrupted date, overlap detection must not crash and
+   * must NOT flag a conflict — the malformed block is silently excluded.
+   */
+  test('OVL-24: block with invalid start_time date is skipped — no false overlap', () => {
+    // "2026-13-45" is an impossible date — the block should be ignored
+    const blocks = [blk('bad', '2026-13-45T09:00', '2026-13-45T10:00')]
+    const result = detectOverlap('2026-04-03T09:00', '2026-04-03T10:00', blocks)
+    expect(result).toBeNull()
+  })
+
+  /**
+   * OVL-25: Day 0 and month 0 (zero values) return NaN
+   * Day/month are 1-based; 0 triggers JS Date to roll back a unit.
+   */
+  test('OVL-25: day=0 and month=0 return NaN', () => {
+    expect(parseLocalDateTime('2026-00-10T09:00')).toBeNaN() // month 0 invalid
+    expect(parseLocalDateTime('2026-04-00T09:00')).toBeNaN() // day 0 invalid
+  })
+})

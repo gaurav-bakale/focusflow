@@ -810,6 +810,55 @@ describe('auto-schedule on task creation', () => {
   })
 
   /**
+   * DASH-30: Task with due_time → auto-scheduled at EXACT due_time (not smart-slotted)
+   * Oracle: createBlock called with start_time = "FUTURE_DATE T due_time" exactly.
+   * This validates the pinned-time path in smartScheduleTask.
+   */
+  it('DASH-30: task with due_time is auto-scheduled at exact due_time, not smart-slotted', async () => {
+    const DUE_TIME = '14:30'
+    mockFetchBlocks.mockResolvedValue([])
+    mockCreateBlock.mockResolvedValue({ id: 'b-pinned' })
+    mockCreateTask.mockResolvedValue({
+      id: 'pinned-task',
+      title: 'Standup',
+      priority: 'MEDIUM',
+      status: 'TODO',
+      deadline: FUTURE_DATE,
+      due_time: DUE_TIME,
+      recurrence: 'NONE',
+      is_complete: false,
+    })
+
+    await renderDashboard()
+    await waitFor(() => screen.getByPlaceholderText(/what needs to get done/i))
+
+    fireEvent.change(screen.getByPlaceholderText(/what needs to get done/i), {
+      target: { value: 'Standup' },
+    })
+    const dateInputs = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dateInputs[0], { target: { value: FUTURE_DATE } })
+    // Simulate time input after date is selected
+    const timeInput = document.querySelector('input[type="time"]')
+    fireEvent.change(timeInput, { target: { value: DUE_TIME } })
+    fireEvent.click(screen.getByRole('button', { name: /add task/i }))
+
+    await waitFor(() => expect(mockCreateBlock).toHaveBeenCalled())
+
+    const { start_time, end_time } = mockCreateBlock.mock.calls[0][0]
+    // Start must be exactly the pinned due_time
+    expect(start_time).toBe(`${FUTURE_DATE}T${DUE_TIME}`)
+    // End must be 100 min (4×25) later
+    const [sdp, stp] = start_time.split('T')
+    const [edp, etp] = end_time.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+    expect(diffMins).toBe(100)
+  })
+
+  /**
    * DASH-29: createBlock failure is silent — task still added to list
    * Oracle: task appears in list even when createBlock throws
    */

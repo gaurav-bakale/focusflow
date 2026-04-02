@@ -41,9 +41,12 @@ function toLocalStr(y, mo, d, h, mi) {
  * @returns {{ start_time: string, end_time: string } | null}
  */
 export function findFreeSlot(dateStr, durationMins, existingBlocks = [], skipId = null, now = new Date()) {
-  if (!dateStr || durationMins <= 0) return null
+  if (!dateStr || !isFinite(durationMins) || durationMins <= 0) return null
   const [y, mo, d] = dateStr.split('-').map(Number)
   if (!y || !mo || !d) return null
+  // Reject dates that JS would silently roll over (e.g. "2026-02-30" → March 2)
+  const testDate = new Date(y, mo - 1, d)
+  if (testDate.getFullYear() !== y || testDate.getMonth() !== mo - 1 || testDate.getDate() !== d) return null
 
   const activeStart = new Date(y, mo - 1, d, ACTIVE_START_HOUR, 0).getTime()
   const activeEnd   = new Date(y, mo - 1, d, ACTIVE_END_HOUR,   0).getTime()
@@ -102,16 +105,26 @@ export function findFreeSlot(dateStr, durationMins, existingBlocks = [], skipId 
  */
 export function smartScheduleTask(task, focusMins, existingBlocks = [], skipId = null, now = new Date()) {
   if (!task?.deadline) return null
+  if (!isFinite(focusMins) || focusMins <= 0) return null
 
   const durationMins = focusMins * 4 // 4 Pomodoros, no breaks counted
 
   if (task.due_time) {
-    // User already specified a time — respect it, just compute the end
-    const start = `${task.deadline}T${task.due_time}`
-    const [dp, tp] = start.split('T')
-    const [y, mo, d] = dp.split('-').map(Number)
-    const [h, mi]    = tp.split(':').map(Number)
-    const end = new Date(new Date(y, mo-1, d, h, mi).getTime() + durationMins * 60000)
+    // User already specified a time — respect it, just compute the end.
+    // Validate due_time: must be "HH:MM" with H in 0–23 and M in 0–59.
+    const timeParts = String(task.due_time).split(':').map(Number)
+    const [h = NaN, mi = NaN] = timeParts
+    if (!isFinite(h) || !isFinite(mi) || h < 0 || h > 23 || mi < 0 || mi > 59) return null
+
+    const [y, mo, d] = task.deadline.split('-').map(Number)
+    if (!y || !mo || !d) return null
+    // Reject rolled-over deadline dates
+    const baseDate = new Date(y, mo - 1, d, h, mi)
+    if (baseDate.getFullYear() !== y || baseDate.getMonth() !== mo - 1 ||
+        baseDate.getDate() !== d || baseDate.getHours() !== h || baseDate.getMinutes() !== mi) return null
+
+    const start = `${task.deadline}T${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}`
+    const end = new Date(baseDate.getTime() + durationMins * 60000)
     return {
       start_time: start,
       end_time:   toLocalStr(end.getFullYear(), end.getMonth()+1, end.getDate(), end.getHours(), end.getMinutes()),

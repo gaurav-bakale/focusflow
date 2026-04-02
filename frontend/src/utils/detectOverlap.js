@@ -29,7 +29,11 @@ export function parseLocalDateTime(str) {
   const [y, mo, d] = datePart.split('-').map(Number)
   const [h = 0, mi = 0, sec = 0] = timePart.split(':').map(Number)
   if (!y || !mo || !d) return NaN
-  return new Date(y, mo - 1, d, h, mi, sec).getTime()
+  const dt = new Date(y, mo - 1, d, h, mi, sec)
+  // Round-trip check: if JS silently rolled the date (e.g. Feb 30 → Mar 2,
+  // month 13 → next year), the reconstructed components won't match.
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return NaN
+  return dt.getTime()
 }
 
 /**
