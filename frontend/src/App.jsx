@@ -27,6 +27,7 @@ import CanvasAIPage      from './pages/CanvasAIPage'
 import SharedTasksPage   from './pages/SharedTasksPage'
 import WorkspacesPage    from './pages/WorkspacesPage'
 import ActivityPage      from './pages/ActivityPage'
+import SettingsPage      from './pages/SettingsPage'
 
 function Spinner() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
               <Route path="shared"   element={<SharedTasksPage />} />
               <Route path="workspaces" element={<WorkspacesPage />} />
               <Route path="activity"   element={<ActivityPage />} />
+              <Route path="settings"  element={<SettingsPage />} />
             </Route>
 
             {/* Fallback */}

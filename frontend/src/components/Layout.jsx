@@ -28,6 +28,7 @@ const NAV = [
   { to: '/shared',      label: 'Shared',      end: false, color: '#EC4899' },
   { to: '/workspaces',  label: 'Workspaces',  end: false, color: '#F97316' },
   { to: '/activity',    label: 'Activity',    end: false, color: '#8B5CF6' },
+  { to: '/settings',    label: 'Settings',    end: false, color: '#6B7280' },
 ]
 
 const PHASE_CONFIG = {
