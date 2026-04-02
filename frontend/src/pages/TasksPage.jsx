@@ -686,6 +686,35 @@ export default function TasksPage() {
                 <input id="task-title" type="text" value={formData.title} required
                   onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
                   className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+
+                {/* Smart category suggestions — appear as user types */}
+                {(() => {
+                  const suggestions = suggestCategories(formData.title, formData.categories)
+                  if (!suggestions.length) return null
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">✦ Suggested</span>
+                      {suggestions.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setFormData(p => ({
+                            ...p,
+                            categories: p.categories.includes(cat) ? p.categories : [...p.categories, cat]
+                          }))}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold
+                                     border border-indigo-300 dark:border-indigo-700
+                                     bg-indigo-50 dark:bg-indigo-950/50
+                                     text-indigo-600 dark:text-indigo-400
+                                     hover:bg-indigo-100 dark:hover:bg-indigo-900/50
+                                     transition-colors"
+                        >
+                          + {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Description */}
@@ -779,36 +808,6 @@ export default function TasksPage() {
               {/* Categories */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Categories</label>
-
-                {/* Smart suggestions */}
-                {(() => {
-                  const suggestions = suggestCategories(formData.title, formData.categories)
-                  return suggestions.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-                        ✦ Suggested
-                      </span>
-                      {suggestions.map(cat => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setFormData(p => ({
-                            ...p,
-                            categories: p.categories.includes(cat) ? p.categories : [...p.categories, cat]
-                          }))}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold
-                                     border border-indigo-300 dark:border-indigo-700
-                                     bg-indigo-50 dark:bg-indigo-950/50
-                                     text-indigo-600 dark:text-indigo-400
-                                     hover:bg-indigo-100 dark:hover:bg-indigo-900/50
-                                     transition-colors"
-                        >
-                          + {cat}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null
-                })()}
 
                 <div className="flex gap-2 mb-2">
                   <input type="text" value={categoryInput}

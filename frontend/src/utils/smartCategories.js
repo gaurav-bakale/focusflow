@@ -1,166 +1,155 @@
 /**
- * Smart Category Suggester — pure browser JS, no external dependencies.
+ * Smart Category Suggester — uses compromise.js for NLP.
  *
- * Uses a mini-stemmer + weighted taxonomy to suggest categories from a task title.
- * Handles conjugations (fixing→fix), plurals (bugs→bug), common prefixes/suffixes.
+ * compromise extracts nouns/verbs from the title automatically,
+ * handling plurals, conjugations, tenses — no manual stemming needed.
+ * The category map stays small; the library does the linguistic heavy lifting.
  */
+import nlp from 'compromise'
 
-// ── Mini stemmer ──────────────────────────────────────────────────────────────
-// Normalises a word to its approximate root form so "fixing"→"fix", "tests"→"test"
-function stem(word) {
-  const w = word.toLowerCase()
-  // Strip common verb suffixes
-  if (w.endsWith('ing') && w.length > 5) return w.slice(0, -3)
-  if (w.endsWith('tion') && w.length > 6) return w.slice(0, -4)
-  if (w.endsWith('tions') && w.length > 7) return w.slice(0, -5)
-  if (w.endsWith('ed') && w.length > 4)  return w.slice(0, -2)
-  if (w.endsWith('er') && w.length > 4)  return w.slice(0, -2)
-  if (w.endsWith('es') && w.length > 4)  return w.slice(0, -2)
-  if (w.endsWith('s')  && w.length > 3)  return w.slice(0, -1)
-  if (w.endsWith('ly') && w.length > 4)  return w.slice(0, -2)
-  return w
-}
-
-// ── Taxonomy ──────────────────────────────────────────────────────────────────
-// verbs  → match stemmed tokens, weight 3
-// nouns  → match stemmed tokens, weight 2
-// phrases → substring match on full title, weight 4
-const TAXONOMY = [
+// ── Category map ──────────────────────────────────────────────────────────────
+// nouns / verbs: matched against words compromise extracts (base forms)
+// phrases: substring match on the raw lowercased title (for fixed expressions)
+const CATEGORIES = [
   {
     label: 'Bug',
-    verbs:   ['fix', 'debug', 'patch', 'resolv', 'repair', 'hotfix', 'revert', 'investigat'],
-    nouns:   ['bug', 'error', 'crash', 'issu', 'defect', 'regress', 'incident', 'glitch', 'except', 'stacktrac', 'fail'],
-    phrases: ['bug fix', 'null pointer', 'stack overflow', 'race condition', 'memory leak', 'fix bug', 'broken'],
+    nouns:   ['bug', 'error', 'crash', 'issue', 'defect', 'regression', 'incident', 'glitch', 'exception', 'failure', 'stacktrace'],
+    verbs:   ['fix', 'debug', 'patch', 'resolve', 'repair', 'revert', 'investigate'],
+    phrases: ['null pointer', 'stack overflow', 'race condition', 'memory leak', 'broken', 'bug fix'],
   },
   {
     label: 'Frontend',
-    verbs:   ['render', 'style', 'animat', 'layout', 'align', 'design', 'build ui', 'creat page'],
-    nouns:   ['ui', 'ux', 'component', 'button', 'form', 'page', 'modal', 'css', 'html', 'react', 'view', 'screen', 'widget', 'icon', 'banner', 'sidebar', 'navbar', 'dropdown', 'theme', 'wizard', 'input', 'card', 'panel'],
-    phrases: ['user interface', 'dark mode', 'light mode', 'landing page', 'onboard', 'login page', 'sign up', 'register page', 'skip bug', 'blank page'],
+    nouns:   ['ui', 'ux', 'component', 'button', 'form', 'page', 'modal', 'css', 'html', 'view', 'screen', 'icon', 'navbar', 'sidebar', 'dropdown', 'theme', 'input', 'card', 'panel', 'animation', 'layout'],
+    verbs:   ['render', 'style', 'animate', 'align', 'design'],
+    phrases: ['user interface', 'dark mode', 'light mode', 'landing page', 'login page', 'sign up page', 'blank page'],
   },
   {
     label: 'Backend',
-    verbs:   ['migrat', 'seed', 'index', 'cach', 'queu', 'refactor'],
-    nouns:   ['api', 'endpoint', 'rout', 'server', 'databas', 'schema', 'model', 'query', 'sql', 'nosql', 'mongo', 'postgr', 'redis', 'rest', 'graphql', 'webhook', 'cron', 'job', 'worker', 'servic', 'middlewar', 'handler', 'microservic'],
+    nouns:   ['api', 'endpoint', 'route', 'server', 'database', 'schema', 'model', 'query', 'sql', 'mongo', 'redis', 'webhook', 'cron', 'worker', 'service', 'middleware', 'microservice', 'graphql'],
+    verbs:   ['migrate', 'seed', 'index', 'cache', 'queue', 'refactor'],
     phrases: ['rest api', 'data model', 'database migration', 'background job', 'api endpoint'],
   },
   {
     label: 'Auth',
-    verbs:   ['authent', 'authoriz', 'login', 'logout', 'signup', 'regist'],
-    nouns:   ['auth', 'token', 'jwt', 'oauth', 'session', 'password', 'credenti', 'permiss', 'role', 'access', 'sso', '2fa', 'mfa', 'signin'],
-    phrases: ['sign in', 'sign up', 'forgot password', 'reset password', 'access control', 'authentication', 'authorization'],
+    nouns:   ['auth', 'token', 'jwt', 'oauth', 'session', 'password', 'credential', 'permission', 'role', 'access', 'sso', '2fa', 'mfa'],
+    verbs:   ['authenticate', 'authorize', 'login', 'logout', 'signup', 'register'],
+    phrases: ['sign in', 'sign up', 'forgot password', 'reset password', 'access control'],
   },
   {
     label: 'Testing',
-    verbs:   ['test', 'mock', 'assert', 'validat', 'verif', 'cover'],
-    nouns:   ['test', 'spec', 'coverag', 'qa', 'e2e', 'unit', 'integrat', 'fixtur', 'stub', 'snapshot', 'suit'],
-    phrases: ['unit test', 'integration test', 'end to end', 'test coverage', 'write test', 'add test'],
+    nouns:   ['test', 'spec', 'coverage', 'qa', 'e2e', 'unit', 'integration', 'fixture', 'stub', 'snapshot', 'suite', 'mock'],
+    verbs:   ['test', 'mock', 'assert', 'validate', 'verify', 'cover'],
+    phrases: ['unit test', 'integration test', 'end to end', 'test coverage', 'write test'],
   },
   {
     label: 'DevOps',
-    verbs:   ['deploy', 'contain', 'provis', 'monitor', 'scale', 'automat'],
-    nouns:   ['deploy', 'docker', 'kubernet', 'ci', 'cd', 'pipelin', 'build', 'infra', 'terraform', 'helm', 'nginx', 'alert', 'metric', 'cloud', 'aws', 'gcp'],
-    phrases: ['ci/cd', 'github actions', 'cloud deploy', 'build pipeline', 'production deploy', 'container'],
+    nouns:   ['deploy', 'docker', 'kubernetes', 'pipeline', 'build', 'infra', 'terraform', 'nginx', 'alert', 'metric', 'cloud', 'aws', 'gcp', 'ci', 'cd'],
+    verbs:   ['deploy', 'containerize', 'provision', 'monitor', 'scale', 'automate'],
+    phrases: ['ci/cd', 'github actions', 'build pipeline', 'production deploy', 'cloud deploy'],
   },
   {
     label: 'Planning',
-    verbs:   ['plan', 'review', 'discuss', 'estimat', 'prioritiz', 'schedul', 'strateg'],
-    nouns:   ['meet', 'standup', 'sprint', 'retrospect', 'groom', 'backlog', 'roadmap', 'mileston', 'kickoff', 'agenda', 'okr', 'goal'],
-    phrases: ['sprint planning', 'product review', 'team meeting', 'tech review', 'design review', 'code review', 'review q', 'quarterly'],
+    nouns:   ['meeting', 'standup', 'sprint', 'retrospective', 'grooming', 'backlog', 'roadmap', 'milestone', 'kickoff', 'agenda', 'okr', 'goal'],
+    verbs:   ['plan', 'review', 'discuss', 'estimate', 'prioritize', 'schedule', 'strategize'],
+    phrases: ['sprint planning', 'product review', 'team meeting', 'code review', 'design review'],
   },
   {
     label: 'Product',
-    verbs:   ['launch', 'releas', 'ship', 'deliver', 'announc'],
-    nouns:   ['featur', 'product', 'releas', 'launch', 'prd', 'spec', 'requir', 'changelog', 'version', 'mvp', 'prototyp', 'feedback'],
-    phrases: ['feature request', 'product spec', 'new feature', 'product launch', 'user story', 'product roadmap'],
+    nouns:   ['feature', 'product', 'release', 'launch', 'spec', 'requirement', 'changelog', 'version', 'mvp', 'prototype', 'feedback', 'prd'],
+    verbs:   ['launch', 'release', 'ship', 'deliver', 'announce'],
+    phrases: ['feature request', 'product spec', 'new feature', 'product launch', 'user story'],
   },
   {
     label: 'Docs',
-    verbs:   ['document', 'write', 'draft', 'updat'],
-    nouns:   ['doc', 'readme', 'wiki', 'guid', 'tutori', 'manual', 'comment', 'annot'],
+    nouns:   ['doc', 'readme', 'wiki', 'guide', 'tutorial', 'manual', 'comment', 'annotation'],
+    verbs:   ['document', 'write', 'draft', 'update'],
     phrases: ['write docs', 'update readme', 'api docs', 'add comments', 'documentation'],
   },
   {
     label: 'Performance',
-    verbs:   ['optimiz', 'profil', 'benchmark', 'improv', 'reduc', 'speed'],
-    nouns:   ['perform', 'latenc', 'throughput', 'bottleneck', 'memori', 'cpu', 'load', 'cach', 'profil', 'lighthous'],
-    phrases: ['slow query', 'load time', 'response time', 'bundle size', 'memory usage', 'optimize', 'speed up'],
+    nouns:   ['performance', 'latency', 'throughput', 'bottleneck', 'memory', 'cpu', 'load', 'cache', 'lighthouse'],
+    verbs:   ['optimize', 'profile', 'benchmark', 'improve', 'reduce', 'speed'],
+    phrases: ['slow query', 'load time', 'response time', 'bundle size', 'memory usage', 'speed up'],
   },
   {
     label: 'Security',
-    verbs:   ['encrypt', 'sanit', 'audit', 'harden', 'scan'],
-    nouns:   ['secur', 'vulner', 'cve', 'xss', 'csrf', 'inject', 'ssl', 'tls', 'certif', 'firewall', 'pentest'],
+    nouns:   ['security', 'vulnerability', 'cve', 'xss', 'csrf', 'injection', 'ssl', 'tls', 'certificate', 'firewall', 'pentest'],
+    verbs:   ['encrypt', 'sanitize', 'audit', 'harden', 'scan'],
     phrases: ['security audit', 'sql injection', 'input validation', 'rate limit', 'penetration'],
   },
   {
     label: 'Research',
-    verbs:   ['research', 'investig', 'explor', 'analys', 'analyz', 'evaluat', 'compar'],
-    nouns:   ['research', 'analysi', 'investigat', 'poc', 'spike', 'explorat'],
-    phrases: ['proof of concept', 'tech spike', 'feasibility', 'competitive analysis', 'investigate'],
+    nouns:   ['research', 'analysis', 'investigation', 'poc', 'spike', 'exploration'],
+    verbs:   ['research', 'investigate', 'explore', 'analyse', 'analyze', 'evaluate', 'compare'],
+    phrases: ['proof of concept', 'tech spike', 'feasibility', 'competitive analysis'],
   },
   {
     label: 'Learning',
-    verbs:   ['learn', 'studi', 'read', 'watch', 'practic', 'complet', 'study'],
-    nouns:   ['cours', 'book', 'tutori', 'train', 'certif', 'workshop', 'lesson', 'lectur'],
-    phrases: ['online course', 'read book', 'watch video', 'finish course', 'study', 'studying'],
+    nouns:   ['course', 'book', 'tutorial', 'training', 'certificate', 'workshop', 'lesson', 'lecture', 'exam', 'quiz', 'class'],
+    verbs:   ['learn', 'study', 'read', 'watch', 'practice', 'complete'],
+    phrases: ['online course', 'read book', 'watch video', 'finish course', 'studying'],
   },
   {
     label: 'Health',
-    verbs:   ['run', 'workout', 'exercis', 'meditat', 'walk', 'cycl', 'swim', 'cook', 'prep', 'eat'],
-    nouns:   ['gym', 'workout', 'yoga', 'medit', 'health', 'fit', 'diet', 'sleep', 'nutrit', 'run', 'meal', 'food', 'recip', 'cook', 'breakfast', 'lunch', 'dinner', 'snack', 'water', 'vitamin', 'supplement'],
-    phrases: ['morning run', 'evening walk', 'hit the gym', 'work out', 'go for a run', 'meal prep', 'meal plan', 'eat healthy', 'drink water'],
+    nouns:   ['gym', 'workout', 'yoga', 'meditation', 'diet', 'sleep', 'nutrition', 'run', 'meal', 'food', 'breakfast', 'lunch', 'dinner', 'recipe', 'vitamin', 'supplement', 'water'],
+    verbs:   ['run', 'workout', 'exercise', 'meditate', 'walk', 'cycle', 'swim', 'cook', 'prep', 'eat'],
+    phrases: ['morning run', 'evening walk', 'hit the gym', 'work out', 'meal prep', 'meal plan', 'eat healthy'],
   },
   {
     label: 'Errands',
-    verbs:   ['buy', 'purchas', 'order', 'pick', 'drop', 'pay', 'book', 'call', 'schedul', 'renew', 'return'],
-    nouns:   ['shop', 'groceri', 'errand', 'bill', 'appoint', 'deliveri', 'packag', 'mail', 'licens', 'subscript', 'insuranc', 'passport', 'visa'],
-    phrases: ['pick up', 'drop off', 'pay bill', 'buy groceries', 'go shopping', 'schedule appointment', 'renew'],
+    nouns:   ['grocery', 'errand', 'bill', 'appointment', 'delivery', 'package', 'mail', 'license', 'passport'],
+    verbs:   ['buy', 'purchase', 'order', 'pick', 'drop', 'pay', 'book', 'call', 'renew', 'return'],
+    phrases: ['pick up', 'drop off', 'pay bill', 'buy groceries', 'go shopping'],
   },
   {
     label: 'Finance',
-    verbs:   ['budget', 'invest', 'sav', 'track', 'review', 'pay', 'transfer', 'withdraw', 'deposit'],
-    nouns:   ['budget', 'expens', 'incom', 'tax', 'invoice', 'payment', 'loan', 'mortgage', 'rent', 'invest', 'stock', 'crypto', 'financ', 'bank', 'account', 'credit', 'debt', 'saving'],
-    phrases: ['pay rent', 'file taxes', 'track expenses', 'monthly budget', 'investment review', 'pay off'],
+    nouns:   ['budget', 'expense', 'income', 'tax', 'invoice', 'payment', 'loan', 'mortgage', 'rent', 'investment', 'stock', 'crypto', 'bank', 'credit', 'debt', 'saving'],
+    verbs:   ['budget', 'invest', 'save', 'track', 'transfer', 'withdraw', 'deposit'],
+    phrases: ['pay rent', 'file taxes', 'track expenses', 'monthly budget', 'pay off'],
   },
   {
     label: 'Social',
-    verbs:   ['call', 'text', 'meet', 'visit', 'catch up', 'plan', 'organiz', 'invit', 'celebrat'],
-    nouns:   ['friend', 'famili', 'parent', 'birthday', 'anniversari', 'party', 'wedding', 'event', 'dinner', 'hangout', 'trip', 'vacation', 'travel', 'gift'],
-    phrases: ['catch up', 'birthday party', 'family dinner', 'plan trip', 'book flight', 'book hotel'],
+    nouns:   ['friend', 'family', 'birthday', 'anniversary', 'party', 'wedding', 'event', 'dinner', 'trip', 'vacation', 'travel', 'gift'],
+    verbs:   ['call', 'visit', 'celebrate', 'invite', 'organize'],
+    phrases: ['catch up', 'birthday party', 'family dinner', 'plan trip', 'book flight'],
   },
 ]
 
 // ── Core suggest function ──────────────────────────────────────────────────────
 
 /**
- * Suggest categories for a task title.
+ * Suggest categories for a task title using NLP.
  *
- * @param {string}   title   - Raw task title typed by the user
- * @param {string[]} already - Already assigned categories (excluded from results)
+ * @param {string}   title   - Raw task title
+ * @param {string[]} already - Already assigned categories (excluded)
  * @param {number}   limit   - Max suggestions (default 4)
  * @returns {string[]}
  */
 export function suggestCategories(title, already = [], limit = 4) {
   if (!title || title.trim().length < 3) return []
 
-  const lower   = title.toLowerCase()
-  // Tokenise and stem every word in the title
-  const tokens  = lower.split(/[\s\-_/]+/).filter(t => t.length > 1)
-  const stemmed = new Set(tokens.map(stem))
-  // Also keep raw tokens for short words that stemming might mangle
-  tokens.forEach(t => stemmed.add(t))
+  const lower = title.toLowerCase()
+  const doc   = nlp(title)
+
+  // Extract nouns and verbs via compromise (base/normal forms)
+  const extractedNouns = new Set(doc.nouns().out('array').map(w => w.toLowerCase()))
+  const extractedVerbs = new Set(doc.verbs().toInfinitive().out('array').map(w => w.toLowerCase()))
+
+  // Also add individual tokens so short words aren't lost
+  lower.split(/[\s\-_/]+/).filter(t => t.length > 1).forEach(t => {
+    extractedNouns.add(t)
+  })
 
   const alreadySet = new Set(already.map(a => a.toLowerCase()))
   const scores = []
 
-  for (const { label, verbs, nouns, phrases } of TAXONOMY) {
+  for (const { label, nouns, verbs, phrases } of CATEGORIES) {
     if (alreadySet.has(label.toLowerCase())) continue
 
     let score = 0
-
-    for (const v of verbs)   { if (stemmed.has(v) || stemmed.has(stem(v))) score += 3 }
-    for (const n of nouns)   { if (stemmed.has(n) || stemmed.has(stem(n))) score += 2 }
-    for (const p of phrases) { if (lower.includes(p)) score += 4 }
+    for (const n of nouns)   { if (extractedNouns.has(n))  score += 2 }
+    for (const v of verbs)   { if (extractedVerbs.has(v))  score += 3 }
+    for (const p of phrases) { if (lower.includes(p))      score += 4 }
 
     if (score > 0) scores.push({ label, score })
   }
