@@ -21,6 +21,7 @@ import {
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
 import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
+import { prioritizeTasks } from '../services/otherServices'
 import CommentThread from '../components/CommentThread'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
@@ -155,6 +156,10 @@ export default function TasksPage() {
   const [filterDeadline,   setFilterDeadline]   = useState('ALL')
   const [filterStatus,     setFilterStatus]     = useState('ALL')
   const [filterRecurrence, setFilterRecurrence] = useState('ALL')
+
+  // ── AI Prioritize state ─────────────────────────────────────────────────
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError]     = useState('')
 
   useEffect(() => { loadTasks() }, [])
 
@@ -470,6 +475,33 @@ export default function TasksPage() {
     }
   }
 
+  // ── AI Prioritize handler ─────────────────────────────────────────────
+  async function handleAIPrioritize() {
+    const incomplete = tasks.filter(t => t.status !== 'DONE')
+    if (incomplete.length === 0) { setAiError('No incomplete tasks to prioritize.'); return }
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const payload = incomplete.map(t => ({
+        id: t.id, title: t.title, description: t.description || '',
+        priority: t.priority, deadline: t.deadline || null, status: t.status,
+      }))
+      const res = await prioritizeTasks(payload)
+      const ordered = res.prioritized_tasks || []
+      // Map AI-returned priorities back onto local tasks
+      const updates = {}
+      ordered.forEach(item => {
+        if (item.id && item.priority) updates[item.id] = item.priority
+      })
+      setTasks(prev => prev.map(t => updates[t.id] ? { ...t, priority: updates[t.id] } : t))
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'AI prioritization failed. Check your Gemini API key in settings.'
+      setAiError(msg)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-10 max-w-7xl mx-auto">
@@ -497,17 +529,34 @@ export default function TasksPage() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
-                     font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
-                     hover:text-white dark:hover:text-gray-900 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          New Task
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleAIPrioritize}
+            disabled={aiLoading}
+            className={`flex items-center gap-2 border-2 font-bold text-sm px-4 py-2 rounded-lg transition-colors ${
+              aiLoading
+                ? 'border-purple-300 text-purple-300 cursor-wait'
+                : 'border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {aiLoading ? 'Prioritizing…' : 'AI Prioritize'}
+          </button>
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
+                       font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
+                       hover:text-white dark:hover:text-gray-900 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
@@ -540,6 +589,18 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* ── AI Error banner ─────────────────────────────────────────────── */}
+      {aiError && (
+        <div className="mb-4 flex items-center justify-between bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3">
+          <p className="text-sm font-semibold text-red-700 dark:text-red-400">{aiError}</p>
+          <button onClick={() => setAiError('')} className="text-red-400 hover:text-red-700 dark:hover:text-red-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Search + Filters ──────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-4 mb-6">
