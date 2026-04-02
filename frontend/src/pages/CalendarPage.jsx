@@ -28,6 +28,7 @@ import { fetchBlocks, createBlock, updateBlock, deleteBlock } from '../services/
 import { fetchTasks, markTaskComplete } from '../services/taskService'
 import { useTimer } from '../context/TimerContext'
 import { detectOverlap } from '../utils/detectOverlap'
+import { smartScheduleTask } from '../utils/smartSchedule'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
@@ -642,41 +643,24 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
     const task     = tasks.find(t => t.id === id)
     const prevTask = tasks.find(t => t.id === form.task_id)
 
-    // Build a datetime-local string from the task's deadline + due_time.
-    // If due_time is missing, fall back to current time rounded up to next 15 min.
-    let autoStart = null
-    if (task?.deadline) {
-      let time = task.due_time  // "HH:MM" or undefined
-      if (!time) {
-        const now = new Date()
-        const rounded = new Date(Math.ceil(now.getTime() / (15 * 60000)) * (15 * 60000))
-        const pad = n => String(n).padStart(2, '0')
-        time = `${pad(rounded.getHours())}:${pad(rounded.getMinutes())}`
-      }
-      autoStart = `${task.deadline}T${time}`
-    }
-
-    // Auto-compute end_time = autoStart + 1 Pomodoro cycle
-    let autoEnd = null
-    if (autoStart) {
-      const [dp, tp] = autoStart.split('T')
-      const [y, mo, d] = dp.split('-').map(Number)
-      const [h, mi] = tp.split(':').map(Number)
-      const endMs = new Date(y, mo - 1, d, h, mi).getTime() + focusMins * 4 * 60000
-      const end = new Date(endMs)
-      const pad = n => String(n).padStart(2, '0')
-      autoEnd = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
-    }
+    // Use smartScheduleTask to find the best free slot for this task.
+    // – If task has due_time: pins the block there.
+    // – If task has deadline only: finds first free 100-min slot in the active
+    //   window (6 AM–11 PM), avoiding existing blocks. No work-hours assumption —
+    //   gym at 6 AM and therapy at 7 PM are handled equally.
+    const scheduled  = smartScheduleTask(task, focusMins, existingBlocks, block.id)
+    const autoStart  = scheduled?.start_time ?? null
+    const autoEnd    = scheduled?.end_time   ?? null
 
     setForm(f => {
-      // Only auto-fill title if it's blank or was auto-filled from the previous task
+      // Auto-fill title if blank or it was previously set from a task
       const prevAutoTitle = prevTask?.title ?? ''
       const newTitle = (!f.title || f.title === prevAutoTitle)
         ? (task?.title || f.title)
         : f.title
 
-      // Fill times when: start is blank, the new task has a deadline (jump to task date),
-      // or we're switching away from a task that previously filled the times.
+      // Jump to the task's scheduled slot when the task has a deadline.
+      // Also reset if switching away from a task that previously filled the times.
       const shouldFillTime = !f.start_time || !!task?.deadline || !!prevTask?.deadline
 
       return {
@@ -688,7 +672,6 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
       }
     })
 
-    // Re-check overlap with new times
     if (autoStart && autoEnd) checkOverlap(autoStart, autoEnd)
   }
 
