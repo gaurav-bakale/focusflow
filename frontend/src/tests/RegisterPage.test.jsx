@@ -1,24 +1,30 @@
 /**
  * @file RegisterPage.test.jsx
- * @description Comprehensive tests for the RegisterPage component.
- * Tests: Facade pattern (AuthContext.register wraps authService) + Strategy (password strength)
+ * @description Comprehensive unit tests for the RegisterPage component.
  *
- * Framework: Jest 29 + React Testing Library 16
+ * Coverage:
+ *  - All 4 PasswordStrength rule indicators (label text + ✓/○ icon)
+ *  - Submit button disabled logic for every failure scenario
+ *  - Inline confirm-password mismatch error
+ *  - Successful submit: register() called with correct args + navigation
+ *  - API error (400 duplicate email, array detail, no-detail fallback)
+ *  - Client-side JS guards inside handleSubmit
+ *
  * Strategy:
- *   - AuthContext is fully mocked — register() is a jest.fn().
- *   - useNavigate is mocked to intercept navigation.
- *   - Password strength scoring exercised at boundary values.
- *
- * Test oracle convention:
- *   Each test has: // Input: ... | Oracle: ... | Pass: ...
+ *  - AuthContext is fully mocked — register() is a jest.fn()
+ *  - useNavigate is mocked to intercept navigation
+ *  - MemoryRouter wraps each render (Link requires router context)
+ *  - All tests are isolated via beforeEach mock resets
+ *  - No network calls, no real NLP, no real auth
  */
 
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import RegisterPage from '../pages/RegisterPage'
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+// ── Mocks — declared before any imports of the module under test ──────────────
+
 const mockRegister = jest.fn()
 const mockNavigate = jest.fn()
 
@@ -31,341 +37,564 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }))
 
-function wrap() {
-  return render(<MemoryRouter><RegisterPage /></MemoryRouter>)
+// Import AFTER mocks are set up
+import RegisterPage from '../pages/RegisterPage'
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** A password that satisfies all 4 rules: length≥8, uppercase, digit, special char. */
+const STRONG_PW = 'StrongPass1!'
+
+/** The exact label text from the PW_RULES array in RegisterPage.jsx */
+const RULE_LABELS = {
+  length:    'At least 8 characters',
+  uppercase: 'One uppercase letter (A\u20137)',   // A–Z (en-dash U+2013)
+  number:    'One number (0\u20139)',              // 0–9 (en-dash U+2013)
+  special:   'One special character (!@#\u2026)', // !@#… (ellipsis U+2026)
 }
 
-function fillRegister(name = 'Alice', email = 'alice@test.com', password = 'password123') {
-  fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: name } })
-  fireEvent.change(screen.getByLabelText(/email/i),     { target: { value: email } })
-  fireEvent.change(screen.getByLabelText(/password/i),  { target: { value: password } })
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Wraps component in MemoryRouter (needed for Link) and renders it. */
+function renderPage() {
+  render(
+    <MemoryRouter>
+      <RegisterPage />
+    </MemoryRouter>
+  )
 }
 
-beforeEach(() => jest.clearAllMocks())
+/** Returns the most-used form elements. Uses specific label text to avoid ambiguity. */
+function getFormEls() {
+  return {
+    nameInput:     screen.getByLabelText(/full name/i),
+    emailInput:    screen.getByLabelText(/email address/i),
+    // "^Password$" avoids matching "Confirm password"
+    passwordInput: screen.getByLabelText(/^password$/i),
+    confirmInput:  screen.getByLabelText(/confirm password/i),
+    submitBtn:     screen.getByRole('button', { name: /create account/i }),
+  }
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 1 — rendering
-// Tests: Facade pattern (register hides authService)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('rendering', () => {
-  /**
-   * REG-01: Renders "Create your account" heading
-   * // Input: component mounted | Oracle: heading with "create" and "account" visible | Pass: text found
-   */
-  it('Renders "Create your account" heading', () => {
-    // Arrange / Act
-    wrap()
+/**
+ * Fills all four form fields with valid data and matching passwords.
+ * Returns the submit button so callers can click it immediately.
+ */
+async function fillValidForm(overrides = {}) {
+  const opts = {
+    name:     'Jane Smith',
+    email:    'jane@example.com',
+    password: STRONG_PW,
+    confirm:  STRONG_PW,
+    ...overrides,
+  }
+  const { nameInput, emailInput, passwordInput, confirmInput, submitBtn } = getFormEls()
+  await userEvent.type(nameInput,     opts.name)
+  await userEvent.type(emailInput,    opts.email)
+  await userEvent.type(passwordInput, opts.password)
+  await userEvent.type(confirmInput,  opts.confirm)
+  return submitBtn
+}
 
-    // Assert
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+beforeEach(() => {
+  mockRegister.mockReset()
+  mockNavigate.mockReset()
+})
+
+// =============================================================================
+// Suite 1 — Basic rendering
+// =============================================================================
+describe('RegisterPage – rendering', () => {
+  it('renders the "Create your account" heading', () => {
+    renderPage()
     expect(screen.getByText(/create your account/i)).toBeInTheDocument()
   })
 
-  /**
-   * REG-02: Renders name, email, password fields
-   * // Input: component mounted | Oracle: all three input fields accessible via labels | Pass: all found
-   */
-  it('Renders name, email, password fields', () => {
-    // Arrange / Act
-    wrap()
-
-    // Assert
+  it('renders name, email, password, and confirm password fields', () => {
+    renderPage()
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
   })
 
-  /**
-   * REG-03: Step indicators 1, 2, 3 visible
-   * // Input: component mounted | Oracle: step indicators "1", "2", "3" in DOM | Pass: all three found
-   */
-  it('Step indicators 1, 2, 3 visible', () => {
-    // Arrange / Act
-    wrap()
+  it('renders the submit button', () => {
+    renderPage()
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
+  })
 
-    // Assert — steps are rendered (look for the step numbers or text)
+  it('renders step indicators 1, 2, 3', () => {
+    renderPage()
     const body = document.body.textContent
     expect(body).toContain('1')
     expect(body).toContain('2')
     expect(body).toContain('3')
   })
-})
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 2 — form interaction
-// Tests: Observer pattern (form state + password strength)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('form interaction', () => {
-  /**
-   * REG-04: Can type into all fields
-   * // Input: type into name, email, password fields | Oracle: each input reflects typed value | Pass: all values match
-   */
-  it('Can type into all fields', () => {
-    // Arrange
-    wrap()
-
-    // Act
-    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Bob' } })
-    fireEvent.change(screen.getByLabelText(/email/i),     { target: { value: 'bob@test.com' } })
-    fireEvent.change(screen.getByLabelText(/password/i),  { target: { value: 'mypassword' } })
-
-    // Assert
-    expect(screen.getByLabelText(/full name/i).value).toBe('Bob')
-    expect(screen.getByLabelText(/email/i).value).toBe('bob@test.com')
-    expect(screen.getByLabelText(/password/i).value).toBe('mypassword')
-  })
-
-  /**
-   * REG-05: Password strength meter appears after typing
-   * // Input: type any password | Oracle: password strength indicator visible | Pass: strength label appears
-   */
-  it('Password strength meter appears after typing', async () => {
-    // Arrange
-    wrap()
-
-    // Act
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abcdefgh' } })
-
-    // Assert
-    await waitFor(() => {
-      // Strength meter appears — any strength label found
-      const strengthText = screen.queryByText(/weak password/i) ||
-                           screen.queryByText(/fair password/i) ||
-                           screen.queryByText(/good password/i) ||
-                           screen.queryByText(/strong password/i)
-      expect(strengthText).toBeInTheDocument()
-    })
-  })
-
-  /**
-   * REG-06: Weak password (< 8 chars) shows "Weak" label
-   * // Input: type 3-char password | Oracle: "Weak" strength label visible | Pass: weak text found
-   */
-  it('Weak password (< 8 chars) shows "Weak" label', async () => {
-    // Arrange
-    wrap()
-
-    // Act — 'abcdefgh' meets only length criterion (score=1) → shows "Weak password"
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abcdefgh' } })
-
-    // Assert
-    await waitFor(() => {
-      expect(screen.getByText(/weak password/i)).toBeInTheDocument()
-    })
-  })
-
-  /**
-   * REG-07: Strong password shows "Strong" label
-   * // Input: type password meeting all criteria | Oracle: "Strong password" label visible | Pass: strong text found
-   */
-  it('Strong password shows "Strong" label', async () => {
-    // Arrange
-    wrap()
-
-    // Act — password with uppercase, lowercase, number, special char and length >= 8
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'SecurePass1!' } })
-
-    // Assert
-    await waitFor(() => {
-      expect(screen.getByText(/strong password/i)).toBeInTheDocument()
-    })
+  it('renders a link to the login page', () => {
+    renderPage()
+    expect(screen.getByRole('link', { name: /sign in/i })).toBeInTheDocument()
   })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 3 — validation
-// Tests: Command pattern (validation before register)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('validation', () => {
-  /**
-   * REG-08: Shows error if password < 8 chars (without calling register)
-   * // Input: fill name/email, set password to "abc", submit | Oracle: error shown, register NOT called | Pass: error visible + mock not called
-   */
-  it('Shows error if password < 8 chars (without calling register)', async () => {
-    // Arrange
-    wrap()
-
-    // Act
-    fillRegister('Bob', 'bob@test.com', 'abc')
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
-
-    // Assert
-    await waitFor(() => {
-      expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
-    })
-    expect(mockRegister).not.toHaveBeenCalled()
+// =============================================================================
+// Suite 2 — PasswordStrength rule indicators
+// =============================================================================
+describe('RegisterPage – PasswordStrength rule indicators', () => {
+  it('shows no rule labels when password field is empty', () => {
+    renderPage()
+    // PasswordStrength returns null when password === ''
+    expect(screen.queryByText('At least 8 characters')).not.toBeInTheDocument()
+    expect(screen.queryByText(/one uppercase letter/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/one number/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/one special character/i)).not.toBeInTheDocument()
   })
 
-  /**
-   * REG-09: Does NOT call register API for short password
-   * // Input: submit with password "abc" (3 chars) | Oracle: mockRegister never called | Pass: mock call count = 0
-   */
-  it('Does NOT call register API for short password', async () => {
-    // Arrange
-    wrap()
+  it('shows all 4 rule labels once any character is typed', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'a')
 
-    // Act
-    fillRegister('Charlie', 'charlie@test.com', 'ab')
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+    expect(screen.getByText('At least 8 characters')).toBeInTheDocument()
+    expect(screen.getByText(/one uppercase letter/i)).toBeInTheDocument()
+    expect(screen.getByText(/one number/i)).toBeInTheDocument()
+    expect(screen.getByText(/one special character/i)).toBeInTheDocument()
+  })
 
-    // Assert
-    await waitFor(() => {
-      expect(mockRegister).not.toHaveBeenCalled()
-    })
+  // ── Rule 1: length ──────────────────────────────────────────────────────────
+
+  it('length rule shows ✓ when password has 8+ characters', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefgh')  // 8 chars
+
+    const ruleEl = screen.getByText('At least 8 characters')
+    expect(ruleEl.previousSibling.textContent).toBe('✓')
+  })
+
+  it('length rule shows ○ when password has fewer than 8 characters', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abc')
+
+    const ruleEl = screen.getByText('At least 8 characters')
+    expect(ruleEl.previousSibling.textContent).toBe('○')
+  })
+
+  // ── Rule 2: uppercase ───────────────────────────────────────────────────────
+
+  it('uppercase rule shows ✓ when password has an uppercase letter', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefgH')
+
+    const ruleEl = screen.getByText(/one uppercase letter/i)
+    expect(ruleEl.previousSibling.textContent).toBe('✓')
+  })
+
+  it('uppercase rule shows ○ when password has no uppercase letter', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefgh')
+
+    const ruleEl = screen.getByText(/one uppercase letter/i)
+    expect(ruleEl.previousSibling.textContent).toBe('○')
+  })
+
+  // ── Rule 3: number ──────────────────────────────────────────────────────────
+
+  it('number rule shows ✓ when password contains a digit', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefg1')
+
+    const ruleEl = screen.getByText(/one number/i)
+    expect(ruleEl.previousSibling.textContent).toBe('✓')
+  })
+
+  it('number rule shows ○ when password has no digit', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefgh')
+
+    const ruleEl = screen.getByText(/one number/i)
+    expect(ruleEl.previousSibling.textContent).toBe('○')
+  })
+
+  // ── Rule 4: special character ───────────────────────────────────────────────
+
+  it('special-char rule shows ✓ when password contains a special character', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefg!')
+
+    const ruleEl = screen.getByText(/one special character/i)
+    expect(ruleEl.previousSibling.textContent).toBe('✓')
+  })
+
+  it('special-char rule shows ○ when password has no special character', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'Abcdefg1')  // uppercase + digit, no special
+
+    const ruleEl = screen.getByText(/one special character/i)
+    expect(ruleEl.previousSibling.textContent).toBe('○')
+  })
+
+  // ── All 4 rules passing ─────────────────────────────────────────────────────
+
+  it('all 4 rules show ✓ when a strong password is entered', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+
+    expect(screen.getByText('At least 8 characters').previousSibling.textContent).toBe('✓')
+    expect(screen.getByText(/one uppercase letter/i).previousSibling.textContent).toBe('✓')
+    expect(screen.getByText(/one number/i).previousSibling.textContent).toBe('✓')
+    expect(screen.getByText(/one special character/i).previousSibling.textContent).toBe('✓')
+  })
+
+  // ── Strength labels ─────────────────────────────────────────────────────────
+
+  it('shows "Weak password" for a password that meets only 1 rule', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, 'abcdefgh')  // only length ≥ 8
+
+    await waitFor(() => expect(screen.getByText('Weak password')).toBeInTheDocument())
+  })
+
+  it('shows "Strong password" when all 4 rules pass', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+
+    await waitFor(() => expect(screen.getByText('Strong password')).toBeInTheDocument())
+  })
+
+  it('shows "Fair password" when 2 rules pass', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    // length ≥ 8 + uppercase → score 2
+    await userEvent.type(passwordInput, 'AbcdefgH')
+
+    await waitFor(() => expect(screen.getByText('Fair password')).toBeInTheDocument())
+  })
+
+  it('shows "Good password" when 3 rules pass', async () => {
+    renderPage()
+    const { passwordInput } = getFormEls()
+    // length ≥ 8 + uppercase + digit → score 3
+    await userEvent.type(passwordInput, 'Abcdefg1')
+
+    await waitFor(() => expect(screen.getByText('Good password')).toBeInTheDocument())
   })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 4 — register success
-// Tests: Facade pattern (register() hides authService)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('register success', () => {
-  /**
-   * REG-10: Calls register() with name, email, password
-   * // Input: fill all fields, submit | Oracle: register called with (name, email, password) | Pass: mock called with correct args
-   */
-  it('Calls register() with name, email, password', async () => {
-    // Arrange
-    mockRegister.mockResolvedValueOnce({ id: 'u1', name: 'Alice', onboarding_completed: false })
-    wrap()
+// =============================================================================
+// Suite 3 — Submit button disabled logic
+// =============================================================================
+describe('RegisterPage – submit button disabled logic', () => {
+  it('is disabled on initial render (empty fields)', () => {
+    renderPage()
+    expect(getFormEls().submitBtn).toBeDisabled()
+  })
 
-    // Act
-    fillRegister('Alice', 'alice@test.com', 'password123')
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+  it('is disabled when password fails all rules (too short)', async () => {
+    renderPage()
+    const { passwordInput, submitBtn } = getFormEls()
+    await userEvent.type(passwordInput, 'weak')
+    expect(submitBtn).toBeDisabled()
+  })
 
-    // Assert
+  it('is disabled when password passes all rules but confirm is empty', async () => {
+    renderPage()
+    const { passwordInput, submitBtn } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('is disabled when password passes all rules but confirm mismatches', async () => {
+    renderPage()
+    const { passwordInput, confirmInput, submitBtn } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, 'DifferentPass9@')
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('is disabled when passwords match but not all 4 rules are satisfied', async () => {
+    renderPage()
+    const { passwordInput, confirmInput, submitBtn } = getFormEls()
+    const weak = 'weakpass'  // length < 8 fails (7 chars), no uppercase/digit/special
+    await userEvent.type(passwordInput, weak)
+    await userEvent.type(confirmInput, weak)
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('is disabled when 3 of 4 rules pass and passwords match (no special char)', async () => {
+    renderPage()
+    const { passwordInput, confirmInput, submitBtn } = getFormEls()
+    const threeRules = 'Abcdefg1'  // length + uppercase + digit, missing special char
+    await userEvent.type(passwordInput, threeRules)
+    await userEvent.type(confirmInput, threeRules)
+    expect(submitBtn).toBeDisabled()
+  })
+
+  it('is ENABLED when all 4 rules pass AND passwords match', async () => {
+    renderPage()
+    const { passwordInput, confirmInput, submitBtn } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, STRONG_PW)
+    expect(submitBtn).not.toBeDisabled()
+  })
+})
+
+// =============================================================================
+// Suite 4 — Inline confirm-password mismatch error
+// =============================================================================
+describe('RegisterPage – confirm password mismatch error', () => {
+  it('shows no mismatch error when confirm field is empty', () => {
+    renderPage()
+    expect(screen.queryByText('Passwords do not match')).not.toBeInTheDocument()
+  })
+
+  it('shows mismatch error when confirm differs from password', async () => {
+    renderPage()
+    const { passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, 'WrongPass9!')
+
+    expect(screen.getByText('Passwords do not match')).toBeInTheDocument()
+  })
+
+  it('hides mismatch error once confirm matches password', async () => {
+    renderPage()
+    const { passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, 'Wrong!')
+    expect(screen.getByText('Passwords do not match')).toBeInTheDocument()
+
+    // Clear confirm and type the correct value
+    await userEvent.clear(confirmInput)
+    await userEvent.type(confirmInput, STRONG_PW)
+    expect(screen.queryByText('Passwords do not match')).not.toBeInTheDocument()
+  })
+
+  it('the confirm input border turns red-ish when mismatched', async () => {
+    renderPage()
+    const { passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, 'wrong')
+
+    // The component applies a red border via inline style when mismatch
+    expect(confirmInput.style.border).toMatch(/239,68,68/)
+  })
+
+  it('the confirm input border turns green-ish when matched', async () => {
+    renderPage()
+    const { passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, STRONG_PW)
+
+    // The component applies a green border via inline style when match
+    expect(confirmInput.style.border).toMatch(/52,211,153/)
+  })
+})
+
+// =============================================================================
+// Suite 5 — Successful registration
+// =============================================================================
+describe('RegisterPage – successful registration', () => {
+  it('calls register() with name, email, and password on valid submit', async () => {
+    mockRegister.mockResolvedValue(undefined)
+    renderPage()
+    const submitBtn = await fillValidForm()
+
+    fireEvent.click(submitBtn)
+
     await waitFor(() => {
-      expect(mockRegister).toHaveBeenCalledWith('Alice', 'alice@test.com', 'password123')
+      expect(mockRegister).toHaveBeenCalledTimes(1)
+      expect(mockRegister).toHaveBeenCalledWith('Jane Smith', 'jane@example.com', STRONG_PW)
     })
   })
 
-  /**
-   * REG-11: Navigates to "/onboarding" on success
-   * // Input: register resolves successfully | Oracle: navigate('/onboarding') called | Pass: navigate mock called with /onboarding
-   */
-  it('Navigates to "/onboarding" on success', async () => {
-    // Arrange
-    mockRegister.mockResolvedValueOnce({ id: 'u1', name: 'Alice', onboarding_completed: false })
-    wrap()
+  it('navigates to /onboarding after successful register()', async () => {
+    mockRegister.mockResolvedValue(undefined)
+    renderPage()
+    const submitBtn = await fillValidForm()
 
-    // Act
-    fillRegister()
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+    fireEvent.click(submitBtn)
 
-    // Assert
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/onboarding')
     })
   })
+
+  it('does not show an error banner after a successful submission', async () => {
+    mockRegister.mockResolvedValue(undefined)
+    renderPage()
+    const submitBtn = await fillValidForm()
+
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled())
+
+    expect(screen.queryByText(/registration failed/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/email already/i)).not.toBeInTheDocument()
+  })
+
+  it('passes the exact confirm password value only once to register() (not confirm)', async () => {
+    mockRegister.mockResolvedValue(undefined)
+    renderPage()
+    const submitBtn = await fillValidForm()
+
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => {
+      // register() should receive 3 args: name, email, password — NOT confirm
+      expect(mockRegister).toHaveBeenCalledWith(
+        expect.any(String),  // name
+        expect.any(String),  // email
+        STRONG_PW            // password (not 4 args)
+      )
+      expect(mockRegister.mock.calls[0]).toHaveLength(3)
+    })
+  })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 5 — error handling
-// Tests: Facade pattern (error extraction)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('error handling', () => {
-  /**
-   * REG-12: Shows error when register() throws with string detail
-   * // Input: register rejects with { response: { data: { detail: "Email already registered" } } } | Oracle: error visible | Pass: text found
-   */
-  it('Shows error when register() throws with string detail', async () => {
-    // Arrange
-    mockRegister.mockRejectedValueOnce({
-      response: { data: { detail: 'Email already registered' } },
+// =============================================================================
+// Suite 6 — API error handling (400 duplicate email, other errors)
+// =============================================================================
+describe('RegisterPage – API error handling', () => {
+  it('shows the API string detail when register() rejects with a 400 response', async () => {
+    mockRegister.mockRejectedValue({
+      response: { data: { detail: 'Email already registered.' }, status: 400 },
     })
-    wrap()
+    renderPage()
+    const submitBtn = await fillValidForm({ email: 'duplicate@example.com' })
 
-    // Act
-    fillRegister()
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+    fireEvent.click(submitBtn)
 
-    // Assert
     await waitFor(() => {
-      expect(screen.getByText(/email already registered/i)).toBeInTheDocument()
+      expect(screen.getByText('Email already registered.')).toBeInTheDocument()
     })
+  })
+
+  it('does NOT navigate when register() throws a 400 duplicate-email error', async () => {
+    mockRegister.mockRejectedValue({
+      response: { data: { detail: 'Email already registered.' }, status: 400 },
+    })
+    renderPage()
+    const submitBtn = await fillValidForm()
+
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => expect(screen.getByText('Email already registered.')).toBeInTheDocument())
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  /**
-   * REG-13: Shows error when register() throws with array detail (Pydantic 422)
-   * // Input: register rejects with detail=[{msg:'value error'}] | Oracle: joined message shown | Pass: first error message visible
-   */
-  it('Shows error when register() throws with array detail (Pydantic 422)', async () => {
-    // Arrange
-    mockRegister.mockRejectedValueOnce({
-      response: { data: { detail: [{ msg: 'value is not a valid email' }, { msg: 'field required' }] } },
-    })
-    wrap()
+  it('shows a fallback error when register() rejects with no response object', async () => {
+    mockRegister.mockRejectedValue(new Error('Network Error'))
+    renderPage()
+    const submitBtn = await fillValidForm()
 
-    // Act
-    fillRegister('Alice', 'notanemail', 'password123')
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+    fireEvent.click(submitBtn)
 
-    // Assert
     await waitFor(() => {
-      expect(screen.getByText(/value is not a valid email/i)).toBeInTheDocument()
+      expect(screen.getByText('Registration failed. Please try again.')).toBeInTheDocument()
     })
   })
 
-  /**
-   * REG-14: Error persists and is readable
-   * // Input: register rejects | Oracle: error still in DOM after settling | Pass: error text found and non-empty
-   */
-  it('Error persists and is readable', async () => {
-    // Arrange
-    mockRegister.mockRejectedValueOnce({
-      response: { data: { detail: 'Server unavailable' } },
+  it('shows joined detail messages when API detail is an array of objects (Pydantic 422)', async () => {
+    mockRegister.mockRejectedValue({
+      response: {
+        data: {
+          detail: [
+            { msg: 'Name is required.' },
+            { msg: 'Email is invalid.' },
+          ],
+        },
+      },
     })
-    wrap()
+    renderPage()
+    const submitBtn = await fillValidForm()
 
-    // Act
-    fillRegister()
-    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+    fireEvent.click(submitBtn)
 
-    // Assert
     await waitFor(() => {
-      const errorEl = screen.getByText(/server unavailable/i)
-      expect(errorEl).toBeInTheDocument()
-      expect(errorEl.textContent.length).toBeGreaterThan(0)
+      expect(screen.getByText('Name is required. · Email is invalid.')).toBeInTheDocument()
+    })
+  })
+
+  it('re-enables the submit button after a failed API call (loading resets)', async () => {
+    mockRegister.mockRejectedValue({
+      response: { data: { detail: 'Email already registered.' } },
+    })
+    renderPage()
+    const { passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(passwordInput, STRONG_PW)
+    await userEvent.type(confirmInput, STRONG_PW)
+    const submitBtn = getFormEls().submitBtn
+
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => expect(screen.getByText('Email already registered.')).toBeInTheDocument())
+
+    // After error, loading is false again — button should be enabled
+    expect(submitBtn).not.toBeDisabled()
+  })
+
+  it('error banner is visible (not hidden) after API rejection', async () => {
+    mockRegister.mockRejectedValue({
+      response: { data: { detail: 'Server error, try again.' } },
+    })
+    renderPage()
+    const submitBtn = await fillValidForm()
+
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => {
+      const banner = screen.getByText('Server error, try again.')
+      expect(banner).toBeVisible()
     })
   })
 })
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Suite 6 — password strength
-// Tests: Strategy pattern (strength scoring function)
-// ─────────────────────────────────────────────────────────────────────────────
-describe('password strength', () => {
-  /**
-   * REG-15: Score 1 (length only) → "Weak" in red
-   * // Input: password "abcdefgh" (8 chars, lowercase only) | Oracle: "Weak password" shown | Pass: text found
-   */
-  it('Score 1 (length only) → "Weak" in red', async () => {
-    // Arrange
-    wrap()
+// =============================================================================
+// Suite 7 — Client-side JS guards inside handleSubmit
+// =============================================================================
+describe('RegisterPage – client-side submit guards', () => {
+  it('does not call register() when submitted with a weak password via JS', async () => {
+    renderPage()
+    const { nameInput, emailInput, passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(nameInput, 'Jane')
+    await userEvent.type(emailInput, 'jane@example.com')
+    await userEvent.type(passwordInput, 'weak')
+    await userEvent.type(confirmInput, 'weak')
 
-    // Act — only meets length criterion (>= 8 chars), score = 1
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abcdefgh' } })
+    // Trigger form submit directly — bypasses the disabled-button guard
+    fireEvent.submit(passwordInput.closest('form'))
 
-    // Assert
     await waitFor(() => {
-      expect(screen.getByText(/weak password/i)).toBeInTheDocument()
+      expect(mockRegister).not.toHaveBeenCalled()
     })
   })
 
-  /**
-   * REG-16: Score 4 (all criteria) → "Strong" in green
-   * // Input: password "SecurePass1!" meeting all criteria | Oracle: "Strong password" shown | Pass: text found
-   */
-  it('Score 4 (all criteria) → "Strong" in green', async () => {
-    // Arrange
-    wrap()
+  it('does not call register() when submitted with mismatched passwords via JS', async () => {
+    renderPage()
+    const { nameInput, emailInput, passwordInput, confirmInput } = getFormEls()
+    await userEvent.type(nameInput, 'Jane')
+    await userEvent.type(emailInput, 'jane@example.com')
+    await userEvent.type(passwordInput, STRONG_PW)
+    // Set a different confirm value via fireEvent (faster than clearing + retyping)
+    fireEvent.change(confirmInput, { target: { value: 'DifferentPass9@' } })
 
-    // Act — meets all 4 criteria: length, uppercase, number, special char
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'SecurePass1!' } })
+    fireEvent.submit(passwordInput.closest('form'))
 
-    // Assert
     await waitFor(() => {
-      expect(screen.getByText(/strong password/i)).toBeInTheDocument()
+      expect(mockRegister).not.toHaveBeenCalled()
     })
   })
 })

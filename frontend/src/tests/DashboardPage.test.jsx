@@ -49,9 +49,15 @@ jest.mock('../services/otherServices', () => ({
 }))
 
 jest.mock('../services/authService', () => ({
-  login:      jest.fn(),
-  register:   jest.fn(),
-  saveApiKey: jest.fn().mockResolvedValue({}),
+  login:       jest.fn(),
+  register:    jest.fn(),
+  saveApiKey:  jest.fn().mockResolvedValue({}),
+  getProfile:  jest.fn().mockResolvedValue({
+    id: 'u1', name: 'Alice Smith', email: 'alice@focusflow.dev',
+    onboarding_completed: true,
+    preferences: { pomodoro_duration: 25, short_break: 5, long_break: 15 },
+    created_at: new Date().toISOString(),
+  }),
 }))
 
 // ── Mock AITaskGenerator (tested separately) ──────────────────────────────────
