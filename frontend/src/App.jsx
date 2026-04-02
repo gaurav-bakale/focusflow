@@ -21,7 +21,8 @@ import DashboardPage  from './pages/DashboardPage'
 import TasksPage      from './pages/TasksPage'
 import TimerPage      from './pages/TimerPage'
 import CalendarPage   from './pages/CalendarPage'
-import CanvasAIPage   from './pages/CanvasAIPage'
+import CanvasAIPage      from './pages/CanvasAIPage'
+import SharedTasksPage   from './pages/SharedTasksPage'
 
 function Spinner() {
   return (
@@ -85,6 +86,7 @@ export default function App() {
               <Route path="timer"    element={<TimerPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="ai"       element={<CanvasAIPage />} />
+              <Route path="shared"   element={<SharedTasksPage />} />
             </Route>
 
             {/* Fallback */}
