@@ -6,10 +6,17 @@ body {
   @apply bg-gray-50 text-gray-900 font-sans;
 }
 
+.dark body {
+  @apply bg-gray-950 text-gray-100;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { @apply bg-gray-100; }
 ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
+
+.dark ::-webkit-scrollbar-track { @apply bg-gray-800; }
+.dark ::-webkit-scrollbar-thumb { @apply bg-gray-600; }
 
 /* ── Sketch underline animation ──────────────────────────────────── */
 

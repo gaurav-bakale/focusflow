@@ -29,14 +29,14 @@ import { fetchTasks, markTaskComplete } from '../services/taskService'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
-  HIGH:   { dot: '#f87171', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', label: 'High',   badge: 'bg-red-50 text-red-700 ring-1 ring-red-200'    },
-  MEDIUM: { dot: '#fbbf24', bg: '#fffbeb', border: '#fde68a', text: '#78350f', label: 'Medium', badge: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
-  LOW:    { dot: '#a3e635', bg: '#f7fee7', border: '#bef264', text: '#365314', label: 'Low',    badge: 'bg-lime-50 text-lime-700 ring-1 ring-lime-200'   },
+  HIGH:   { dot: '#f87171', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', label: 'High',   badge: 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800'    },
+  MEDIUM: { dot: '#fbbf24', bg: '#fffbeb', border: '#fde68a', text: '#78350f', label: 'Medium', badge: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800' },
+  LOW:    { dot: '#a3e635', bg: '#f7fee7', border: '#bef264', text: '#365314', label: 'Low',    badge: 'bg-lime-50 dark:bg-lime-950/50 text-lime-700 dark:text-lime-400 ring-1 ring-lime-200 dark:ring-lime-800'   },
 }
 const S_BADGE = {
-  TODO:        'bg-slate-100 text-slate-600',
-  IN_PROGRESS: 'bg-blue-50 text-blue-700',
-  DONE:        'bg-emerald-50 text-emerald-700',
+  TODO:        'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
+  IN_PROGRESS: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400',
+  DONE:        'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400',
 }
 const S_LABEL = { TODO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
 const BLOCK_PALETTE = ['#6366f1','#3b82f6','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#1e293b']
@@ -104,6 +104,36 @@ const FC_CSS = `
   /* Projected recurring events — lighter/dashed to signal "future occurrence" */
   .fc .fc-projected { opacity: 0.65 !important; }
   .fc .fc-projected .fc-event-main { font-style: italic; }
+
+  /* ── Dark mode overrides ─────────────────────────────────────────────────── */
+  .dark .fc .fc-scrollgrid-section-header > * { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-timegrid-slot        { border-color: #1e293b !important; }
+  .dark .fc .fc-timegrid-slot-minor  { border-color: transparent !important; }
+  .dark .fc .fc-timegrid-slot-label-cushion { color: #475569 !important; }
+  .dark .fc .fc-timegrid-col { border-color: #1e293b !important; }
+  .dark .fc .fc-col-header-cell { border: none !important; background: #0f172a !important; }
+  .dark .fc .fc-col-header { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-col-header-cell-cushion { color: #94a3b8 !important; text-decoration: none !important; }
+  .dark .fc .fc-day-today .fc-col-header-cell-cushion { color: #818cf8 !important; }
+  .dark .fc .fc-day-today                  { background: rgba(99,102,241,0.08) !important; }
+  .dark .fc .fc-timegrid-col.fc-day-today  { background: rgba(99,102,241,0.06) !important; }
+  .dark .fc .fc-scrollgrid { background: #0f172a !important; }
+  .dark .fc .fc-timegrid-body { background: #0f172a !important; }
+  .dark .fc .fc-view-harness { background: #0f172a !important; }
+  .dark .fc .fc-daygrid-body   { border-bottom: 1px solid #1e293b !important; }
+  .dark .fc .fc-daygrid-day    { border-color: #1e293b !important; background: #0f172a; }
+  .dark .fc .fc-day-today.fc-daygrid-day { background: rgba(99,102,241,0.08) !important; }
+  .dark .fc .fc-daygrid-day-number  { color: #94a3b8 !important; }
+  .dark .fc .fc-day-today .fc-daygrid-day-number { background: #6366f1; color: white !important; }
+  .dark .fc .fc-now-indicator-line { border-color: #f87171 !important; }
+  .dark .fc .fc-now-indicator-arrow { background: #f87171; }
+  .dark .fc .fc-highlight { background: rgba(99,102,241,0.15) !important; }
+  .dark .fc .fc-more-popover { background: #1e293b !important; border: 1px solid #334155 !important; }
+  .dark .fc .fc-more-popover .fc-popover-header { background: #1e293b !important; color: #e2e8f0 !important; }
+  .dark .fc .fc-all-day-text { color: #475569 !important; }
+  .dark .fc .fc-timegrid-axis-cushion { color: #475569 !important; }
+  .dark .fc-theme-standard td, .dark .fc-theme-standard th { border-color: #1e293b !important; }
+  .dark .fc-theme-standard .fc-scrollgrid { border-color: #1e293b !important; }
 `
 
 // ── Recurrence expansion helpers ─────────────────────────────────────────────
@@ -209,7 +239,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
             if (picker === 'year') setYearPage(y => y - 12)
             else setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1))
           }}
-          className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"
+          className="w-6 h-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7"/>
@@ -221,7 +251,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
           <button
             onClick={() => setPicker(p => p === 'month' ? null : 'month')}
             className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'month' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              picker === 'month' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
             {monthLabel}
@@ -229,7 +259,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
           <button
             onClick={() => { setPicker(p => p === 'year' ? null : 'year'); setYearPage(month.getFullYear()) }}
             className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'year' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 hover:bg-gray-100'
+              picker === 'year' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
             {yearLabel}
@@ -241,7 +271,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
             if (picker === 'year') setYearPage(y => y + 12)
             else setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1))
           }}
-          className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors"
+          className="w-6 h-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/>
@@ -259,7 +289,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
               className={`text-[10px] font-semibold py-1 rounded transition-colors ${
                 i === month.getMonth()
                   ? 'bg-slate-800 text-white'
-                  : 'hover:bg-gray-100 text-gray-600'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
               }`}
             >
               {m}
@@ -278,7 +308,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
               className={`text-[10px] font-semibold py-1 rounded transition-colors ${
                 y === month.getFullYear()
                   ? 'bg-slate-800 text-white'
-                  : 'hover:bg-gray-100 text-gray-600'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
               }`}
             >
               {y}
@@ -292,7 +322,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
         <>
           <div className="grid grid-cols-7 mb-0.5">
             {['S','M','T','W','T','F','S'].map((d, i) => (
-              <span key={i} className="text-center text-[10px] font-bold text-gray-400 py-0.5">{d}</span>
+              <span key={i} className="text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 py-0.5">{d}</span>
             ))}
           </div>
           <div className="grid grid-cols-7">
@@ -306,7 +336,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
                   className={`
                     relative flex flex-col items-center justify-center
                     w-7 h-7 mx-auto rounded-full text-[11px] transition-colors
-                    ${!cur ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}
+                    ${!cur ? 'text-gray-300 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}
                     ${isToday ? '!bg-slate-800 !text-white font-bold' : ''}
                   `}
                 >
@@ -359,33 +389,33 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: ps.dot }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 {event.extendedProps.isProjected ? 'Projected Occurrence' : 'Task Deadline'}
               </span>
               </div>
-              <button onClick={onClose} className="text-gray-300 hover:text-gray-600 transition-colors shrink-0 ml-2">
+              <button onClick={onClose} className="text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors shrink-0 ml-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
 
-            <h3 className="text-sm font-bold text-gray-900 mb-3 leading-snug">{task.title}</h3>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 leading-snug">{task.title}</h3>
 
             {task.description && (
-              <p className="text-xs text-gray-500 mb-3 leading-relaxed line-clamp-3">{task.description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed line-clamp-3">{task.description}</p>
             )}
 
             {/* Meta */}
             <div className="space-y-2 mb-4">
               <div className="flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth={2}/>
                   <line x1="16" y1="2" x2="16" y2="6" strokeWidth={2}/>
                   <line x1="8" y1="2" x2="8" y2="6" strokeWidth={2}/>
                   <line x1="3" y1="10" x2="21" y2="10" strokeWidth={2}/>
                 </svg>
-                <span className={`text-xs font-semibold ${overdue ? 'text-red-600' : 'text-gray-700'}`}>
+                <span className={`text-xs font-semibold ${overdue ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
                   {fmt(task.deadline, { weekday: 'short', month: 'short', day: 'numeric' })}
                   {task.due_time && (() => {
                     const [h, m] = task.due_time.split(':').map(Number)
@@ -401,17 +431,17 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
                   {S_LABEL[task.status] || task.status}
                 </span>
                 {task.recurrence && task.recurrence !== 'NONE' && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
                     ↻ {task.recurrence[0] + task.recurrence.slice(1).toLowerCase()}
                   </span>
                 )}
                 {task.estimated_minutes && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                     {task.estimated_minutes}m
                   </span>
                 )}
                 {task.categories?.map(c => (
-                  <span key={c} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{c}</span>
+                  <span key={c} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">{c}</span>
                 ))}
               </div>
             </div>
@@ -432,7 +462,7 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
               </button>
             )}
             {task.status !== 'DONE' && event.extendedProps.isProjected && (
-              <p className="text-center text-[11px] text-gray-400 italic py-1">
+              <p className="text-center text-[11px] text-gray-400 dark:text-gray-500 italic py-1">
                 Complete the current occurrence first to unlock this date.
               </p>
             )}
@@ -455,12 +485,12 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: color }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Time Block</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Time Block</span>
             </div>
             <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={() => onEdit(event)}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 title="Edit"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,14 +499,14 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
               </button>
               <button
                 onClick={() => onDelete(event.extendedProps.blockId)}
-                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1 rounded hover:bg-red-50 text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors"
                 title="Delete"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
               </button>
-              <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors">
+              <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -484,35 +514,35 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
             </div>
           </div>
 
-          <h3 className="text-sm font-bold text-gray-900 mb-3 leading-snug">{event.title}</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 leading-snug">{event.title}</h3>
 
           {/* Time */}
           <div className="space-y-2 mb-4">
             <div className="flex items-center gap-2">
-              <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" strokeWidth={2}/>
                 <path strokeLinecap="round" strokeWidth={2} d="M12 6v6l4 2"/>
               </svg>
-              <span className="text-xs font-semibold text-gray-700">
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 {fmt(start, { weekday: 'short', month: 'short', day: 'numeric' })}
               </span>
             </div>
             <div className="flex items-center gap-2 pl-5">
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                 {fmtTime(start)} → {fmtTime(end)}
-                <span className="ml-1.5 text-gray-400">({duration(start, end)})</span>
+                <span className="ml-1.5 text-gray-400 dark:text-gray-500">({duration(start, end)})</span>
               </span>
             </div>
           </div>
 
           {/* Linked task */}
           {linked && (
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">Linked Task</p>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1.5">Linked Task</p>
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 rounded-full mt-0.5 shrink-0" style={{ background: P[linked.priority]?.dot || '#94a3b8' }} />
                 <div>
-                  <p className="text-xs font-semibold text-gray-800 leading-snug">{linked.title}</p>
+                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-snug">{linked.title}</p>
                   <div className="flex gap-1 mt-1">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${P[linked.priority]?.badge || ''}`}>
                       {P[linked.priority]?.label}
@@ -534,7 +564,7 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
     <div
       ref={ref}
       style={{ position: 'fixed', left, top, zIndex: 200, width: W }}
-      className="bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in"
+      className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in"
     >
       {renderContent()}
     </div>
@@ -574,60 +604,60 @@ function BlockModal({ block, tasks, onSave, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center z-[150]" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Color top bar */}
         <div className="h-1.5" style={{ background: form.color }} />
 
         <div className="p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-5">
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-5">
             {isNew ? 'New Time Block' : 'Edit Time Block'}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Title</label>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Title</label>
               <input
                 required placeholder="e.g. Deep Work Session"
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                           focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
+                           focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
                            outline-none transition-all"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Start</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Start</label>
                 <input type="datetime-local" required
                   value={form.start_time}
                   onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                             focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
+                             focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">End</label>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">End</label>
                 <input type="datetime-local" required
                   value={form.end_time}
                   onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))}
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                             focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
+                             focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                Link to Task <span className="font-normal text-gray-400">(optional — auto-fills title)</span>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">
+                Link to Task <span className="font-normal text-gray-400 dark:text-gray-500">(optional — auto-fills title)</span>
               </label>
               <select
                 value={form.task_id}
                 onChange={e => handleTaskChange(e.target.value)}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm
-                           focus:bg-white focus:border-indigo-400 outline-none transition-all"
+                className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100
+                           focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 outline-none transition-all"
               >
                 <option value="">— No linked task —</option>
                 {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
@@ -635,7 +665,7 @@ function BlockModal({ block, tasks, onSave, onClose }) {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-2">Color</label>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Color</label>
               <div className="flex gap-2 flex-wrap">
                 {BLOCK_PALETTE.map(c => (
                   <button
@@ -643,7 +673,7 @@ function BlockModal({ block, tasks, onSave, onClose }) {
                     onClick={() => setForm(f => ({ ...f, color: c }))}
                     style={{ background: c }}
                     className={`w-7 h-7 rounded-full transition-transform ${
-                      form.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'
+                      form.color === c ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 scale-110' : 'hover:scale-105'
                     }`}
                   />
                 ))}
@@ -652,7 +682,7 @@ function BlockModal({ block, tasks, onSave, onClose }) {
 
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-colors">
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Cancel
               </button>
               <button type="submit" disabled={saving}
@@ -981,21 +1011,21 @@ export default function CalendarPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full overflow-hidden bg-white" onClick={() => setPopover(null)}>
+    <div className="flex h-full overflow-hidden bg-white dark:bg-gray-900" onClick={() => setPopover(null)}>
       <style>{FC_CSS}</style>
 
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-y-auto">
+      <aside className="w-56 shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
 
         {/* Create button */}
         <div className="p-4">
           <button
             onClick={() => setModal({ title: '', start_time: '', end_time: '', task_id: '', color: '#6366f1' })}
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl
-                       border border-gray-200 hover:shadow-md text-sm font-semibold
-                       text-gray-700 bg-white transition-all hover:border-gray-300 group"
+                       border border-gray-200 dark:border-gray-700 hover:shadow-md text-sm font-semibold
+                       text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 transition-all hover:border-gray-300 dark:hover:border-gray-600 group"
           >
-            <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
             </svg>
             New Task Block
@@ -1009,17 +1039,17 @@ export default function CalendarPage() {
           syncMonth={syncMonth}
         />
 
-        <div className="h-px bg-gray-100 mx-4 my-1" />
+        <div className="h-px bg-gray-100 dark:bg-gray-800 mx-4 my-1" />
 
         {/* Filters */}
         <div className="px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Show</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Show</p>
           <div className="space-y-1.5">
             {/* Blocks */}
             <label className="flex items-center gap-2.5 cursor-pointer group">
               <input type="checkbox" checked={showBlocks} onChange={e => setShowBlocks(e.target.checked)}
                 className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 group-hover:text-gray-900">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                 <span className="w-2.5 h-2.5 rounded-sm bg-indigo-400" />
                 Time Blocks
               </span>
@@ -1028,14 +1058,14 @@ export default function CalendarPage() {
             <label className="flex items-center gap-2.5 cursor-pointer group">
               <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)}
                 className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 group-hover:text-gray-900">
-                <span className="w-2.5 h-2.5 rounded-sm bg-gray-300" />
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100">
+                <span className="w-2.5 h-2.5 rounded-sm bg-gray-300 dark:bg-gray-600" />
                 Task Deadlines
               </span>
             </label>
           </div>
 
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3 mt-4">Priority</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 mt-4">Priority</p>
           <div className="space-y-1.5">
             {[
               { key: 'high',   label: 'High',   state: showHigh, setter: setShowHigh, color: P.HIGH.dot   },
@@ -1045,7 +1075,7 @@ export default function CalendarPage() {
               <label key={key} className="flex items-center gap-2.5 cursor-pointer group">
                 <input type="checkbox" checked={state} onChange={e => setter(e.target.checked)}
                   className="w-3.5 h-3.5 rounded cursor-pointer" style={{ accentColor: color }} />
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 group-hover:text-gray-900">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
                   {label}
                 </span>
@@ -1054,19 +1084,19 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="h-px bg-gray-100 mx-4 my-1" />
+        <div className="h-px bg-gray-100 dark:bg-gray-800 mx-4 my-1" />
 
         {/* Legend */}
         <div className="px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Legend</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">Legend</p>
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="w-3 h-3 rounded-sm bg-red-300" />Task due – High
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="w-3 h-3 rounded-sm bg-amber-300" />Task due – Med
             </div>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <span className="w-3 h-3 rounded-sm bg-lime-300" />Task due – Low
             </div>
           </div>
@@ -1077,12 +1107,12 @@ export default function CalendarPage() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 bg-white shrink-0">
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           {/* Nav */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => calRef.current?.getApi().prev()}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
@@ -1090,7 +1120,7 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => calRef.current?.getApi().next()}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
@@ -1098,18 +1128,18 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <h1 className="text-lg font-semibold text-gray-800 tracking-tight min-w-0 flex-1">{calTitle}</h1>
+          <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-200 tracking-tight min-w-0 flex-1">{calTitle}</h1>
 
           <button
             onClick={() => calRef.current?.getApi().today()}
-            className="px-4 py-1.5 text-sm font-semibold text-gray-600 border border-gray-200
-                       rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-1.5 text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700
+                       rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             Today
           </button>
 
           {/* View switcher */}
-          <div className="flex bg-gray-100 rounded-xl p-0.5">
+          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5">
             {[
               { v: 'timeGridDay',   label: 'Day'   },
               { v: 'timeGridWeek',  label: 'Week'  },
@@ -1121,8 +1151,8 @@ export default function CalendarPage() {
                 onClick={() => changeView(v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   view === v
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}
               >
                 {label}
@@ -1135,8 +1165,8 @@ export default function CalendarPage() {
         <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-64 gap-3">
-              <span className="w-6 h-6 border-3 border-gray-200 border-t-indigo-500 rounded-full animate-spin" style={{ borderWidth: 3 }} />
-              <span className="text-sm text-gray-400 font-medium">Loading calendar…</span>
+              <span className="w-6 h-6 border-3 border-gray-200 dark:border-gray-700 border-t-indigo-500 rounded-full animate-spin" style={{ borderWidth: 3 }} />
+              <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">Loading calendar…</span>
             </div>
           ) : (
             <FullCalendar

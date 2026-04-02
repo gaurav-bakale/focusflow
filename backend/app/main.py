@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.authentication.router import router as auth_router
-from app.db import connect_db, close_db
+from app.db import connect_db, close_db, get_db
 from app.routers import timer, calendar, ai
 from app.tasks.router import router as tasks_router
 
@@ -23,6 +23,9 @@ load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
 async def lifespan(app: FastAPI):
     """Open the MongoDB connection pool on startup; close on shutdown."""
     await connect_db()
+    # Ensure unique index on users.email — idempotent, safe to run every boot
+    db = get_db()
+    await db["users"].create_index("email", unique=True, background=True)
     yield
     await close_db()
 

@@ -6,9 +6,10 @@ onboarding flow.  These models are kept separate from the global
 app/models.py so the authentication package is self-contained.
 """
 
+import re
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ── Request models ────────────────────────────────────────────────────────────
@@ -16,7 +17,23 @@ from pydantic import BaseModel, EmailStr, Field
 class UserRegister(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator('password')
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        errors = []
+        if len(v) < 8:
+            errors.append('at least 8 characters')
+        if not re.search(r'[A-Z]', v):
+            errors.append('one uppercase letter')
+        if not re.search(r'[0-9]', v):
+            errors.append('one number')
+        if not re.search(r'[^A-Za-z0-9]', v):
+            errors.append('one special character (!@#$%^&* etc.)')
+        if errors:
+            raise ValueError('Password must contain: ' + ', '.join(errors))
+        return v
 
 
 class UserLogin(BaseModel):

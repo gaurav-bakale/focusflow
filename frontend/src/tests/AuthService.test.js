@@ -184,7 +184,7 @@ describe('completeOnboarding()', () => {
 
     const result = await completeOnboarding(prefs)
 
-    expect(mockApi.patch).toHaveBeenCalledWith('/auth/me/onboarding', { preferences: prefs })
+    expect(mockApi.patch).toHaveBeenCalledWith('/auth/me/onboarding', prefs)
     expect(result.onboarding_completed).toBe(true)
     expect(result.preferences.timezone).toBe('Asia/Kolkata')
   })

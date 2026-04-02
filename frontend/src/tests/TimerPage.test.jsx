@@ -19,6 +19,11 @@ import TimerPage from '../pages/TimerPage'
 import { TimerProvider } from '../context/TimerContext'
 import { AuthProvider } from '../context/AuthContext'
 
+// Mock ThemeContext — TimerPage uses useTheme() which needs ThemeProvider
+jest.mock('../context/ThemeContext', () => ({
+  useTheme: () => ({ dark: false, toggle: jest.fn() }),
+}))
+
 // Mock services that make real HTTP calls
 jest.mock('../services/otherServices', () => ({
   logSession:    jest.fn().mockResolvedValue({}),

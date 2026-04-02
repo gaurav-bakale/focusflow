@@ -44,10 +44,11 @@ function fillLogin(email = 'alice@test.com', password = 'password123') {
   fireEvent.change(screen.getByLabelText(/password/i), { target: { value: password } })
 }
 
-function fillRegister(name = 'Alice', email = 'alice@test.com', password = 'password123') {
-  fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: name } })
-  fireEvent.change(screen.getByLabelText(/email/i),     { target: { value: email } })
-  fireEvent.change(screen.getByLabelText(/password/i),  { target: { value: password } })
+function fillRegister(name = 'Alice', email = 'alice@test.com', password = 'StrongPass1!') {
+  fireEvent.change(screen.getByLabelText(/full name/i),        { target: { value: name } })
+  fireEvent.change(screen.getByLabelText(/email/i),            { target: { value: email } })
+  fireEvent.change(screen.getByLabelText(/^password$/i),       { target: { value: password } })
+  fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: password } })
 }
 
 beforeEach(() => jest.clearAllMocks())
@@ -226,7 +227,8 @@ describe('RegisterPage', () => {
     wrap(RegisterPage)
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
   })
 
@@ -242,7 +244,7 @@ describe('RegisterPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
-      expect(mockRegister).toHaveBeenCalledWith('Alice', 'alice@test.com', 'password123')
+      expect(mockRegister).toHaveBeenCalledWith('Alice', 'alice@test.com', 'StrongPass1!')
       expect(mockNavigate).toHaveBeenCalledWith('/onboarding')
     })
   })
@@ -254,10 +256,13 @@ describe('RegisterPage', () => {
    */
   test('AUTH-12: shows validation error for passwords shorter than 8 characters', async () => {
     wrap(RegisterPage)
-    fillRegister('Bob', 'bob@test.com', 'abc')
+    // Type weak password directly — button stays disabled, rule checklist shows
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'abc' } })
+    // Button is disabled (pwScore < 4), clicking it won't trigger register()
     fireEvent.click(screen.getByRole('button', { name: /create account/i }))
 
     await waitFor(() => {
+      // PasswordStrength checklist shows the "At least 8 characters" rule
       expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
     })
     expect(mockRegister).not.toHaveBeenCalled()
@@ -309,10 +314,11 @@ describe('RegisterPage', () => {
    */
   test('AUTH-15: show/hide toggle changes password field type', () => {
     wrap(RegisterPage)
-    const pwInput = screen.getByLabelText(/password/i)
+    const pwInput = screen.getByLabelText(/^password$/i)
     expect(pwInput.type).toBe('password')
 
-    fireEvent.click(screen.getByRole('button', { name: /show/i }))
+    // Two Show buttons exist (password + confirm) — click the first (password)
+    fireEvent.click(screen.getAllByRole('button', { name: /show/i })[0])
     expect(pwInput.type).toBe('text')
 
     fireEvent.click(screen.getByRole('button', { name: /hide/i }))
@@ -338,7 +344,7 @@ describe('RegisterPage', () => {
   test('AUTH-17: password strength indicator renders when password is entered', async () => {
     wrap(RegisterPage)
     // 'abcdefgh' → length ≥ 8 only → score 1 → 'Weak'
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'abcdefgh' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'abcdefgh' } })
     await waitFor(() => {
       expect(screen.getByText(/weak password/i)).toBeInTheDocument()
     })
@@ -351,7 +357,7 @@ describe('RegisterPage', () => {
    */
   test('AUTH-18: strong password shows "Strong" strength label', async () => {
     wrap(RegisterPage)
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'SecurePass1!' } })
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'SecurePass1!' } })
     await waitFor(() => {
       expect(screen.getByText(/strong password/i)).toBeInTheDocument()
     })

@@ -32,8 +32,8 @@ const PRIORITY_LABEL = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
 // ── Small inline stat card (matches Layout's daily-goal card style) ───────────
 function StatCard({ label, value, color }) {
   return (
-    <div className="sketch-hover bg-white border-2 border-gray-900 rounded-lg p-5 relative overflow-hidden">
-      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">{label}</p>
+    <div className="sketch-hover bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-5 relative overflow-hidden">
+      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
       <p className="text-3xl font-extrabold font-mono" style={{ color }}>{value}</p>
       <SketchLine color={color} thickness={4} />
     </div>
@@ -58,8 +58,8 @@ function ProgressRing({ pct }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-extrabold text-gray-900 font-mono leading-none">{pct}%</span>
-        <span className="text-xs text-gray-400 font-bold mt-0.5">done</span>
+        <span className="text-xl font-extrabold text-gray-900 dark:text-gray-100 font-mono leading-none">{pct}%</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 font-bold mt-0.5">done</span>
       </div>
     </div>
   )
@@ -168,10 +168,10 @@ export default function DashboardPage() {
 
       {/* ── Greeting ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
           Hello, <span style={{ color: '#6366f1' }}>{firstName}</span>.
         </h1>
-        <p className="text-base text-gray-400 mt-1">
+        <p className="text-base text-gray-400 dark:text-gray-500 mt-1">
           {loading
             ? "Loading your plan…"
             : sortedTasks.length === 0
@@ -184,7 +184,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid grid-cols-4 gap-4 mb-8">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="border-2 border-gray-200 rounded-lg h-24 animate-pulse" />
+            <div key={i} className="border-2 border-gray-200 dark:border-gray-700 rounded-lg h-24 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -203,8 +203,8 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Quick-add card */}
-          <div className="bg-white border-2 border-gray-900 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
               New Task
             </h2>
             <form onSubmit={handleAddTask}>
@@ -214,9 +214,10 @@ export default function DashboardPage() {
                 value={newTitle}
                 onChange={e => setNewTitle(e.target.value)}
                 placeholder="What needs to get done?"
-                className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-sm
-                           focus:border-gray-900 focus:ring-0 outline-none transition-colors
-                           placeholder-gray-300 mb-3"
+                className="w-full px-3 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                           placeholder-gray-300 dark:placeholder-gray-600 mb-3"
               />
 
               {/* Date + Time row */}
@@ -225,8 +226,8 @@ export default function DashboardPage() {
                   type="date"
                   value={newDeadline}
                   onChange={e => setNewDeadline(e.target.value)}
-                  className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg text-xs font-medium
-                             text-gray-600 focus:border-gray-900 focus:ring-0 outline-none transition-colors"
+                  className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium
+                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
                 />
                 <input
                   type="time"
@@ -234,15 +235,15 @@ export default function DashboardPage() {
                   onChange={e => setNewTime(e.target.value)}
                   disabled={!newDeadline}
                   title={newDeadline ? 'Set a specific time' : 'Set a date first'}
-                  className="w-28 px-3 py-2 border-2 border-gray-200 rounded-lg text-xs font-medium
-                             text-gray-600 focus:border-gray-900 focus:ring-0 outline-none transition-colors
+                  className="w-28 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium
+                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
                              disabled:opacity-40 disabled:cursor-not-allowed"
                 />
               </div>
 
               {/* Task type chips */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-widest text-gray-400 shrink-0">Type</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 shrink-0">Type</span>
                 <div className="flex gap-1.5 flex-wrap">
                   {[
                     { r: 'NONE',     label: 'One-time', activeClass: 'border-gray-600 bg-gray-600 text-white' },
@@ -258,7 +259,7 @@ export default function DashboardPage() {
                       className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                         newRecurrence === r
                           ? activeClass
-                          : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                       }`}
                     >
                       {label}
@@ -269,7 +270,7 @@ export default function DashboardPage() {
 
               {/* Priority chips + submit row */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Priority</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Priority</span>
                 <div className="flex gap-1.5">
                   {[
                     { p: 'HIGH',   activeClass: 'border-red-500 bg-red-500 text-white'   },
@@ -283,7 +284,7 @@ export default function DashboardPage() {
                       className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                         newPriority === p
                           ? activeClass
-                          : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                       }`}
                     >
                       {PRIORITY_LABEL[p]}
@@ -293,8 +294,8 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={adding || !newTitle.trim()}
-                  className="ml-auto flex items-center gap-1.5 px-4 py-1.5 bg-gray-900 text-white
-                             text-xs font-bold rounded-lg hover:bg-gray-700 transition-colors
+                  className="ml-auto flex items-center gap-1.5 px-4 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900
+                             text-xs font-bold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors
                              disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {adding ? (
@@ -315,14 +316,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Task list card */}
-          <div className="bg-white border-2 border-gray-900 rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b-2 border-gray-900 flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b-2 border-gray-900 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                 Active Tasks
               </h2>
               <Link
                 to="/board"
-                className="text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors"
+                className="text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 View board →
               </Link>
@@ -332,16 +333,16 @@ export default function DashboardPage() {
               <div className="p-6 space-y-4">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-200 animate-pulse shrink-0" />
-                    <div className="flex-1 h-3.5 bg-gray-100 rounded animate-pulse" />
-                    <div className="w-12 h-3 bg-gray-100 rounded animate-pulse" />
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-gray-700 animate-pulse shrink-0" />
+                    <div className="flex-1 h-3.5 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+                    <div className="w-12 h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
                   </div>
                 ))}
               </div>
             ) : sortedTasks.length === 0 ? (
               <div className="py-14 text-center">
-                <p className="text-sm text-gray-400 font-medium">No active tasks.</p>
-                <p className="text-xs text-gray-300 mt-1">Add one above to get started.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">No active tasks.</p>
+                <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Add one above to get started.</p>
               </div>
             ) : (
               <ul>
@@ -353,7 +354,7 @@ export default function DashboardPage() {
                     <li
                       key={task.id}
                       className={`flex items-center gap-3 px-6 py-3.5 group transition-colors
-                        hover:bg-gray-50 ${i !== 0 ? 'border-t border-gray-100' : ''}`}
+                        hover:bg-gray-50 dark:hover:bg-gray-800 ${i !== 0 ? 'border-t border-gray-100 dark:border-gray-800' : ''}`}
                     >
                       {/* Priority dot */}
                       <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority] || 'bg-gray-300'}`} />
@@ -379,7 +380,7 @@ export default function DashboardPage() {
                       </button>
 
                       {/* Title */}
-                      <p className="flex-1 text-sm font-medium text-gray-700 truncate">
+                      <p className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
                         {task.title}
                       </p>
 
@@ -387,11 +388,11 @@ export default function DashboardPage() {
                       {(() => {
                         const r = task.recurrence || 'NONE'
                         const cfg = {
-                          NONE:     { label: 'One-time', cls: 'text-gray-500 bg-gray-100 border-gray-200' },
-                          DAILY:    { label: '↻ Daily',    cls: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
-                          WEEKDAYS: { label: '↻ Weekdays', cls: 'text-blue-600 bg-blue-50 border-blue-200' },
-                          WEEKLY:   { label: '↻ Weekly',   cls: 'text-violet-600 bg-violet-50 border-violet-200' },
-                          MONTHLY:  { label: '↻ Monthly',  cls: 'text-pink-600 bg-pink-50 border-pink-200' },
+                          NONE:     { label: 'One-time', cls: 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700' },
+                          DAILY:    { label: '↻ Daily',    cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700' },
+                          WEEKDAYS: { label: '↻ Weekdays', cls: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700' },
+                          WEEKLY:   { label: '↻ Weekly',   cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 border-violet-200 dark:border-violet-700' },
+                          MONTHLY:  { label: '↻ Monthly',  cls: 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700' },
                         }[r] || { label: 'One-time', cls: 'text-gray-500 bg-gray-100 border-gray-200' }
                         return (
                           <span className={`hidden sm:inline-flex items-center text-xs font-bold border px-1.5 py-0.5 rounded shrink-0 ${cfg.cls}`}>
@@ -421,7 +422,7 @@ export default function DashboardPage() {
                       )}
 
                       {/* Priority label */}
-                      <span className="text-xs font-bold text-gray-400 shrink-0 w-14 text-right">
+                      <span className="text-xs font-bold text-gray-400 dark:text-gray-500 shrink-0 w-14 text-right">
                         {PRIORITY_LABEL[task.priority]}
                       </span>
                     </li>
@@ -436,13 +437,13 @@ export default function DashboardPage() {
         <div className="space-y-6">
 
           {/* Completion ring */}
-          <div className="bg-white border-2 border-gray-900 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-5">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">
               Progress
             </h2>
 
             {loading ? (
-              <div className="w-24 h-24 rounded-full border-8 border-gray-200 animate-pulse mx-auto mb-5" />
+              <div className="w-24 h-24 rounded-full border-8 border-gray-200 dark:border-gray-700 animate-pulse mx-auto mb-5" />
             ) : (
               <div className="mb-5">
                 <ProgressRing pct={donePct} />
@@ -463,10 +464,10 @@ export default function DashboardPage() {
                 ].map(({ label, count, shade }) => (
                   <div key={label}>
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold text-gray-500">{label}</span>
-                      <span className="text-xs font-mono font-extrabold text-gray-900">{count}</span>
+                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">{label}</span>
+                      <span className="text-xs font-mono font-extrabold text-gray-900 dark:text-gray-100">{count}</span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5">
                       <div
                         className={`h-1.5 rounded-full ${shade} transition-all duration-700`}
                         style={{ width: analytics.total > 0 ? `${Math.round((count / analytics.total) * 100)}%` : '0%' }}
@@ -479,8 +480,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Priority breakdown */}
-          <div className="bg-white border-2 border-gray-900 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
               By Priority
             </h2>
 
@@ -497,13 +498,13 @@ export default function DashboardPage() {
                 ].map(({ label, count, dot }) => (
                   <div key={label} className="flex items-center gap-3">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                    <span className="text-xs font-bold text-gray-500 flex-1">{label}</span>
-                    <span className="text-xs font-mono font-extrabold text-gray-900">{count}</span>
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex-1">{label}</span>
+                    <span className="text-xs font-mono font-extrabold text-gray-900 dark:text-gray-100">{count}</span>
                   </div>
                 ))}
 
                 {analytics.overdue > 0 && (
-                  <div className="mt-2 pt-3 border-t border-gray-100 flex items-center gap-2">
+                  <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0" />
                     <span className="text-xs font-bold text-red-500">
                       {analytics.overdue} overdue
@@ -520,8 +521,8 @@ export default function DashboardPage() {
           }} />
 
           {/* This week */}
-          <div className="bg-white border-2 border-gray-900 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
               This Week
             </h2>
 
@@ -532,15 +533,15 @@ export default function DashboardPage() {
             ) : analytics ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-500">Completed</span>
-                  <span className="text-2xl font-extrabold text-gray-900 font-mono">
+                  <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Completed</span>
+                  <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">
                     {analytics.completed_this_week}
                   </span>
                 </div>
-                <div className="h-px bg-gray-100" />
+                <div className="h-px bg-gray-100 dark:bg-gray-800" />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-500">Today</span>
-                  <span className="text-2xl font-extrabold text-gray-900 font-mono">
+                  <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Today</span>
+                  <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">
                     {analytics.completed_today}
                   </span>
                 </div>

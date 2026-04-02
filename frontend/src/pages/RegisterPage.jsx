@@ -101,13 +101,16 @@ const ANIM_CSS = `
 `
 
 // ── Password strength ─────────────────────────────────────────────────────────
+const PW_RULES = [
+  { label: 'At least 8 characters',       test: v => v.length >= 8 },
+  { label: 'One uppercase letter (A–Z)',   test: v => /[A-Z]/.test(v) },
+  { label: 'One number (0–9)',             test: v => /[0-9]/.test(v) },
+  { label: 'One special character (!@#…)', test: v => /[^A-Za-z0-9]/.test(v) },
+]
+
 function PasswordStrength({ password }) {
-  const score = [
-    password.length >= 8,
-    /[A-Z]/.test(password),
-    /[0-9]/.test(password),
-    /[^A-Za-z0-9]/.test(password),
-  ].filter(Boolean).length
+  const results = PW_RULES.map(r => ({ ...r, ok: r.test(password) }))
+  const score   = results.filter(r => r.ok).length
 
   const cfg = [null,
     { label:'Weak',   color:'#f87171' },
@@ -118,7 +121,7 @@ function PasswordStrength({ password }) {
 
   if (!password) return null
   return (
-    <div className="mt-2.5 space-y-1.5">
+    <div className="mt-2.5 space-y-2">
       <div className="flex gap-1.5">
         {[1,2,3,4].map(i => (
           <div key={i} className="h-1 flex-1 rounded-full overflow-hidden" style={{ background:'rgba(255,255,255,0.08)' }}>
@@ -128,6 +131,15 @@ function PasswordStrength({ password }) {
         ))}
       </div>
       {cfg && <p className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.label} password</p>}
+      <ul className="space-y-1 pt-0.5">
+        {results.map(r => (
+          <li key={r.label} className="flex items-center gap-1.5 text-xs"
+            style={{ color: r.ok ? '#34d399' : 'rgba(255,255,255,0.35)' }}>
+            <span>{r.ok ? '✓' : '○'}</span>
+            <span>{r.label}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -245,17 +257,21 @@ const STEPS = [
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate     = useNavigate()
-  const [form, setForm]       = useState({ name:'', email:'', password:'' })
-  const [error, setError]     = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showPw, setShowPw]   = useState(false)
+  const [form, setForm]         = useState({ name:'', email:'', password:'', confirm:'' })
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [showPw, setShowPw]     = useState(false)
+  const [showCfm, setShowCfm]   = useState(false)
+
+  const pwScore = PW_RULES.filter(r => r.test(form.password)).length
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (pwScore < 4) { setError('Password does not meet all requirements.'); return }
+    if (form.password !== form.confirm) { setError('Passwords do not match.'); return }
     setLoading(true)
     try {
       await register(form.name, form.email, form.password)
@@ -378,8 +394,37 @@ export default function RegisterPage() {
                 <PasswordStrength password={form.password}/>
               </div>
 
+              <div className="stagger-5">
+                <label htmlFor="confirm" className="block text-xs font-semibold mb-1.5" style={{ color:'rgba(255,255,255,0.6)' }}>
+                  Confirm password
+                </label>
+                <div className="relative">
+                  <input id="confirm" type={showCfm ? 'text' : 'password'} required autoComplete="new-password"
+                    placeholder="Re-enter your password"
+                    className="input-field w-full px-4 py-3 pr-16 rounded-xl text-sm"
+                    style={{
+                      background:'rgba(255,255,255,0.07)',
+                      border: form.confirm
+                        ? form.confirm === form.password
+                          ? '1px solid rgba(52,211,153,0.5)'
+                          : '1px solid rgba(239,68,68,0.5)'
+                        : '1px solid rgba(255,255,255,0.12)',
+                      color:'white'
+                    }}
+                    value={form.confirm} onChange={set('confirm')}/>
+                  <button type="button" onClick={() => setShowCfm(p => !p)} tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold px-2 py-1 rounded-lg"
+                    style={{ color:'rgba(255,255,255,0.4)' }}>
+                    {showCfm ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {form.confirm && form.confirm !== form.password && (
+                  <p className="mt-1.5 text-xs" style={{ color:'#f87171' }}>Passwords do not match</p>
+                )}
+              </div>
+
               <div className="stagger-6 pt-1">
-                <button type="submit" disabled={loading}
+                <button type="submit" disabled={loading || pwScore < 4 || form.password !== form.confirm}
                   className="btn-shimmer w-full text-white font-bold py-3.5 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">
                   {loading
                     ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Creating account…</>
