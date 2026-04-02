@@ -640,10 +640,18 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
     const task     = tasks.find(t => t.id === id)
     const prevTask = tasks.find(t => t.id === form.task_id)
 
-    // Build a datetime-local string from the task's deadline + due_time if both exist
+    // Build a datetime-local string from the task's deadline + due_time.
+    // If due_time is missing, fall back to current time rounded up to next 15 min.
     let autoStart = null
-    if (task?.deadline && task?.due_time) {
-      autoStart = `${task.deadline}T${task.due_time}`
+    if (task?.deadline) {
+      let time = task.due_time  // "HH:MM" or undefined
+      if (!time) {
+        const now = new Date()
+        const rounded = new Date(Math.ceil(now.getTime() / (15 * 60000)) * (15 * 60000))
+        const pad = n => String(n).padStart(2, '0')
+        time = `${pad(rounded.getHours())}:${pad(rounded.getMinutes())}`
+      }
+      autoStart = `${task.deadline}T${time}`
     }
 
     // Auto-compute end_time = autoStart + 1 Pomodoro cycle
@@ -665,11 +673,10 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
         ? (task?.title || f.title)
         : f.title
 
-      // Only auto-fill times if the start is empty or was auto-filled from the previous task
-      const prevAutoStart = (prevTask?.deadline && prevTask?.due_time)
-        ? `${prevTask.deadline}T${prevTask.due_time}`
-        : null
-      const shouldFillTime = !f.start_time || f.start_time === prevAutoStart
+      // Only auto-fill times if the start is empty or was auto-filled from the previous task.
+      // A task with only a deadline (no due_time) also triggers auto-fill since we
+      // always build an autoStart from deadline + fallback time.
+      const shouldFillTime = !f.start_time || !!prevTask?.deadline
 
       return {
         ...f,
