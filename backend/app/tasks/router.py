@@ -38,7 +38,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.auth import get_current_user
 from app.db import get_db
-from app.tasks.models import TaskCreate, TaskResponse, TaskUpdate
+from app.tasks.models import CompleteTaskResponse, TaskCreate, TaskResponse, TaskUpdate
 from app.tasks.service import TaskService
 
 router = APIRouter()
@@ -132,7 +132,7 @@ async def update_task(
 
 @router.patch(
     "/{task_id}/complete",
-    response_model=TaskResponse,
+    response_model=CompleteTaskResponse,
     summary="Mark a task as complete",
 )
 async def complete_task(
@@ -140,7 +140,13 @@ async def complete_task(
     user=Depends(get_current_user),
     svc: TaskService = Depends(_svc),
 ):
-    """Set task status to DONE — idempotent if already complete."""
+    """
+    Set task status to DONE.
+
+    Returns { completed: TaskResponse, next_task: TaskResponse | null }.
+    next_task is populated when the completed task has a recurrence pattern —
+    the frontend uses it to auto-schedule a calendar block for the next occurrence.
+    """
     return await svc.complete_task(user, task_id)
 
 

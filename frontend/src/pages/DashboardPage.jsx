@@ -15,9 +15,9 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
-import { fetchStats, fetchBlocks, createBlock } from '../services/otherServices'
+import { fetchStats, fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, fetchTaskAnalytics } from '../services/taskService'
-import { smartScheduleTask } from '../utils/smartSchedule'
+import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
 
@@ -108,9 +108,26 @@ export default function DashboardPage() {
   async function handleComplete(taskId) {
     setCompleting(taskId)
     try {
-      await markTaskComplete(taskId)
+      const result = await markTaskComplete(taskId)
+      // result = { completed, next_task }
       setTasks(prev => prev.filter(t => t.id !== taskId))
       setStats(s => ({ ...s, tasks_done: s.tasks_done + 1 }))
+
+      // If the completed task was recurring, the backend created the next
+      // occurrence task. Auto-schedule a calendar block for it silently.
+      const nextTask = result?.next_task
+      if (nextTask?.deadline) {
+        try {
+          const existingBlocks = await fetchBlocks()
+          const groupId = `${nextTask.id}-${nextTask.deadline}`
+          const slots = generateRecurringSlots(nextTask, focusMins, existingBlocks, groupId)
+          if (slots.length === 1) {
+            await createBlock(slots[0])
+          } else if (slots.length > 1) {
+            await createBlocksBulk(slots)
+          }
+        } catch (_) { /* non-critical */ }
+      }
     } catch (_) { /* non-blocking */ }
     setCompleting(null)
   }
@@ -134,25 +151,27 @@ export default function DashboardPage() {
       })
       setTasks(prev => [created, ...prev].slice(0, 8))
 
-      // Auto-schedule: find a free slot on the deadline date and create a
-      // calendar block automatically. Non-critical — task is already saved.
+      // Auto-schedule: generate blocks for all occurrences within the rolling
+      // window. One-off tasks get a single block; recurring tasks get one block
+      // per occurrence, all conflict-free. Non-critical — task is already saved.
       if (created.deadline) {
         try {
-          const blocks = await fetchBlocks()
-          const slot   = smartScheduleTask(created, focusMins, blocks)
-          if (slot) {
-            await createBlock({
-              title:      created.title,
-              start_time: slot.start_time,
-              end_time:   slot.end_time,
-              task_id:    created.id,
-              color:      '#6366f1',
-            })
-            const [, tp] = slot.start_time.split('T')
+          const blocks  = await fetchBlocks()
+          const groupId = created.recurrence && created.recurrence !== 'NONE'
+            ? `${created.id}-${created.deadline}`
+            : null
+          const slots = generateRecurringSlots(created, focusMins, blocks, groupId)
+
+          if (slots.length === 1) {
+            await createBlock(slots[0])
+            const [, tp] = slots[0].start_time.split('T')
             const [h, m] = tp.split(':').map(Number)
             const label  = new Date(2000, 0, 1, h, m)
               .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
             setScheduleMsg(`Block scheduled on calendar at ${label}`)
+          } else if (slots.length > 1) {
+            await createBlocksBulk(slots)
+            setScheduleMsg(`${slots.length} recurring blocks scheduled on calendar`)
           } else {
             setScheduleMsg('Day fully booked — open Calendar to pick a slot.')
           }

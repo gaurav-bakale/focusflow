@@ -258,13 +258,16 @@ class TaskService:
             )
         return self._doc_to_task(result)
 
-    async def complete_task(self, user: dict, task_id: str) -> TaskResponse:
+    async def complete_task(self, user: dict, task_id: str) -> dict:
         """
-        Set status to DONE and return the updated task.
+        Set status to DONE and return the completed task plus the next occurrence
+        task (if any) so the frontend can auto-schedule a calendar block for it.
 
-        If the task has a recurrence set, automatically creates the next
-        occurrence with the advanced deadline so the recurring task
-        reappears in the user's queue.
+        Returns:
+            {
+                "completed": TaskResponse  — the task just marked DONE
+                "next_task": TaskResponse | None  — newly created next occurrence
+            }
         """
         result = await self.db["tasks"].find_one_and_update(
             {"_id": self._object_id(task_id), "user_id": user["_id"]},
@@ -278,13 +281,14 @@ class TaskService:
             )
 
         # Auto-create next occurrence for recurring tasks
+        next_task_response = None
         recurrence = result.get("recurrence", Recurrence.NONE)
         deadline = result.get("deadline")
         if recurrence and recurrence != Recurrence.NONE and deadline:
             next_deadline = self._next_occurrence(deadline, recurrence)
             if next_deadline:
                 now = datetime.utcnow()
-                await self.db["tasks"].insert_one({
+                new_doc = {
                     "user_id": user["_id"],
                     "title": result["title"],
                     "description": result.get("description"),
@@ -298,9 +302,15 @@ class TaskService:
                     "categories": result.get("categories", []),
                     "created_at": now,
                     "updated_at": now,
-                })
+                }
+                insert_result = await self.db["tasks"].insert_one(new_doc)
+                new_doc["_id"] = insert_result.inserted_id
+                next_task_response = self._doc_to_task(new_doc)
 
-        return self._doc_to_task(result)
+        return {
+            "completed": self._doc_to_task(result),
+            "next_task": next_task_response,
+        }
 
     async def delete_task(self, user: dict, task_id: str) -> None:
         """Permanently delete a task — 404 if not found."""
