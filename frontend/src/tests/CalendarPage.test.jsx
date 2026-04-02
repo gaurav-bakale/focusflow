@@ -391,3 +391,331 @@ describe('view switcher', () => {
     })
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 6 — BlockModal
+// Tests: Default values, task auto-fill, 4-Pomodoro default, overlap warning,
+//        Pomodoro preset buttons, submit guard, cancel
+//
+// Strategy: tests that need predictable times use a fixed start value injected
+// via fireEvent.change; tests that only need "not empty" or relative assertions
+// read the actual rendered input values to stay date-agnostic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Default focusMins from TimerContext with no user prefs = 25
+const FOCUS = 25 // must match TimerContext default
+
+/** Parse "YYYY-MM-DDTHH:MM" → minutes since midnight on that date (local) */
+function toMins(datetimeLocal) {
+  const [, tp = '00:00'] = datetimeLocal.split('T')
+  const [h, m] = tp.split(':').map(Number)
+  return h * 60 + m
+}
+
+/** Parse date part from "YYYY-MM-DDTHH:MM" → "YYYY-MM-DD" */
+function datePart(datetimeLocal) { return datetimeLocal.slice(0, 10) }
+
+/** Add `mins` minutes to a "YYYY-MM-DDTHH:MM" string, returns new string */
+function addMins(datetimeLocal, mins) {
+  const [dp, tp = '00:00'] = datetimeLocal.slice(0, 16).split('T')
+  const [y, mo, d] = dp.split('-').map(Number)
+  const [h, mi] = tp.split(':').map(Number)
+  const endMs = new Date(y, mo - 1, d, h, mi).getTime() + mins * 60000
+  const end = new Date(endMs)
+  const pad = n => String(n).padStart(2, '0')
+  return `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
+}
+
+/** Open the BlockModal via the "New Task Block" sidebar button */
+async function openNewModal() {
+  await waitFor(() => screen.getByRole('button', { name: /new task block/i }))
+  fireEvent.click(screen.getByRole('button', { name: /new task block/i }))
+  await waitFor(() => screen.getByText('New Time Block'))
+}
+
+/** Get the current value of the start datetime-local input (first one in modal) */
+function getStartValue() {
+  return document.querySelector('input[type="datetime-local"]')?.value ?? ''
+}
+
+/** Get the current value of the end datetime-local input (second one in modal) */
+function getEndValue() {
+  return document.querySelectorAll('input[type="datetime-local"]')[1]?.value ?? ''
+}
+
+describe('BlockModal', () => {
+
+  /**
+   * CAL-11: "New Task Block" button opens modal
+   * Oracle: "New Time Block" heading visible
+   */
+  it('CAL-11: "New Task Block" button opens the BlockModal', async () => {
+    await renderCalendar()
+    await openNewModal()
+    expect(screen.getByText('New Time Block')).toBeInTheDocument()
+  })
+
+  /**
+   * CAL-12: Default start_time when opening empty modal is pre-filled (not blank)
+   * Oracle: start input has a non-empty datetime-local value
+   */
+  it('CAL-12: opening empty modal pre-fills start with current time (not blank)', async () => {
+    await renderCalendar()
+    await openNewModal()
+    expect(getStartValue()).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+  })
+
+  /**
+   * CAL-13: Default end_time = start + 4 × focusMins (100 min)
+   * Oracle: end − start = 100 minutes exactly
+   */
+  it('CAL-13: opening empty modal sets end = start + 4 × focusMins (100 min)', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const startVal = getStartValue()
+    const endVal   = getEndValue()
+    expect(startVal).toBeTruthy()
+    expect(endVal).toBeTruthy()
+
+    // Compute difference in minutes
+    const [sdp, stp] = startVal.split('T')
+    const [edp, etp] = endVal.split('T')
+    const [sy, sm, sd] = sdp.split('-').map(Number)
+    const [ey, em, ed] = edp.split('-').map(Number)
+    const [sh, smi]    = stp.split(':').map(Number)
+    const [eh, emi]    = etp.split(':').map(Number)
+    const startMs = new Date(sy, sm-1, sd, sh, smi).getTime()
+    const endMs   = new Date(ey, em-1, ed, eh, emi).getTime()
+    const diffMins = (endMs - startMs) / 60000
+
+    expect(diffMins).toBe(FOCUS * 4) // 100 minutes
+  })
+
+  /**
+   * CAL-14: start is rounded to next 15-minute boundary
+   * Oracle: start minutes are a multiple of 15
+   */
+  it('CAL-14: default start time is rounded to the nearest 15-minute boundary', async () => {
+    await renderCalendar()
+    await openNewModal()
+    const startVal = getStartValue()
+    const mins = toMins(startVal) % 15
+    expect(mins).toBe(0) // must be on a 15-min boundary
+  })
+
+  /**
+   * CAL-15: Linking a task with deadline + due_time auto-fills start from task
+   * Task: deadline=2026-04-10, due_time=14:00
+   * Oracle: start = "2026-04-10T14:00", end = "2026-04-10T15:40" (+100 min)
+   */
+  it('CAL-15: selecting a task with due_time auto-fills start = deadline+due_time and end = +100 min', async () => {
+    const tasksWithTime = [{
+      id: 'task-timed', title: 'Design Review', priority: 'HIGH',
+      status: 'TODO', deadline: '2026-04-10', due_time: '14:00',
+      recurrence: 'NONE', is_complete: false,
+    }]
+    await renderCalendar(tasksWithTime)
+    await openNewModal()
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'task-timed' } })
+
+    await waitFor(() => {
+      // Title auto-filled into the text input (not the select)
+      const titleInput = document.querySelector('input[placeholder="e.g. Deep Work Session"]')
+      expect(titleInput?.value).toBe('Design Review')
+      // Start = deadline + due_time
+      expect(screen.getByDisplayValue('2026-04-10T14:00')).toBeInTheDocument()
+      // End = start + 4 × 25 = +100 min → 15:40
+      expect(screen.getByDisplayValue('2026-04-10T15:40')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-16: Linking a task with deadline but NO due_time uses rounded-now as time, date from task
+   * Task: deadline=2026-04-10, no due_time
+   * Oracle: start date part = "2026-04-10", end = start + 100 min
+   */
+  it('CAL-16: task with deadline but no due_time: start date = task deadline, end = +100 min', async () => {
+    const tasksNoTime = [{
+      id: 'task-no-time', title: 'Planning Session', priority: 'MEDIUM',
+      status: 'TODO', deadline: '2026-04-10', due_time: null,
+      recurrence: 'NONE', is_complete: false,
+    }]
+    await renderCalendar(tasksNoTime)
+    await openNewModal()
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'task-no-time' } })
+
+    await waitFor(() => {
+      const startVal = getStartValue()
+      const endVal   = getEndValue()
+      expect(datePart(startVal)).toBe('2026-04-10')
+
+      // end − start must still be 100 min
+      const [sdp, stp] = startVal.split('T')
+      const [edp, etp] = endVal.split('T')
+      const [sy, sm, sd] = sdp.split('-').map(Number)
+      const [ey, em, ed] = edp.split('-').map(Number)
+      const [sh, smi]    = stp.split(':').map(Number)
+      const [eh, emi]    = etp.split(':').map(Number)
+      const diffMins = (new Date(ey,em-1,ed,eh,emi) - new Date(sy,sm-1,sd,sh,smi)) / 60000
+      expect(diffMins).toBe(FOCUS * 4)
+    })
+  })
+
+  /**
+   * CAL-17: "1 🍅" preset sets end = start + 25 min
+   * Use a fixed start to make the assertion deterministic.
+   */
+  it('CAL-17: "1 🍅" preset sets end = start + 25 min', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const startInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(startInputs[0], { target: { value: '2026-06-01T10:00' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /1 🍅/i }))
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2026-06-01T10:25')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-18: "2 🍅" preset sets end = start + 50 min
+   */
+  it('CAL-18: "2 🍅" preset sets end = start + 50 min', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const startInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(startInputs[0], { target: { value: '2026-06-01T10:00' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /2 🍅/i }))
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2026-06-01T10:50')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-19: "4 🍅" preset sets end = start + 100 min
+   */
+  it('CAL-19: "4 🍅" preset sets end = start + 100 min', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const startInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(startInputs[0], { target: { value: '2026-06-01T10:00' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /4 🍅/i }))
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('2026-06-01T11:40')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-20: Overlap warning shown and Create disabled when times conflict
+   * Existing: 09:30–10:00. New: 09:00–09:45 → overlaps.
+   */
+  it('CAL-20: overlap warning shown and Create disabled when times conflict', async () => {
+    const conflictingBlocks = [{
+      id: 'existing-b', title: 'Morning Standup',
+      start_time: '2026-04-05T09:30', end_time: '2026-04-05T10:00', color: '#6366f1',
+    }]
+    await renderCalendar([], conflictingBlocks)
+    await openNewModal()
+
+    const dtInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(dtInputs[0], { target: { value: '2026-04-05T09:00' } })
+    fireEvent.change(dtInputs[1], { target: { value: '2026-04-05T09:45' } })
+
+    await waitFor(() => {
+      expect(screen.getByText(/overlaps with/i)).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /create/i })).toBeDisabled()
+  })
+
+  /**
+   * CAL-21: Regression — 12:50 AM vs 09:30 AM must NOT trigger overlap warning
+   */
+  it('CAL-21: no false-positive overlap for 12:50 AM vs 09:30 AM (regression)', async () => {
+    const morningBlock = [{
+      id: 'morning', title: 'Morning Standup',
+      start_time: '2026-04-05T09:30', end_time: '2026-04-05T10:00', color: '#6366f1',
+    }]
+    await renderCalendar([], morningBlock)
+    await openNewModal()
+
+    const dtInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(dtInputs[0], { target: { value: '2026-04-05T00:50' } })
+    fireEvent.change(dtInputs[1], { target: { value: '2026-04-05T01:15' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/overlaps with/i)).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /create/i })).not.toBeDisabled()
+  })
+
+  /**
+   * CAL-22: Overlap warning clears after resolving the conflict
+   */
+  it('CAL-22: overlap warning clears when conflict is resolved by changing times', async () => {
+    const conflictingBlocks = [{
+      id: 'existing-c', title: 'Team Sync',
+      start_time: '2026-04-05T09:30', end_time: '2026-04-05T10:00', color: '#6366f1',
+    }]
+    await renderCalendar([], conflictingBlocks)
+    await openNewModal()
+
+    const dtInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(dtInputs[0], { target: { value: '2026-04-05T09:00' } })
+    fireEvent.change(dtInputs[1], { target: { value: '2026-04-05T09:45' } })
+    await waitFor(() => expect(screen.getByText(/overlaps with/i)).toBeInTheDocument())
+
+    fireEvent.change(dtInputs[0], { target: { value: '2026-04-05T11:00' } })
+    fireEvent.change(dtInputs[1], { target: { value: '2026-04-05T12:00' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/overlaps with/i)).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /create/i })).not.toBeDisabled()
+  })
+
+  /**
+   * CAL-23: Cancel button closes the modal
+   */
+  it('CAL-23: Cancel button closes the modal', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('New Time Block')).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-24: Adjacent blocks (touching boundary) are NOT flagged as overlapping
+   * New: 10:00–11:00, existing ends exactly at 10:00
+   */
+  it('CAL-24: adjacent blocks touching at boundary are not flagged as overlapping', async () => {
+    const adjacentBlock = [{
+      id: 'adj', title: 'Prev Block',
+      start_time: '2026-04-05T09:00', end_time: '2026-04-05T10:00', color: '#6366f1',
+    }]
+    await renderCalendar([], adjacentBlock)
+    await openNewModal()
+
+    const dtInputs = document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(dtInputs[0], { target: { value: '2026-04-05T10:00' } })
+    fireEvent.change(dtInputs[1], { target: { value: '2026-04-05T11:00' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/overlaps with/i)).not.toBeInTheDocument()
+    })
+  })
+})

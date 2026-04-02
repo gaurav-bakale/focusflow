@@ -588,19 +588,21 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   const [saving,   setSaving]   = useState(false)
   const [overlap,  setOverlap]  = useState(null) // warning message or null
 
-  // Pomodoro cycle presets: 1, 2, 4 cycles (focus + short break between each)
-  // 1 cycle = focusMins; 2 cycles = 2*focus + 1*short; 4 cycles = 4*focus + 3*short
+  // Pomodoro presets: pure focus time only (no breaks counted)
   const pomodoroDurations = [
-    { label: '1 🍅',  mins: focusMins,                          desc: `${focusMins}m focus` },
-    { label: '2 🍅',  mins: focusMins * 2 + shortMins,          desc: `${focusMins * 2 + shortMins}m` },
-    { label: '4 🍅',  mins: focusMins * 4 + shortMins * 3,      desc: `${focusMins * 4 + shortMins * 3}m` },
+    { label: '1 🍅', mins: focusMins,     desc: `${focusMins}m` },
+    { label: '2 🍅', mins: focusMins * 2, desc: `${focusMins * 2}m` },
+    { label: '4 🍅', mins: focusMins * 4, desc: `${focusMins * 4}m` },
   ]
 
   function applyDuration(mins) {
     if (!form.start_time) return
-    const start = new Date(form.start_time)
-    if (isNaN(start.getTime())) return
-    const end = new Date(start.getTime() + mins * 60000)
+    const [dp, tp = '00:00'] = form.start_time.slice(0, 16).split('T')
+    const [y, mo, d] = dp.split('-').map(Number)
+    const [h, mi] = tp.split(':').map(Number)
+    if (!y || !mo || !d) return
+    const endMs = new Date(y, mo - 1, d, h, mi).getTime() + mins * 60000
+    const end = new Date(endMs)
     const pad = n => String(n).padStart(2, '0')
     const endStr = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
     setForm(f => ({ ...f, end_time: endStr }))
@@ -660,7 +662,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
       const [dp, tp] = autoStart.split('T')
       const [y, mo, d] = dp.split('-').map(Number)
       const [h, mi] = tp.split(':').map(Number)
-      const endMs = new Date(y, mo - 1, d, h, mi).getTime() + focusMins * 60000
+      const endMs = new Date(y, mo - 1, d, h, mi).getTime() + focusMins * 4 * 60000
       const end = new Date(endMs)
       const pad = n => String(n).padStart(2, '0')
       autoEnd = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
@@ -673,10 +675,9 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
         ? (task?.title || f.title)
         : f.title
 
-      // Only auto-fill times if the start is empty or was auto-filled from the previous task.
-      // A task with only a deadline (no due_time) also triggers auto-fill since we
-      // always build an autoStart from deadline + fallback time.
-      const shouldFillTime = !f.start_time || !!prevTask?.deadline
+      // Fill times when: start is blank, the new task has a deadline (jump to task date),
+      // or we're switching away from a task that previously filled the times.
+      const shouldFillTime = !f.start_time || !!task?.deadline || !!prevTask?.deadline
 
       return {
         ...f,
@@ -828,9 +829,21 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   )
 }
 
+// ── Helper: build "now rounded to next 15 min" datetime-local string ──────────
+function defaultBlockTimes(focusMins) {
+  const now = new Date()
+  const rounded = new Date(Math.ceil(now.getTime() / (15 * 60000)) * (15 * 60000))
+  const pad = n => String(n).padStart(2, '0')
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const start = fmt(rounded)
+  const end   = fmt(new Date(rounded.getTime() + focusMins * 4 * 60000))
+  return { start, end }
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CalendarPage() {
   const calRef = useRef(null)
+  const { focusMins: pageFocusMins } = useTimer()
 
   const [blocks,    setBlocks]    = useState([])
   const [tasks,     setTasks]     = useState([])
@@ -1150,7 +1163,10 @@ export default function CalendarPage() {
         {/* Create button */}
         <div className="p-4">
           <button
-            onClick={() => setModal({ title: '', start_time: '', end_time: '', task_id: '', color: '#6366f1' })}
+            onClick={() => {
+              const { start, end } = defaultBlockTimes(pageFocusMins)
+              setModal({ title: '', start_time: start, end_time: end, task_id: '', color: '#6366f1' })
+            }}
             className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl
                        border border-gray-200 dark:border-gray-700 hover:shadow-md text-sm font-semibold
                        text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 transition-all hover:border-gray-300 dark:hover:border-gray-600 group"
