@@ -24,7 +24,7 @@ export async function updateProfile(data) {
 }
 
 export async function completeOnboarding(preferences) {
-  const res = await api.patch('/auth/me/onboarding', { preferences })
+  const res = await api.patch('/auth/me/onboarding', preferences)
   return res.data
 }
 
