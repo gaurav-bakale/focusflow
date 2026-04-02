@@ -35,6 +35,7 @@ const mockFetchTaskAnalytics = jest.fn()
 const mockFetchBlocks        = jest.fn()
 const mockCreateBlock        = jest.fn()
 const mockCreateBlocksBulk   = jest.fn()
+const mockGetProfile         = jest.fn()
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:         (...a) => mockFetchTasks(...a),
@@ -57,15 +58,10 @@ jest.mock('../services/otherServices', () => ({
 }))
 
 jest.mock('../services/authService', () => ({
-  login:       jest.fn(),
-  register:    jest.fn(),
-  saveApiKey:  jest.fn().mockResolvedValue({}),
-  getProfile:  jest.fn().mockResolvedValue({
-    id: 'u1', name: 'Alice Smith', email: 'alice@focusflow.dev',
-    onboarding_completed: true,
-    preferences: { pomodoro_duration: 25, short_break: 5, long_break: 15 },
-    created_at: new Date().toISOString(),
-  }),
+  login:      jest.fn(),
+  register:   jest.fn(),
+  saveApiKey: jest.fn().mockResolvedValue({}),
+  getProfile: (...a) => mockGetProfile(...a),
 }))
 
 // ── Mock AITaskGenerator (tested separately) ──────────────────────────────────
@@ -172,6 +168,14 @@ async function renderDashboard({
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
+  // Default: getProfile returns a 25-min user so AuthContext doesn't fail in JSDOM.
+  // Tests that need different preferences call mockGetProfile.mockResolvedValueOnce().
+  mockGetProfile.mockResolvedValue({
+    id: 'u1', name: 'Alice Smith', email: 'alice@focusflow.dev',
+    onboarding_completed: true,
+    preferences: { pomodoro_duration: 25, short_break: 5, long_break: 15 },
+    created_at: new Date().toISOString(),
+  })
 })
 
 afterEach(() => {
@@ -924,6 +928,13 @@ describe('dynamic focusMins from user preferences', () => {
       priority: 'MEDIUM', status: 'TODO',
       deadline: FUTURE_DATE, due_time: null,
       recurrence: 'NONE', is_complete: false,
+    })
+    // Override getProfile so AuthContext returns the 30-min user, not the default 25-min.
+    mockGetProfile.mockResolvedValueOnce({
+      id: 'u-30', name: 'Bob Builder', email: 'bob@focusflow.dev',
+      onboarding_completed: true,
+      preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+      created_at: new Date().toISOString(),
     })
 
     await renderDashboard({ user: user30 })

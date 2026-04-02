@@ -36,7 +36,10 @@ jest.mock('@fullcalendar/react', () => ({
           key={e.id}
           data-testid="cal-event"
           data-event-id={e.id}
-          onClick={() => {
+          onClick={(domEvent) => {
+            // Stop the DOM event from bubbling to CalendarPage's outer onClick
+            // which would call setPopover(null) and immediately close the popover.
+            domEvent.stopPropagation()
             if (eventClick) {
               // Build a minimal FC event object that CalendarPage's handleEventClick expects
               eventClick({
@@ -72,6 +75,17 @@ const mockFetchBlocks      = jest.fn()
 const mockUpdateBlock      = jest.fn()
 const mockDeleteBlock      = jest.fn()
 const mockCreateBlocksBulk = jest.fn()
+const mockGetProfile       = jest.fn()
+
+// Prevent AuthContext's getProfile() from overriding the localStorage user.
+// Default returns a user with the standard 25-min pomodoro; individual tests
+// that need different preferences call mockGetProfile.mockResolvedValueOnce().
+jest.mock('../services/authService', () => ({
+  login:      jest.fn(),
+  register:   jest.fn(),
+  saveApiKey: jest.fn().mockResolvedValue({}),
+  getProfile: (...a) => mockGetProfile(...a),
+}))
 
 jest.mock('../services/taskService', () => ({
   fetchTasks:       (...a) => mockFetchTasks(...a),
@@ -161,7 +175,14 @@ async function renderCalendar(tasks = SAMPLE_TASKS, blocks = SAMPLE_BLOCKS) {
 beforeEach(() => {
   jest.clearAllMocks()
   localStorage.clear()
-  // Reset new mocks to safe defaults so existing tests are unaffected
+  // Default getProfile returns a 25-min user — prevents AuthContext from
+  // clearing user state when the real API is unavailable in JSDOM.
+  mockGetProfile.mockResolvedValue({
+    id: 'u1', name: 'Alice Smith', email: 'alice@focusflow.dev',
+    onboarding_completed: true,
+    preferences: { pomodoro_duration: 25, short_break: 5, long_break: 15 },
+    created_at: new Date().toISOString(),
+  })
   mockUpdateBlock.mockResolvedValue({ id: 'b-updated', title: 'Updated', start_time: '', end_time: '', recurrence: 'NONE', recurrence_group_id: null })
   mockDeleteBlock.mockResolvedValue(undefined)
   mockCreateBlocksBulk.mockResolvedValue([])
@@ -758,12 +779,15 @@ describe('dynamic focusMins from user preferences', () => {
       id: 'u-30', name: 'Alice', email: 'alice@focusflow.dev',
       onboarding_completed: true,
       preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+      created_at: new Date().toISOString(),
     }
 
     mockFetchTasks.mockResolvedValue([])
     mockFetchBlocks.mockResolvedValue([])
     localStorage.setItem('ff_token', 'test-token')
     localStorage.setItem('ff_user', JSON.stringify(user30))
+    // Override getProfile so AuthContext returns the 30-min user, not the default 25-min.
+    mockGetProfile.mockResolvedValueOnce(user30)
 
     await act(async () => {
       render(<CalendarPage />, { wrapper: Wrapper })
@@ -798,12 +822,15 @@ describe('dynamic focusMins from user preferences', () => {
       id: 'u-30b', name: 'Bob', email: 'bob@focusflow.dev',
       onboarding_completed: true,
       preferences: { pomodoro_duration: 30, short_break: 5, long_break: 15 },
+      created_at: new Date().toISOString(),
     }
 
     mockFetchTasks.mockResolvedValue([])
     mockFetchBlocks.mockResolvedValue([])
     localStorage.setItem('ff_token', 'test-token')
     localStorage.setItem('ff_user', JSON.stringify(user30))
+    // Override getProfile so AuthContext returns the 30-min user, not the default 25-min.
+    mockGetProfile.mockResolvedValueOnce(user30)
 
     await act(async () => {
       render(<CalendarPage />, { wrapper: Wrapper })
