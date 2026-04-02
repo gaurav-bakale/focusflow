@@ -20,6 +20,7 @@ import {
   markTaskComplete,
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
+import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import { suggestCategories } from '../utils/smartCategories'
@@ -134,6 +135,18 @@ export default function TasksPage() {
   })
 
   const [overlapError, setOverlapError] = useState('')
+
+  // ── Share dialog state ───────────────────────────────────────────────────
+  const [shareModal, setShareModal]       = useState(false)
+  const [shareTaskId, setShareTaskId]     = useState(null)
+  const [shareTaskTitle, setShareTaskTitle] = useState('')
+  const [shareEmail, setShareEmail]       = useState('')
+  const [sharePermission, setSharePermission] = useState('VIEW')
+  const [shareError, setShareError]       = useState('')
+  const [shareSuccess, setShareSuccess]   = useState('')
+  const [shareLoading, setShareLoading]   = useState(false)
+  const [existingShares, setExistingShares] = useState([])
+  const [sharesLoading, setSharesLoading] = useState(false)
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [searchText,       setSearchText]       = useState('')
@@ -374,6 +387,72 @@ export default function TasksPage() {
       }
     } catch (err) {
       console.error('Failed to complete task:', err)
+    }
+  }
+
+  // ── Share dialog handlers ─────────────────────────────────────────────────
+
+  async function openShareModal(task) {
+    setShareTaskId(task.id)
+    setShareTaskTitle(task.title)
+    setShareEmail('')
+    setSharePermission('VIEW')
+    setShareError('')
+    setShareSuccess('')
+    setShareModal(true)
+    // Load existing shares
+    setSharesLoading(true)
+    try {
+      const shares = await fetchTaskShares(task.id)
+      setExistingShares(Array.isArray(shares) ? shares : [])
+    } catch (_) {
+      setExistingShares([])
+    } finally {
+      setSharesLoading(false)
+    }
+  }
+
+  function closeShareModal() {
+    setShareModal(false)
+    setShareTaskId(null)
+    setShareTaskTitle('')
+    setShareEmail('')
+    setShareError('')
+    setShareSuccess('')
+    setExistingShares([])
+  }
+
+  async function handleShare(e) {
+    e.preventDefault()
+    if (!shareEmail.trim()) return
+    setShareLoading(true)
+    setShareError('')
+    setShareSuccess('')
+    try {
+      await shareTask({
+        task_id: shareTaskId,
+        email: shareEmail.trim(),
+        permission: sharePermission,
+      })
+      setShareSuccess(`Shared with ${shareEmail}`)
+      setShareEmail('')
+      // Refresh shares list
+      const shares = await fetchTaskShares(shareTaskId)
+      setExistingShares(Array.isArray(shares) ? shares : [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Failed to share task'
+      setShareError(msg)
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  async function handleRevoke(shareId) {
+    try {
+      await revokeShare(shareId)
+      setExistingShares(prev => prev.filter(s => s.id !== shareId))
+    } catch (err) {
+      console.error('Failed to revoke share:', err)
     }
   }
 
@@ -705,6 +784,8 @@ export default function TasksPage() {
                                       {isRecurring ? 'Complete (↻ next)' : 'Complete'}
                                     </button>
                                   )}
+                                  <button onClick={() => openShareModal(task)}
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-700">Share</button>
                                   <button onClick={() => handleDelete(task.id)}
                                     className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
                                 </div>
@@ -888,6 +969,104 @@ export default function TasksPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share Dialog ──────────────────────────────────────────────────── */}
+      {shareModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeShareModal}>
+          <div
+            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-1">
+              Share Task
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
+              {shareTaskTitle}
+            </p>
+
+            {/* Share form */}
+            <form onSubmit={handleShare} className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  placeholder="collaborator@example.com"
+                  required
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Permission
+                </label>
+                <select
+                  value={sharePermission}
+                  onChange={e => setSharePermission(e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                >
+                  <option value="VIEW">View only</option>
+                  <option value="EDIT">Can edit</option>
+                </select>
+              </div>
+
+              {shareError && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400">{shareError}</p>
+              )}
+              {shareSuccess && (
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{shareSuccess}</p>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={closeShareModal}
+                  className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
+                  Close
+                </button>
+                <button type="submit" disabled={shareLoading}
+                  className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">
+                  {shareLoading ? 'Sharing...' : 'Share'}
+                </button>
+              </div>
+            </form>
+
+            {/* Existing shares */}
+            <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+                Shared with
+              </h3>
+              {sharesLoading ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">Loading...</p>
+              ) : existingShares.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">Not shared with anyone yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {existingShares.map(share => (
+                    <div key={share.id} className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                          {share.shared_with_email || share.email || 'Unknown'}
+                        </p>
+                        <p className="text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500">
+                          {share.permission} — {share.status}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRevoke(share.id)}
+                        className="text-xs font-bold text-red-500 hover:text-red-700 shrink-0"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
