@@ -26,10 +26,10 @@ import { fetchSessions } from '../services/otherServices'
 // (color, label, ring color) consumed uniformly by the UI. Switching
 // phases swaps the active strategy without if/else chains.
 const PHASE_CONFIG = {
-  [PHASES.IDLE]:        { label: 'Ready',       color: '#1e293b', ring: '#1e293b', bg: 'bg-slate-50',    tab: 'Focus'       },
-  [PHASES.FOCUS]:       { label: 'Focus',        color: '#6366f1', ring: '#6366f1', bg: 'bg-indigo-50',   tab: 'Focus'       },
-  [PHASES.SHORT_BREAK]: { label: 'Short Break',  color: '#10b981', ring: '#10b981', bg: 'bg-emerald-50',  tab: 'Short Break' },
-  [PHASES.LONG_BREAK]:  { label: 'Long Break',   color: '#0ea5e9', ring: '#0ea5e9', bg: 'bg-sky-50',      tab: 'Long Break'  },
+  [PHASES.IDLE]:        { label: 'Ready',       color: '#1e293b', ring: '#1e293b', bg: 'bg-slate-50 dark:bg-slate-900',       tab: 'Focus'       },
+  [PHASES.FOCUS]:       { label: 'Focus',        color: '#6366f1', ring: '#6366f1', bg: 'bg-indigo-50 dark:bg-indigo-950/40',  tab: 'Focus'       },
+  [PHASES.SHORT_BREAK]: { label: 'Short Break',  color: '#10b981', ring: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/40', tab: 'Short Break' },
+  [PHASES.LONG_BREAK]:  { label: 'Long Break',   color: '#0ea5e9', ring: '#0ea5e9', bg: 'bg-sky-50 dark:bg-sky-950/40',       tab: 'Long Break'  },
 }
 
 const PRIORITY_DOT = { HIGH: 'bg-red-400', MEDIUM: 'bg-amber-400', LOW: 'bg-gray-300' }
@@ -43,13 +43,13 @@ function DurationInput({ label, value, onChange, min = 1, max = 90, disabled }) 
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs font-semibold text-gray-500">{label}</span>
+      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">{label}</span>
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => !disabled && onChange(Math.max(min, value - 1))}
           disabled={disabled || value <= min}
-          className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center
-                     text-gray-500 hover:border-gray-900 hover:text-gray-900 transition-colors
+          className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center
+                     text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
                      disabled:opacity-30 disabled:cursor-not-allowed text-sm font-bold"
         >−</button>
         <input
@@ -62,15 +62,16 @@ function DurationInput({ label, value, onChange, min = 1, max = 90, disabled }) 
             setLocal(String(n))
             onChange(n)
           }}
-          className="w-10 text-center text-sm font-bold border border-gray-200 rounded-lg py-0.5
-                     focus:outline-none focus:border-gray-900 transition-colors disabled:opacity-40"
+          className="w-10 text-center text-sm font-bold border border-gray-200 dark:border-gray-700 rounded-lg py-0.5
+                     bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                     focus:outline-none focus:border-gray-900 dark:focus:border-gray-400 transition-colors disabled:opacity-40"
         />
-        <span className="text-xs text-gray-400 font-medium">min</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">min</span>
         <button
           onClick={() => !disabled && onChange(Math.min(max, value + 1))}
           disabled={disabled || value >= max}
-          className="w-6 h-6 rounded-full border border-gray-200 flex items-center justify-center
-                     text-gray-500 hover:border-gray-900 hover:text-gray-900 transition-colors
+          className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center
+                     text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
                      disabled:opacity-30 disabled:cursor-not-allowed text-sm font-bold"
         >+</button>
       </div>
@@ -96,14 +97,14 @@ function TaskPicker({ tasks, selectedId, onSelect, disabled }) {
         onClick={() => !disabled && setOpen(o => !o)}
         disabled={disabled}
         className={`w-full flex items-center gap-3 px-4 py-3 border-2 rounded-xl text-left
-                    transition-colors ${disabled ? 'opacity-50 cursor-not-allowed border-gray-200' :
-                    'border-gray-200 hover:border-gray-900 cursor-pointer'}
-                    ${open ? 'border-gray-900' : ''}`}
+                    transition-colors bg-white dark:bg-gray-800 ${disabled ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700' :
+                    'border-gray-200 dark:border-gray-700 hover:border-gray-900 dark:hover:border-gray-400 cursor-pointer'}
+                    ${open ? 'border-gray-900 dark:border-gray-400' : ''}`}
       >
         {selected ? (
           <>
             <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${PRIORITY_DOT[selected.priority] || 'bg-gray-300'}`} />
-            <span className="flex-1 text-sm font-semibold text-gray-900 truncate">{selected.title}</span>
+            <span className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{selected.title}</span>
             {selected.estimated_minutes && (
               <span className="text-xs font-bold text-indigo-500 shrink-0">
                 🍅 {Math.ceil(selected.estimated_minutes / 25)}
@@ -116,42 +117,42 @@ function TaskPicker({ tasks, selectedId, onSelect, disabled }) {
         ) : (
           <>
             <span className="w-2.5 h-2.5 rounded-full bg-gray-200 shrink-0" />
-            <span className="flex-1 text-sm font-medium text-gray-400">Focus without a task…</span>
+            <span className="flex-1 text-sm font-medium text-gray-400 dark:text-gray-500">Focus without a task…</span>
           </>
         )}
-        <svg className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
         </svg>
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border-2 border-gray-900
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600
                         rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
           {/* No task option */}
           <button
             onClick={() => { onSelect(null); setOpen(false) }}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-              !selectedId ? 'bg-gray-50' : ''
+            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              !selectedId ? 'bg-gray-50 dark:bg-gray-800' : ''
             }`}
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-gray-200 shrink-0" />
-            <span className="text-sm text-gray-400 font-medium">No task — free focus</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0" />
+            <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">No task — free focus</span>
           </button>
-          <div className="h-px bg-gray-100" />
+          <div className="h-px bg-gray-100 dark:bg-gray-800" />
           {tasks.length === 0 ? (
-            <div className="px-4 py-3 text-xs text-gray-400 text-center">No active tasks</div>
+            <div className="px-4 py-3 text-xs text-gray-400 dark:text-gray-500 text-center">No active tasks</div>
           ) : (
             tasks.map(t => (
               <button
                 key={t.id}
                 onClick={() => { onSelect(t.id); setOpen(false) }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-                  t.id === selectedId ? 'bg-indigo-50' : ''
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                  t.id === selectedId ? 'bg-indigo-50 dark:bg-indigo-950/40' : ''
                 }`}
               >
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${PRIORITY_DOT[t.priority] || 'bg-gray-300'}`} />
-                <span className="flex-1 text-sm font-medium text-gray-800 truncate">{t.title}</span>
+                <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{t.title}</span>
                 {t.recurrence && t.recurrence !== 'NONE' && (
                   <span className="text-xs text-indigo-400 shrink-0">↻</span>
                 )}
@@ -225,7 +226,7 @@ export default function TimerPage() {
   const cyclesComplete  = Math.floor(cycleCount / 4)
 
   return (
-    <div className="min-h-full bg-gray-50">
+    <div className="min-h-full bg-gray-50 dark:bg-gray-900">
       <div className="max-w-5xl mx-auto px-8 py-8">
 
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
@@ -235,11 +236,11 @@ export default function TimerPage() {
             { label: 'Focus Time',     value: totalFocusMins,  unit: 'min', accent: '#10b981' },
             { label: 'Full Cycles',    value: cyclesComplete,  unit: '',    accent: '#f59e0b' },
           ].map(({ label, value, unit, accent }) => (
-            <div key={label} className="bg-white border-2 border-gray-900 rounded-xl px-5 py-4 relative overflow-hidden">
+            <div key={label} className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-xl px-5 py-4 relative overflow-hidden">
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">{label}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">{label}</p>
               <p className="text-3xl font-extrabold font-mono" style={{ color: accent }}>
-                {value}<span className="text-base font-bold text-gray-400 ml-1">{unit}</span>
+                {value}<span className="text-base font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
               </p>
             </div>
           ))}
@@ -249,10 +250,10 @@ export default function TimerPage() {
         <div className="grid grid-cols-5 gap-6">
 
           {/* ── Left: timer ──────────────────────────────────────────────────── */}
-          <div className="col-span-3 bg-white border-2 border-gray-900 rounded-2xl p-8 flex flex-col items-center">
+          <div className="col-span-3 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl p-8 flex flex-col items-center">
 
             {/* Phase tabs */}
-            <div className="flex bg-gray-100 rounded-xl p-1 mb-8 w-full max-w-sm">
+            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 mb-8 w-full max-w-sm">
               {[
                 { p: PHASES.FOCUS,       label: 'Focus',       color: '#6366f1' },
                 { p: PHASES.SHORT_BREAK, label: 'Short Break', color: '#10b981' },
@@ -266,7 +267,7 @@ export default function TimerPage() {
                     onClick={() => selectPhase(p)}
                     className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
                       ${isRunning ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
-                      ${isActive ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                      ${isActive ? 'bg-white dark:bg-gray-900 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     style={isActive ? { color } : {}}
                   >
                     {label}
@@ -318,7 +319,7 @@ export default function TimerPage() {
                   {cfg.label}
                 </span>
                 {activeTask && isFocus && (
-                  <span className="text-xs text-gray-400 font-medium mt-1 max-w-[160px] truncate text-center">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-1 max-w-[160px] truncate text-center">
                     {activeTask.title}
                   </span>
                 )}
@@ -407,9 +408,9 @@ export default function TimerPage() {
                 <button
                   onClick={skipPhase}
                   title="Skip to next phase"
-                  className="flex items-center gap-1.5 border-2 border-gray-200 text-gray-500
-                             font-bold text-xs px-4 py-3.5 rounded-xl hover:border-gray-900
-                             hover:text-gray-900 transition-colors"
+                  className="flex items-center gap-1.5 border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400
+                             font-bold text-xs px-4 py-3.5 rounded-xl hover:border-gray-900 dark:hover:border-gray-400
+                             hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z"/>
@@ -422,8 +423,8 @@ export default function TimerPage() {
               <button
                 onClick={reset}
                 title="Reset timer"
-                className="w-12 h-12 flex items-center justify-center border-2 border-gray-200
-                           rounded-xl text-gray-400 hover:border-gray-900 hover:text-gray-900
+                className="w-12 h-12 flex items-center justify-center border-2 border-gray-200 dark:border-gray-700
+                           rounded-xl text-gray-400 dark:text-gray-500 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100
                            transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +439,7 @@ export default function TimerPage() {
           <div className="col-span-2 flex flex-col gap-5">
 
             {/* Task picker */}
-            <div className="bg-white border-2 border-gray-900 rounded-2xl p-5">
+            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl p-5">
               <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: cfg.color }}>
                 Focusing on
               </p>
@@ -450,7 +451,7 @@ export default function TimerPage() {
               />
               {/* Pomodoro estimate hint */}
               {activeTask?.estimated_minutes && (
-                <div className="mt-3 flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                <div className="mt-3 flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 rounded-lg px-3 py-2">
                   <span className="text-base leading-none">🍅</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-indigo-700">
@@ -466,23 +467,23 @@ export default function TimerPage() {
                 </div>
               )}
               {isRunning && !activeTask?.estimated_minutes && (
-                <p className="text-xs text-gray-400 mt-2 font-medium">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-medium">
                   Task locked while timer is running
                 </p>
               )}
             </div>
 
             {/* Duration settings */}
-            <div className="bg-white border-2 border-gray-900 rounded-2xl overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl overflow-hidden">
               <button
                 onClick={() => setShowSettings(s => !s)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                   Duration Settings
                 </p>
                 <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform ${showSettings ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${showSettings ? 'rotate-180' : ''}`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
@@ -490,7 +491,7 @@ export default function TimerPage() {
               </button>
 
               {showSettings && (
-                <div className="px-5 pb-5 space-y-4 border-t border-gray-100 pt-4">
+                <div className="px-5 pb-5 space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
                   <DurationInput
                     label="Focus"
                     value={focusMins}
@@ -512,7 +513,7 @@ export default function TimerPage() {
                     disabled={!isIdle}
                   />
                   {!isIdle && (
-                    <p className="text-xs text-gray-400 font-medium">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">
                       Reset timer to change durations
                     </p>
                   )}
@@ -521,26 +522,26 @@ export default function TimerPage() {
             </div>
 
             {/* Session log */}
-            <div className="bg-white border-2 border-gray-900 rounded-2xl flex-1 overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl flex-1 overflow-hidden flex flex-col">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
                   Today&apos;s Sessions
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {sessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                    <div className="w-10 h-10 border-2 border-dashed border-gray-200 rounded-full
+                    <div className="w-10 h-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-full
                                     flex items-center justify-center mb-3">
-                      <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
                       </svg>
                     </div>
-                    <p className="text-xs font-semibold text-gray-400">No sessions yet today</p>
-                    <p className="text-xs text-gray-300 mt-1">Start a focus session to track your progress</p>
+                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500">No sessions yet today</p>
+                    <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Start a focus session to track your progress</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-50">
+                  <ul className="divide-y divide-gray-50 dark:divide-gray-800">
                     {sessions.map((s, i) => {
                       const task  = tasks.find(t => t.id === s.task_id)
                       const time  = s.completed_at
@@ -554,12 +555,12 @@ export default function TimerPage() {
                             style={{ background: isFocusSession ? '#6366f1' : '#10b981' }}
                           />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate">
+                            <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
                               {task?.title || (isFocusSession ? 'Free focus' : 'Break')}
                             </p>
-                            <p className="text-xs text-gray-400">{time}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{time}</p>
                           </div>
-                          <span className="text-xs font-mono font-bold text-gray-500 shrink-0">
+                          <span className="text-xs font-mono font-bold text-gray-500 dark:text-gray-400 shrink-0">
                             {s.duration_minutes}m
                           </span>
                         </li>

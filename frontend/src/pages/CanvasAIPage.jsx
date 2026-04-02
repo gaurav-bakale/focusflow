@@ -16,7 +16,7 @@ function Message({ role, text }) {
       <div className={`max-w-sm px-4 py-2.5 rounded-2xl text-sm leading-relaxed
         ${isUser
           ? 'bg-indigo-600 text-white rounded-br-sm'
-          : 'bg-gray-100 text-gray-800 rounded-bl-sm'}`}>
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-sm'}`}>
         {text}
       </div>
     </div>
@@ -72,8 +72,8 @@ export default function CanvasAIPage() {
 
   return (
     <div className="p-8 max-w-2xl mx-auto flex flex-col h-full">
-      <h1 className="text-xl font-bold text-gray-800 mb-2">✨ Canvas AI</h1>
-      <p className="text-sm text-gray-400 mb-6">Your AI brainstorming and planning assistant</p>
+      <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">✨ Canvas AI</h1>
+      <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">Your AI brainstorming and planning assistant</p>
 
       {/* Quick actions */}
       <div className="flex gap-2 flex-wrap mb-6">
@@ -82,7 +82,7 @@ export default function CanvasAIPage() {
             key={label}
             onClick={() => sendMessage(prompt)}
             disabled={loading}
-            className="text-xs border border-indigo-200 text-indigo-600 px-3 py-1.5 rounded-full hover:bg-indigo-50 transition-colors disabled:opacity-40"
+            className="text-xs border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors disabled:opacity-40"
           >
             {label}
           </button>
@@ -90,12 +90,12 @@ export default function CanvasAIPage() {
       </div>
 
       {/* Chat window */}
-      <div className="flex-1 bg-white rounded-xl shadow-sm p-5 overflow-y-auto mb-4 min-h-64 max-h-96">
+      <div className="flex-1 bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5 overflow-y-auto mb-4 min-h-64 max-h-96">
         {messages.map((m, i) => <Message key={i} role={m.role} text={m.text} />)}
         {loading && (
           <div className="flex justify-start mb-3">
-            <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm">
-              <span className="text-gray-400 text-sm animate-pulse">AI is thinking…</span>
+            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-2xl rounded-bl-sm">
+              <span className="text-gray-400 dark:text-gray-500 text-sm animate-pulse">AI is thinking…</span>
             </div>
           </div>
         )}
@@ -107,7 +107,7 @@ export default function CanvasAIPage() {
         <input
           type="text"
           placeholder="Scribble a prompt here…"
-          className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}

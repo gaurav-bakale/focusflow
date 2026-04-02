@@ -19,6 +19,7 @@ import {
   deleteTask,
   markTaskComplete,
 } from '../services/taskService'
+import { suggestCategories } from '../utils/smartCategories'
 
 const COLUMNS = ['TODO', 'IN_PROGRESS', 'DONE']
 
@@ -29,9 +30,9 @@ const COLUMN_CONFIG = {
 }
 
 const CARD_COLORS = {
-  TODO:        'bg-amber-50   border-amber-200',
-  IN_PROGRESS: 'bg-sky-50     border-sky-200',
-  DONE:        'bg-emerald-50 border-emerald-200',
+  TODO:        'bg-amber-50   border-amber-200   dark:bg-amber-950/40  dark:border-amber-800',
+  IN_PROGRESS: 'bg-sky-50     border-sky-200     dark:bg-sky-950/40    dark:border-sky-800',
+  DONE:        'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800',
 }
 
 const PRIORITY_BADGE = {
@@ -349,10 +350,10 @@ export default function TasksPage() {
     return (
       <div className="p-10 max-w-7xl mx-auto">
         <div className="grid grid-cols-5 gap-4 mb-8">
-          {[1,2,3,4,5].map(i => <div key={i} className="border-2 border-gray-200 rounded-lg h-20 animate-pulse" />)}
+          {[1,2,3,4,5].map(i => <div key={i} className="border-2 border-gray-200 dark:border-gray-700 rounded-lg h-20 animate-pulse" />)}
         </div>
         <div className="grid grid-cols-3 gap-6">
-          {[1,2,3].map(i => <div key={i} className="border-2 border-dashed border-gray-300 rounded-lg h-64 animate-pulse" />)}
+          {[1,2,3].map(i => <div key={i} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg h-64 animate-pulse" />)}
         </div>
       </div>
     )
@@ -364,7 +365,7 @@ export default function TasksPage() {
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Project Board</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Project Board</h1>
           {overlappingIds.size > 0 && (
             <p className="text-xs font-bold text-amber-600 mt-1 flex items-center gap-1.5">
               <span>⚠</span>
@@ -374,9 +375,9 @@ export default function TasksPage() {
         </div>
         <button
           onClick={() => openModal()}
-          className="flex items-center gap-2 border-2 border-gray-900 text-gray-900
-                     font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900
-                     hover:text-white transition-colors"
+          className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
+                     font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
+                     hover:text-white dark:hover:text-gray-900 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -387,51 +388,52 @@ export default function TasksPage() {
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
       <div data-testid="analytics-strip" className="grid grid-cols-5 gap-4 mb-8">
-        <div className="bg-white border-2 border-gray-900 rounded-lg px-4 py-3">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">Total</p>
-          <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.total}</p>
+        <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Total</p>
+          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.total}</p>
         </div>
-        <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-0.5">To Do</p>
-          <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.by_status.TODO}</p>
+          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.TODO}</p>
         </div>
-        <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-sky-500 mb-0.5">In Progress</p>
-          <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.by_status.IN_PROGRESS}</p>
+          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.IN_PROGRESS}</p>
         </div>
-        <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
           <p className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-0.5">Done</p>
-          <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.by_status.DONE}</p>
+          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.DONE}</p>
         </div>
         {analytics.overdue > 0 ? (
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg px-4 py-3">
+          <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-0.5">Overdue</p>
             <p className="text-2xl font-extrabold text-red-600 font-mono">{analytics.overdue}</p>
           </div>
         ) : (
-          <div className="bg-white border-2 border-gray-200 rounded-lg px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-0.5">Done Rate</p>
-            <p className="text-2xl font-extrabold text-gray-900 font-mono">{analytics.completion_rate}%</p>
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Done Rate</p>
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.completion_rate}%</p>
           </div>
         )}
       </div>
 
       {/* ── Search + Filters ──────────────────────────────────────────────── */}
-      <div className="bg-white border-2 border-gray-900 rounded-lg p-4 mb-6">
+      <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-4 mb-6">
         <div className="relative mb-4">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500"
             fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input type="text" value={searchText} onChange={e => setSearchText(e.target.value)}
             placeholder="Search tasks by title or description…"
-            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-lg text-sm
-                       font-medium text-gray-700 placeholder-gray-300
-                       focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
+            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-lg text-sm
+                       font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600
+                       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                       focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
           {searchText && (
             <button onClick={() => setSearchText('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900">
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -441,14 +443,14 @@ export default function TasksPage() {
 
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Priority</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Priority</span>
             <div className="flex gap-1">
               {['ALL','HIGH','MEDIUM','LOW'].map(p => (
                 <button key={p} onClick={() => setFilterPriority(p)}
                   className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                     filterPriority === p
-                      ? 'border-gray-900 bg-gray-900 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                      ? 'border-gray-900 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}>
                   {p === 'ALL' ? 'All' : p[0] + p.slice(1).toLowerCase()}
                 </button>
@@ -457,35 +459,35 @@ export default function TasksPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Deadline</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Deadline</span>
             <div className="flex gap-1">
               {[{v:'ALL',l:'All'},{v:'OVERDUE',l:'Overdue'},{v:'TODAY',l:'Today'},{v:'THIS_WEEK',l:'This Week'}].map(({v,l}) => (
                 <button key={v} onClick={() => setFilterDeadline(v)}
                   className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                     filterDeadline === v
-                      ? 'border-gray-900 bg-gray-900 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                      ? 'border-gray-900 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}>{l}</button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Status</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Status</span>
             <div className="flex gap-1">
               {[{v:'ALL',l:'All'},{v:'TODO',l:'To Do'},{v:'IN_PROGRESS',l:'In Progress'},{v:'DONE',l:'Done'}].map(({v,l}) => (
                 <button key={v} onClick={() => setFilterStatus(v)}
                   className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                     filterStatus === v
-                      ? 'border-gray-900 bg-gray-900 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                      ? 'border-gray-900 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}>{l}</button>
               ))}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Type</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Type</span>
             <div className="flex gap-1 flex-wrap">
               {[
                 { v: 'ALL',       l: 'All' },
@@ -499,8 +501,8 @@ export default function TasksPage() {
                 <button key={v} onClick={() => setFilterRecurrence(v)}
                   className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
                     filterRecurrence === v
-                      ? 'border-gray-900 bg-gray-900 text-white'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-900 hover:text-gray-900'
+                      ? 'border-gray-900 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}>{l}</button>
               ))}
             </div>
@@ -517,8 +519,8 @@ export default function TasksPage() {
         </div>
 
         {hasFilters && (
-          <p className="mt-3 text-xs text-gray-400">
-            Showing <span className="font-bold text-gray-900">{filteredTasks.length}</span> of {tasks.length} tasks
+          <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+            Showing <span className="font-bold text-gray-900 dark:text-gray-100">{filteredTasks.length}</span> of {tasks.length} tasks
           </p>
         )}
       </div>
@@ -530,17 +532,17 @@ export default function TasksPage() {
             const config   = COLUMN_CONFIG[colStatus]
             const colTasks = tasksByStatus[colStatus]
             return (
-              <div key={colStatus} className="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[300px]">
+              <div key={colStatus} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[300px]">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-extrabold text-gray-900">{config.label}</h2>
-                    <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                    <h2 className="font-extrabold text-gray-900 dark:text-gray-100">{config.label}</h2>
+                    <span className="text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
                       {colTasks.length}
                     </span>
                   </div>
                   <button onClick={() => openModal(null, colStatus)}
-                    className="w-7 h-7 rounded-full border-2 border-gray-900 flex items-center
-                               justify-center hover:bg-gray-900 hover:text-white transition-colors text-gray-900">
+                    className="w-7 h-7 rounded-full border-2 border-gray-900 dark:border-gray-600 flex items-center
+                               justify-center hover:bg-gray-900 dark:hover:bg-gray-100 hover:text-white dark:hover:text-gray-900 transition-colors text-gray-900 dark:text-gray-100">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
                     </svg>
@@ -579,7 +581,7 @@ export default function TasksPage() {
                                     {hasOverlap && (
                                       <span title="Scheduling conflict" className="text-amber-500 text-xs shrink-0 mt-0.5">⚠</span>
                                     )}
-                                    <h3 className="font-bold text-gray-900 text-sm leading-snug truncate">{task.title}</h3>
+                                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-snug truncate">{task.title}</h3>
                                   </div>
                                   <span className={`text-xs px-2 py-0.5 rounded border font-bold shrink-0 ${PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.MEDIUM}`}>
                                     {task.priority}
@@ -587,33 +589,33 @@ export default function TasksPage() {
                                 </div>
 
                                 {task.description && (
-                                  <p className="text-xs text-gray-500 mb-2 line-clamp-2">{task.description}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                                 )}
 
                                 {/* Scheduling metadata row */}
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                   {/* Task type badge — always shown */}
                                   {isRecurring ? (
-                                    <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded">
                                       ↻ {RECURRENCE_LABELS[task.recurrence]}
                                     </span>
                                   ) : (
-                                    <span className="text-xs font-bold text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
                                       One-time
                                     </span>
                                   )}
                                   {task.estimated_minutes && (
-                                    <span className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
                                       {task.estimated_minutes}m
                                     </span>
                                   )}
                                   {task.categories && task.categories.map(cat => (
-                                    <span key={cat} className="text-xs font-bold bg-white border border-gray-300 text-gray-600 px-1.5 py-0.5 rounded">
+                                    <span key={cat} className="text-xs font-bold bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
                                       {cat}
                                     </span>
                                   ))}
                                   {task.deadline && (
-                                    <span className={`text-xs font-mono ml-auto shrink-0 ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                                    <span className={`text-xs font-mono ml-auto shrink-0 ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-300'}`}>
                                       {isOverdue && '⚠ '}
                                       {new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                       {task.due_time && ` · ${fmt12h(task.due_time)}`}
@@ -623,7 +625,7 @@ export default function TasksPage() {
 
                                 {/* Overdue warning for recurring tasks still in TODO/IN_PROGRESS */}
                                 {isRecurring && isOverdue && task.status !== 'DONE' && (
-                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-50 border border-red-200 rounded px-2 py-1">
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-red-500 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded px-2 py-1">
                                     <span>⚠</span>
                                     <span>Past due — complete to schedule next {RECURRENCE_LABELS[task.recurrence].toLowerCase()} occurrence</span>
                                   </div>
@@ -631,16 +633,16 @@ export default function TasksPage() {
 
                                 {/* Next occurrence info for completed recurring tasks */}
                                 {isRecurring && task.status === 'DONE' && task.deadline && (
-                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-indigo-500 bg-indigo-50 border border-indigo-100 rounded px-2 py-1">
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 rounded px-2 py-1">
                                     <span>↻</span>
                                     <span>Next occurrence: {nextRecurDate(task.deadline, task.recurrence) ?? '—'}</span>
                                   </div>
                                 )}
 
                                 {/* Hover actions */}
-                                <div className="flex gap-3 mt-3 pt-3 border-t border-gray-200/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex gap-3 mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-700/60 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => openModal(task)}
-                                    className="text-xs font-bold text-gray-600 hover:text-gray-900">Edit</button>
+                                    className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Edit</button>
                                   {task.status !== 'DONE' && (
                                     <button onClick={() => handleComplete(task.id)}
                                       className="text-xs font-bold text-emerald-600 hover:text-emerald-700">
@@ -657,7 +659,7 @@ export default function TasksPage() {
                       })}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
-                        <p className="text-xs text-gray-300 text-center py-8 font-medium">No tasks</p>
+                        <p className="text-xs text-gray-300 dark:text-gray-600 text-center py-8 font-medium">No tasks</p>
                       )}
                     </div>
                   )}
@@ -671,46 +673,46 @@ export default function TasksPage() {
       {/* ── Create / Edit modal ───────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeModal}>
-          <div className="bg-white border-2 border-gray-900 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-extrabold text-gray-900 mb-5">
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-5">
               {editingTask ? 'Edit Task' : 'New Task'}
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Title */}
               <div>
-                <label htmlFor="task-title" className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Title</label>
+                <label htmlFor="task-title" className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Title</label>
                 <input id="task-title" type="text" value={formData.title} required
                   onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Description</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Description</label>
                 <textarea value={formData.description} rows={2}
                   onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors resize-none" />
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors resize-none" />
               </div>
 
               {/* Priority + Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Priority</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Priority</label>
                   <select value={formData.priority}
                     onChange={e => setFormData(p => ({ ...p, priority: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Status</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Status</label>
                   <select value={formData.status}
                     onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
                     <option value="TODO">To Do</option>
                     <option value="IN_PROGRESS">In Progress</option>
                     <option value="DONE">Done</option>
@@ -721,26 +723,26 @@ export default function TasksPage() {
               {/* Due Date + Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Due Date</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Due Date</label>
                   <input type="date" value={formData.deadline}
                     onChange={e => { setFormData(p => ({ ...p, deadline: e.target.value })); setOverlapError('') }}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Due Time <span className="normal-case font-medium text-gray-400">(optional)</span></label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Due Time <span className="normal-case font-medium text-gray-400 dark:text-gray-500">(optional)</span></label>
                   <input type="time" value={formData.due_time}
                     onChange={e => { setFormData(p => ({ ...p, due_time: e.target.value })); setOverlapError('') }}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
                 </div>
               </div>
 
               {/* Repeat + Duration */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Repeat</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Repeat</label>
                   <select value={formData.recurrence}
                     onChange={e => setFormData(p => ({ ...p, recurrence: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
                     <option value="NONE">One-time</option>
                     <option value="DAILY">Daily</option>
                     <option value="WEEKDAYS">Weekdays (Mon–Fri)</option>
@@ -749,10 +751,10 @@ export default function TasksPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Duration</label>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Duration</label>
                   <select value={formData.estimated_minutes}
                     onChange={e => setFormData(p => ({ ...p, estimated_minutes: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
                     <option value="">— none —</option>
                     {DURATION_PRESETS.map(d => (
                       <option key={d} value={d}>{d} min{d === 25 ? ' (1 🍅)' : d === 50 ? ' (2 🍅)' : ''}</option>
@@ -763,7 +765,7 @@ export default function TasksPage() {
 
               {/* Recurrence hint */}
               {formData.recurrence !== 'NONE' && (
-                <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                <div className="flex items-start gap-2 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2">
                   <span className="text-indigo-500 text-sm mt-0.5">↻</span>
                   <p className="text-xs text-indigo-700 font-medium">
                     {formData.recurrence === 'DAILY'    && 'A new task will appear every day after you complete this one.'}
@@ -776,23 +778,54 @@ export default function TasksPage() {
 
               {/* Categories */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1.5">Categories</label>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Categories</label>
+
+                {/* Smart suggestions */}
+                {(() => {
+                  const suggestions = suggestCategories(formData.title, formData.categories)
+                  return suggestions.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                        ✦ Suggested
+                      </span>
+                      {suggestions.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setFormData(p => ({
+                            ...p,
+                            categories: p.categories.includes(cat) ? p.categories : [...p.categories, cat]
+                          }))}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold
+                                     border border-indigo-300 dark:border-indigo-700
+                                     bg-indigo-50 dark:bg-indigo-950/50
+                                     text-indigo-600 dark:text-indigo-400
+                                     hover:bg-indigo-100 dark:hover:bg-indigo-900/50
+                                     transition-colors"
+                        >
+                          + {cat}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null
+                })()}
+
                 <div className="flex gap-2 mb-2">
                   <input type="text" value={categoryInput}
                     onChange={e => setCategoryInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCategory())}
                     placeholder="Add category…"
-                    className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-gray-900 focus:ring-0 outline-none transition-colors" />
+                    className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
                   <button type="button" onClick={addCategory}
-                    className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-bold text-sm hover:border-gray-900 transition-colors">
+                    className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-sm hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
                     Add
                   </button>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {formData.categories.map(cat => (
-                    <span key={cat} className="inline-flex items-center gap-1 border-2 border-gray-900 text-gray-900 px-2 py-0.5 rounded text-xs font-bold">
+                    <span key={cat} className="inline-flex items-center gap-1 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100 px-2 py-0.5 rounded text-xs font-bold">
                       {cat}
-                      <button type="button" onClick={() => removeCategory(cat)} className="text-gray-400 hover:text-gray-900 ml-0.5">×</button>
+                      <button type="button" onClick={() => removeCategory(cat)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ml-0.5">×</button>
                     </span>
                   ))}
                 </div>
@@ -800,7 +833,7 @@ export default function TasksPage() {
 
               {/* Overlap error */}
               {overlapError && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2.5">
+                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2.5">
                   <span className="text-red-500 text-sm shrink-0 mt-0.5">⚠</span>
                   <p className="text-xs font-semibold text-red-700">{overlapError}</p>
                 </div>
@@ -809,11 +842,11 @@ export default function TasksPage() {
               {/* Actions */}
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={closeModal}
-                  className="px-4 py-2 border-2 border-gray-300 text-gray-600 font-bold text-sm rounded-lg hover:border-gray-900 hover:text-gray-900 transition-colors">
+                  className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
                   Cancel
                 </button>
                 <button type="submit"
-                  className="px-5 py-2 bg-gray-900 text-white font-bold text-sm rounded-lg border-2 border-gray-900 hover:bg-gray-800 transition-colors">
+                  className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
                   {editingTask ? 'Update' : 'Create'}
                 </button>
               </div>

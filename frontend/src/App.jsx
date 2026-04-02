@@ -11,6 +11,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TimerProvider } from './context/TimerContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 import LoginPage      from './pages/LoginPage'
 import RegisterPage   from './pages/RegisterPage'
@@ -24,7 +25,7 @@ import CanvasAIPage   from './pages/CanvasAIPage'
 
 function Spinner() {
   return (
-    <div className="flex items-center justify-center h-screen bg-white">
+    <div className="flex items-center justify-center h-screen bg-white dark:bg-gray-950">
       <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
     </div>
   )
@@ -58,6 +59,7 @@ function OnboardingRoute({ children }) {
 
 export default function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <TimerProvider>
         <BrowserRouter>
@@ -91,5 +93,6 @@ export default function App() {
         </BrowserRouter>
       </TimerProvider>
     </AuthProvider>
+    </ThemeProvider>
   )
 }
