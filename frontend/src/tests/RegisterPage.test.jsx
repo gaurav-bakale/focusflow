@@ -45,14 +45,6 @@ import RegisterPage from '../pages/RegisterPage'
 /** A password that satisfies all 4 rules: length≥8, uppercase, digit, special char. */
 const STRONG_PW = 'StrongPass1!'
 
-/** The exact label text from the PW_RULES array in RegisterPage.jsx */
-const RULE_LABELS = {
-  length:    'At least 8 characters',
-  uppercase: 'One uppercase letter (A\u20137)',   // A–Z (en-dash U+2013)
-  number:    'One number (0\u20139)',              // 0–9 (en-dash U+2013)
-  special:   'One special character (!@#\u2026)', // !@#… (ellipsis U+2026)
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Wraps component in MemoryRouter (needed for Link) and renders it. */
