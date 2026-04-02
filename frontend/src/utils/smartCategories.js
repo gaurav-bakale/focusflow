@@ -106,15 +106,27 @@ const TAXONOMY = [
   },
   {
     label: 'Health',
-    verbs:   ['run', 'workout', 'exercis', 'meditat', 'walk', 'cycl', 'swim'],
-    nouns:   ['gym', 'workout', 'yoga', 'medit', 'health', 'fit', 'diet', 'sleep', 'nutrit', 'run'],
-    phrases: ['morning run', 'evening walk', 'hit the gym', 'work out', 'go for a run'],
+    verbs:   ['run', 'workout', 'exercis', 'meditat', 'walk', 'cycl', 'swim', 'cook', 'prep', 'eat'],
+    nouns:   ['gym', 'workout', 'yoga', 'medit', 'health', 'fit', 'diet', 'sleep', 'nutrit', 'run', 'meal', 'food', 'recip', 'cook', 'breakfast', 'lunch', 'dinner', 'snack', 'water', 'vitamin', 'supplement'],
+    phrases: ['morning run', 'evening walk', 'hit the gym', 'work out', 'go for a run', 'meal prep', 'meal plan', 'eat healthy', 'drink water'],
   },
   {
     label: 'Errands',
-    verbs:   ['buy', 'purchas', 'order', 'pick', 'drop', 'pay', 'book'],
-    nouns:   ['shop', 'groceri', 'errand', 'bill', 'appoint', 'deliveri'],
-    phrases: ['pick up', 'drop off', 'pay bill', 'buy groceries', 'go shopping'],
+    verbs:   ['buy', 'purchas', 'order', 'pick', 'drop', 'pay', 'book', 'call', 'schedul', 'renew', 'return'],
+    nouns:   ['shop', 'groceri', 'errand', 'bill', 'appoint', 'deliveri', 'packag', 'mail', 'licens', 'subscript', 'insuranc', 'passport', 'visa'],
+    phrases: ['pick up', 'drop off', 'pay bill', 'buy groceries', 'go shopping', 'schedule appointment', 'renew'],
+  },
+  {
+    label: 'Finance',
+    verbs:   ['budget', 'invest', 'sav', 'track', 'review', 'pay', 'transfer', 'withdraw', 'deposit'],
+    nouns:   ['budget', 'expens', 'incom', 'tax', 'invoice', 'payment', 'loan', 'mortgage', 'rent', 'invest', 'stock', 'crypto', 'financ', 'bank', 'account', 'credit', 'debt', 'saving'],
+    phrases: ['pay rent', 'file taxes', 'track expenses', 'monthly budget', 'investment review', 'pay off'],
+  },
+  {
+    label: 'Social',
+    verbs:   ['call', 'text', 'meet', 'visit', 'catch up', 'plan', 'organiz', 'invit', 'celebrat'],
+    nouns:   ['friend', 'famili', 'parent', 'birthday', 'anniversari', 'party', 'wedding', 'event', 'dinner', 'hangout', 'trip', 'vacation', 'travel', 'gift'],
+    phrases: ['catch up', 'birthday party', 'family dinner', 'plan trip', 'book flight', 'book hotel'],
   },
 ]
 

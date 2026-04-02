@@ -18,6 +18,7 @@ import {
   register as apiRegister,
   completeOnboarding as apiCompleteOnboarding,
   logout as apiLogout,
+  getProfile,
 } from '../services/authService'
 
 const AuthContext = createContext(null)
@@ -26,14 +27,17 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Rehydrate from localStorage on mount
+  // Rehydrate from localStorage on mount — validate token with backend
   useEffect(() => {
-    const token  = localStorage.getItem('ff_token')
-    const stored = localStorage.getItem('ff_user')
-    if (token && stored) {
-      try { setUser(JSON.parse(stored)) } catch (_) { /* corrupt data */ }
-    }
-    setLoading(false)
+    const token = localStorage.getItem('ff_token')
+    if (!token) { setLoading(false); return }
+    getProfile()
+      .then(profile => setUser(profile))
+      .catch(() => {
+        localStorage.removeItem('ff_token')
+        localStorage.removeItem('ff_user')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   function persist(token, userData) {
