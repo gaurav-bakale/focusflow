@@ -78,6 +78,7 @@ export default function DashboardPage() {
 
   // Quick-add
   const [newTitle, setNewTitle]           = useState('')
+  const [newDescription, setNewDescription] = useState('')
   const [newPriority, setNewPriority]     = useState('MEDIUM')
   const [newDeadline, setNewDeadline]     = useState('')
   const [newTime, setNewTime]             = useState('')
@@ -121,6 +122,7 @@ export default function DashboardPage() {
     try {
       const created = await createTask({
         title,
+        description: newDescription.trim() || null,
         priority: newPriority,
         status: 'TODO',
         deadline: newDeadline || null,
@@ -129,6 +131,7 @@ export default function DashboardPage() {
       })
       setTasks(prev => [created, ...prev].slice(0, 8))
       setNewTitle('')
+      setNewDescription('')
       setNewPriority('MEDIUM')
       setNewDeadline('')
       setNewTime('')
@@ -218,6 +221,18 @@ export default function DashboardPage() {
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
                            focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
                            placeholder-gray-300 dark:placeholder-gray-600 mb-3"
+              />
+
+              {/* Description textarea */}
+              <textarea
+                value={newDescription}
+                onChange={e => setNewDescription(e.target.value)}
+                placeholder="Description (optional)"
+                rows={2}
+                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm
+                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                           placeholder-gray-300 dark:placeholder-gray-600 mb-3 resize-none"
               />
 
               {/* Date + Time row */}

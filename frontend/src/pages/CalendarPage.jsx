@@ -27,6 +27,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import { fetchBlocks, createBlock, updateBlock, deleteBlock } from '../services/otherServices'
 import { fetchTasks, markTaskComplete } from '../services/taskService'
 import { useTimer } from '../context/TimerContext'
+import { detectOverlap } from '../utils/detectOverlap'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
@@ -607,18 +608,18 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function checkOverlap(start, end) {
-    if (!start || !end) { setOverlap(null); return }
-    const s = new Date(start), e = new Date(end)
-    if (isNaN(s) || isNaN(e) || e <= s) { setOverlap(null); return }
-
-    const conflict = existingBlocks.find(b => {
-      if (b.id === block.id) return false // skip self when editing
-      const bs = new Date(b.start_time), be = new Date(b.end_time)
-      if (isNaN(bs) || isNaN(be)) return false
-      return s < be && e > bs
-    })
+    const conflict = detectOverlap(start, end, existingBlocks, block.id)
     if (conflict) {
-      const cfmtTime = iso => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      const cfmtTime = iso => {
+        // Parse as local time (same logic as parseLocalDateTime) so display matches input
+        const bare = iso ? iso.slice(0, 16) : ''
+        if (!bare) return ''
+        const [dp, tp = '00:00'] = bare.split('T')
+        const [y, mo, d] = dp.split('-').map(Number)
+        const [h = 0, mi = 0] = tp.split(':').map(Number)
+        return new Date(y, mo - 1, d, h, mi)
+          .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      }
       setOverlap(`Overlaps with "${conflict.title}" (${cfmtTime(conflict.start_time)} – ${cfmtTime(conflict.end_time)}). Pick a different time.`)
     } else {
       setOverlap(null)
