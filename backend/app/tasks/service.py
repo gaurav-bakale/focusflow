@@ -104,6 +104,56 @@ class TaskService:
                 detail="Task not found",
             )
 
+    async def _can_access(
+        self, user: dict, task_id: str, *, require_edit: bool = False
+    ) -> dict:
+        """
+        Check if the user can access a task — either as owner or via a share.
+
+        Returns the task document if access is granted.
+        Raises 404 if the task does not exist.
+        Raises 403 if the user lacks the required permission level.
+
+        Args:
+            user:         The authenticated user dict.
+            task_id:      The task id string.
+            require_edit: If True, VIEW-only shares are rejected with 403.
+        """
+        doc = await self.db["tasks"].find_one(
+            {"_id": self._object_id(task_id)}
+        )
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
+
+        # Owner always has full access
+        if str(doc["user_id"]) == str(user["_id"]):
+            return doc
+
+        # Check for a share granting access
+        user_id_str = str(user["_id"])
+        share = await self.db["task_shares"].find_one({
+            "task_id": task_id,
+            "shared_with_id": user_id_str,
+            "status": "ACCEPTED",
+        })
+
+        if not share:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
+
+        if require_edit and share.get("permission") != "EDIT":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You have view-only access to this task",
+            )
+
+        return doc
+
     def _next_occurrence(self, deadline: str, recurrence: str) -> Optional[str]:
         """Compute the next deadline date for a recurring task."""
         try:
@@ -160,15 +210,13 @@ class TaskService:
         return self._doc_to_task(doc)
 
     async def get_task(self, user: dict, task_id: str) -> TaskResponse:
-        """Fetch a single task by id — 404 if not found or not owned by user."""
-        doc = await self.db["tasks"].find_one(
-            {"_id": self._object_id(task_id), "user_id": user["_id"]}
-        )
-        if not doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Task not found",
-            )
+        """
+        Fetch a single task by id.
+
+        Access is granted if the user owns the task OR has been shared the
+        task (VIEW or EDIT permission). Returns 404 if not found or no access.
+        """
+        doc = await self._can_access(user, task_id)
         return self._doc_to_task(doc)
 
     async def update_task(
@@ -177,9 +225,16 @@ class TaskService:
         """
         Partial update — only provided (non-None) fields are written.
 
+        Access is granted if the user owns the task OR has EDIT permission
+        via a share. VIEW-only shared users receive 403.
+
         Raises 400 if no fields are supplied.
-        Raises 404 if the task does not exist or is not owned by the user.
+        Raises 404 if the task does not exist or no access.
+        Raises 403 if the user has view-only access.
         """
+        # Verify access (owner or EDIT share)
+        await self._can_access(user, task_id, require_edit=True)
+
         update_fields = {
             k: v for k, v in data.model_dump().items()
             if v is not None and v != ""
@@ -192,7 +247,7 @@ class TaskService:
         update_fields["updated_at"] = datetime.utcnow()
 
         result = await self.db["tasks"].find_one_and_update(
-            {"_id": self._object_id(task_id), "user_id": user["_id"]},
+            {"_id": self._object_id(task_id)},
             {"$set": update_fields},
             return_document=True,
         )
