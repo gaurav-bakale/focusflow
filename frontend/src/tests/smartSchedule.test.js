@@ -15,7 +15,7 @@
  *   nowAt(date, HH, MM)  — build a Date object for the injectable `now` param
  */
 
-import { findFreeSlot, smartScheduleTask, ACTIVE_START_HOUR, ACTIVE_END_HOUR } from '../utils/smartSchedule'
+import { findFreeSlot, smartScheduleTask, generateRecurringDates, generateRecurringSlots, ACTIVE_START_HOUR, ACTIVE_END_HOUR } from '../utils/smartSchedule'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -437,5 +437,216 @@ describe('edge cases — invalid inputs and boundary conditions', () => {
   test('SS-35: smartScheduleTask with focusMins=-5 returns null', () => {
     const task = { deadline: DATE, due_time: null }
     expect(smartScheduleTask(task, -5, [])).toBeNull()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateRecurringDates
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateRecurringDates', () => {
+
+  /**
+   * SS-36: DAILY — returns dates for every day within 14-day window
+   * Starting today, expect at least 14 consecutive calendar dates.
+   */
+  test('SS-36: DAILY generates a date for each day in the 14-day window', () => {
+    const dates = generateRecurringDates(DATE, 'DAILY', nowOnDifferentDay())
+    // Window = 14 days from today (May 9) → May 9 through May 23 = 15 dates
+    expect(dates.length).toBeGreaterThanOrEqual(14)
+    // All dates must be unique and consecutive
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1])
+      const curr = new Date(dates[i])
+      expect(curr - prev).toBe(24 * 60 * 60 * 1000) // exactly 1 day apart
+    }
+  })
+
+  /**
+   * SS-37: WEEKDAYS — no Saturdays or Sundays in results
+   */
+  test('SS-37: WEEKDAYS never includes Saturday (6) or Sunday (0)', () => {
+    const dates = generateRecurringDates(DATE, 'WEEKDAYS', nowOnDifferentDay())
+    expect(dates.length).toBeGreaterThan(0)
+    dates.forEach(d => {
+      // Use local-time constructor to avoid UTC vs local midnight ambiguity
+      const [y, mo, day] = d.split('-').map(Number)
+      const weekday = new Date(y, mo - 1, day).getDay()
+      expect(weekday).not.toBe(0) // Sunday
+      expect(weekday).not.toBe(6) // Saturday
+    })
+  })
+
+  /**
+   * SS-38: WEEKLY — exactly 7 days between consecutive dates
+   */
+  test('SS-38: WEEKLY dates are always 7 days apart', () => {
+    const dates = generateRecurringDates(DATE, 'WEEKLY', nowOnDifferentDay())
+    expect(dates.length).toBeGreaterThanOrEqual(2) // 56-day window → at least 8 weeks
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1])
+      const curr = new Date(dates[i])
+      expect(curr - prev).toBe(7 * 24 * 60 * 60 * 1000)
+    }
+  })
+
+  /**
+   * SS-39: MONTHLY — month increments by 1 between consecutive dates
+   */
+  test('SS-39: MONTHLY dates advance by one month each occurrence', () => {
+    const dates = generateRecurringDates(DATE, 'MONTHLY', nowOnDifferentDay())
+    expect(dates.length).toBeGreaterThanOrEqual(2) // 90-day window → at least 3 months
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1])
+      const curr = new Date(dates[i])
+      // Month should advance by 1 (accounting for year rollover)
+      const monthDiff = (curr.getFullYear() * 12 + curr.getMonth()) -
+                        (prev.getFullYear() * 12 + prev.getMonth())
+      expect(monthDiff).toBe(1)
+    }
+  })
+
+  /**
+   * SS-40: NONE / null recurrence returns exactly the start date
+   */
+  test('SS-40: NONE recurrence returns only the start date', () => {
+    expect(generateRecurringDates(DATE, 'NONE', nowOnDifferentDay())).toEqual([DATE])
+    expect(generateRecurringDates(DATE, null,   nowOnDifferentDay())).toEqual([DATE])
+  })
+
+  /**
+   * SS-41: Past startDate — no dates before today are included
+   * If task deadline was 10 days ago, we still only get future dates.
+   */
+  test('SS-41: startDate in the past — no past dates in result', () => {
+    const pastDate = '2020-01-01' // well in the past
+    const dates = generateRecurringDates(pastDate, 'DAILY', nowOnDifferentDay())
+    // All dates must be >= today (May 9 2026).
+    // Compare ISO strings directly — avoids UTC vs local timezone ambiguity.
+    const todayStr = '2026-05-09'
+    dates.forEach(d => {
+      expect(d >= todayStr).toBe(true)
+    })
+  })
+
+  /**
+   * SS-42: Invalid / empty startDate returns empty array
+   */
+  test('SS-42: invalid startDate returns empty array', () => {
+    expect(generateRecurringDates('',   'DAILY', nowOnDifferentDay())).toEqual([])
+    expect(generateRecurringDates(null, 'DAILY', nowOnDifferentDay())).toEqual([])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateRecurringSlots
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('generateRecurringSlots', () => {
+
+  const GROUP = 'group-123'
+
+  /**
+   * SS-43: NONE task → one slot, same as smartScheduleTask
+   */
+  test('SS-43: NONE recurrence produces exactly one slot', () => {
+    const task = { id: 't1', title: 'Focus', deadline: DATE, due_time: null, recurrence: 'NONE' }
+    const slots = generateRecurringSlots(task, FOCUS, [], null, nowOnDifferentDay())
+    expect(slots.length).toBe(1)
+    expect(slots[0].recurrence).toBe('NONE')
+    expect(slots[0].recurrence_group_id).toBeNull()
+  })
+
+  /**
+   * SS-44: DAILY task → multiple slots, all with same recurrence_group_id
+   */
+  test('SS-44: DAILY recurrence produces multiple slots with shared group ID', () => {
+    const task = { id: 't2', title: 'Standup', deadline: DATE, due_time: null, recurrence: 'DAILY' }
+    const slots = generateRecurringSlots(task, FOCUS, [], GROUP, nowOnDifferentDay())
+    expect(slots.length).toBeGreaterThan(1)
+    slots.forEach(s => {
+      expect(s.recurrence).toBe('DAILY')
+      expect(s.recurrence_group_id).toBe(GROUP)
+    })
+  })
+
+  /**
+   * SS-45: With due_time set, every occurrence is pinned to that same time
+   * Real scenario: daily standup at 9:30 AM — all blocks at 9:30.
+   */
+  test('SS-45: DAILY task with due_time=09:30 — every block starts at 09:30', () => {
+    const task = { id: 't3', title: 'Standup', deadline: DATE, due_time: '09:30', recurrence: 'DAILY' }
+    const slots = generateRecurringSlots(task, FOCUS, [], GROUP, nowOnDifferentDay())
+    expect(slots.length).toBeGreaterThan(1)
+    slots.forEach(s => {
+      const [, tp] = s.start_time.split('T')
+      expect(tp).toBe('09:30')
+    })
+  })
+
+  /**
+   * SS-46: Conflict on day 1 is handled — slot pushed to next free time, series continues
+   * Existing block: 6:00–23:00 (all day) on DATE.
+   * Day 1 (DATE) should be skipped; day 2+ should still get blocks.
+   */
+  test('SS-46: if one day is fully booked, that occurrence is skipped but series continues', () => {
+    const blockingBlock = blk('full', at(6, 0), at(ACTIVE_END_HOUR, 0))
+    const task = { id: 't4', title: 'Exercise', deadline: DATE, due_time: null, recurrence: 'DAILY' }
+    const slots = generateRecurringSlots(task, FOCUS, [blockingBlock], GROUP, nowOnDifferentDay())
+    // Day 1 (DATE = May 10) is fully blocked → skipped
+    // Days 11, 12, ... should still have slots
+    expect(slots.length).toBeGreaterThan(0)
+    // None of the slots should be on the fully-blocked date
+    slots.forEach(s => {
+      expect(s.start_time.startsWith(DATE)).toBe(false)
+    })
+  })
+
+  /**
+   * SS-47: Consecutive daily blocks do not overlap each other
+   * Each day's slot must not conflict with the previous day's slot.
+   * (They're on different dates, so overlap is impossible — this validates
+   * the workingBlocks accumulation doesn't cause false positives.)
+   */
+  test('SS-47: consecutive daily blocks are on different dates — no cross-day overlap', () => {
+    const task = { id: 't5', title: 'Run', deadline: DATE, due_time: null, recurrence: 'DAILY' }
+    const slots = generateRecurringSlots(task, FOCUS, [], GROUP, nowOnDifferentDay())
+    // Extract the date portions and assert they are all different
+    const dates = slots.map(s => s.start_time.split('T')[0])
+    const uniqueDates = new Set(dates)
+    expect(uniqueDates.size).toBe(dates.length)
+  })
+
+  /**
+   * SS-48: WEEKLY task → one block per week, correct 7-day spacing between blocks
+   */
+  test('SS-48: WEEKLY recurrence produces blocks 7 days apart', () => {
+    const task = { id: 't6', title: 'Review', deadline: DATE, due_time: '10:00', recurrence: 'WEEKLY' }
+    const slots = generateRecurringSlots(task, FOCUS, [], GROUP, nowOnDifferentDay())
+    expect(slots.length).toBeGreaterThanOrEqual(2)
+    for (let i = 1; i < slots.length; i++) {
+      const d1 = new Date(slots[i - 1].start_time.split('T')[0])
+      const d2 = new Date(slots[i].start_time.split('T')[0])
+      expect(d2 - d1).toBe(7 * 24 * 60 * 60 * 1000)
+    }
+  })
+
+  /**
+   * SS-49: NONE task with fully booked deadline → returns empty array (no slot)
+   */
+  test('SS-49: NONE recurrence fully booked day → empty array', () => {
+    const allDay = blk('full', at(ACTIVE_START_HOUR, 0), at(ACTIVE_END_HOUR, 0))
+    const task   = { id: 't7', title: 'Focus', deadline: DATE, due_time: null, recurrence: 'NONE' }
+    const slots  = generateRecurringSlots(task, FOCUS, [allDay], null, nowOnDifferentDay())
+    expect(slots.length).toBe(0)
+  })
+
+  /**
+   * SS-50: Invalid inputs return empty array gracefully
+   */
+  test('SS-50: invalid inputs return empty array without throwing', () => {
+    expect(generateRecurringSlots(null,           FOCUS, [])).toEqual([])
+    expect(generateRecurringSlots({},             FOCUS, [])).toEqual([])
+    expect(generateRecurringSlots({ deadline: DATE }, NaN, [])).toEqual([])
   })
 })

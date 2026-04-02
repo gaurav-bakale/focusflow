@@ -83,23 +83,48 @@ class TimeBlockCreate(BaseModel):
     Request model for creating a calendar time block.
 
     Args:
-        title:      Label shown on the calendar block.
-        start_time: ISO datetime string for block start.
-        end_time:   ISO datetime string for block end.
-        task_id:    Optional linked task ID.
-        color:      Optional hex color string persisted per block.
+        title:                Label shown on the calendar block.
+        start_time:           ISO datetime string for block start.
+        end_time:             ISO datetime string for block end.
+        task_id:              Optional linked task ID.
+        color:                Optional hex color string persisted per block.
+        recurrence:           Recurrence pattern (NONE | DAILY | WEEKDAYS | WEEKLY | MONTHLY).
+                              Stored for display and edit-scope awareness; the block series is
+                              identified by recurrence_group_id.
+        recurrence_group_id:  UUID-like string shared by all blocks in a recurring series.
+                              Null for one-off blocks.
     """
     title: str = Field(..., min_length=1)
     start_time: str
     end_time: str
     task_id: Optional[str] = None
     color: Optional[str] = None
+    recurrence: str = "NONE"
+    recurrence_group_id: Optional[str] = None
 
 
 class TimeBlockResponse(TimeBlockCreate):
     """Response model for a calendar time block."""
     id: str
     user_id: str
+
+
+class BulkBlockCreate(BaseModel):
+    """Request model for creating multiple time blocks in one call (recurring series)."""
+    blocks: List[TimeBlockCreate]
+
+
+class CompleteTaskResponse(BaseModel):
+    """
+    Response returned when a task is marked complete.
+
+    Fields:
+        completed:  The task that was just marked DONE.
+        next_task:  The newly auto-created next occurrence task (only present when
+                    the completed task had a non-NONE recurrence pattern).
+    """
+    completed: "TaskResponse"
+    next_task: Optional["TaskResponse"] = None
 
 
 # ── AI Models ─────────────────────────────────────────────────────────────────
@@ -153,3 +178,13 @@ class AIRefineTasksRequest(BaseModel):
     goal: str
     tasks: List[GeneratedTask]
     feedback: str = Field(..., min_length=1, max_length=1000)
+
+
+class AISuggestCategoriesRequest(BaseModel):
+    """Request to suggest categories for a task title."""
+    title: str = Field(..., min_length=1, max_length=500)
+
+
+class AISuggestCategoriesResponse(BaseModel):
+    """Response with suggested category labels."""
+    categories: List[str]

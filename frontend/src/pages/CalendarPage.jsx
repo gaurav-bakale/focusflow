@@ -24,11 +24,11 @@ import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import dayGridPlugin  from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { fetchBlocks, createBlock, updateBlock, deleteBlock } from '../services/otherServices'
+import { fetchBlocks, createBlock, createBlocksBulk, updateBlock, deleteBlock } from '../services/otherServices'
 import { fetchTasks, markTaskComplete } from '../services/taskService'
 import { useTimer } from '../context/TimerContext'
 import { detectOverlap } from '../utils/detectOverlap'
-import { smartScheduleTask } from '../utils/smartSchedule'
+import { smartScheduleTask, generateRecurringSlots } from '../utils/smartSchedule'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
@@ -576,18 +576,23 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 
 // ── Block create / edit modal ─────────────────────────────────────────────────
 function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
-  const isNew = !block.id
+  const isNew        = !block.id
+  const isRecurring  = !isNew && block.recurrence && block.recurrence !== 'NONE'
   const { focusMins } = useTimer()
 
   const [form, setForm] = useState({
-    title:      block.title      || '',
-    start_time: block.start_time || '',
-    end_time:   block.end_time   || '',
-    task_id:    block.task_id    || '',
-    color:      block.color      || '#6366f1',
+    title:               block.title               || '',
+    start_time:          block.start_time          || '',
+    end_time:            block.end_time            || '',
+    task_id:             block.task_id             || '',
+    color:               block.color               || '#6366f1',
+    recurrence:          block.recurrence          || 'NONE',
+    recurrence_group_id: block.recurrence_group_id || null,
   })
-  const [saving,   setSaving]   = useState(false)
-  const [overlap,  setOverlap]  = useState(null) // warning message or null
+  const [saving,    setSaving]    = useState(false)
+  const [overlap,   setOverlap]   = useState(null)  // warning message or null
+  // Edit scope: only relevant when editing an existing recurring block
+  const [editScope, setEditScope] = useState('this') // 'this' | 'this_and_future'
 
   // Pomodoro presets: pure focus time only (no breaks counted)
   const pomodoroDurations = [
@@ -677,10 +682,14 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (overlap) return // block save when overlap exists
+    if (overlap) return
     setSaving(true)
-    try { await onSave({ ...form, task_id: form.task_id || null }) }
-    finally { setSaving(false) }
+    try {
+      await onSave(
+        { ...form, task_id: form.task_id || null },
+        isRecurring ? editScope : 'this',
+      )
+    } finally { setSaving(false) }
   }
 
   const inputCls = "w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
@@ -794,6 +803,27 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
               </div>
             </div>
 
+            {/* Edit scope — only shown when editing an existing recurring block */}
+            {isRecurring && (
+              <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Edit recurring event</p>
+                {[
+                  { v: 'this',            label: 'Just this event' },
+                  { v: 'this_and_future', label: 'This and all following events' },
+                ].map(({ v, label }) => (
+                  <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="radio" name="editScope" value={v}
+                      checked={editScope === v}
+                      onChange={() => setEditScope(v)}
+                      className="accent-indigo-600"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
                 className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
@@ -880,6 +910,8 @@ export default function CalendarPage() {
           type: 'block', blockId: b.id,
           task_id: b.task_id, linkedTask: linked, color,
           start_time: b.start_time, end_time: b.end_time,
+          recurrence: b.recurrence || 'NONE',
+          recurrence_group_id: b.recurrence_group_id || null,
         },
       }
     })
@@ -1089,10 +1121,19 @@ export default function CalendarPage() {
     } catch { revert() }
   }
 
-  async function handleSave(formData) {
+  async function handleSave(formData, scope = 'this') {
     if (modal.id) {
-      const updated = await updateBlock(modal.id, formData)
-      setBlocks(prev => prev.map(b => b.id === modal.id ? updated : b))
+      // Editing existing block — scope-aware update
+      if (scope === 'this_and_future') {
+        // Update this block + all following in the series; then refresh all
+        // blocks so the calendar reflects every changed occurrence.
+        await updateBlock(modal.id, formData, 'this_and_future')
+        const refreshed = await fetchBlocks()
+        setBlocks(refreshed)
+      } else {
+        const updated = await updateBlock(modal.id, formData, 'this')
+        setBlocks(prev => prev.map(b => b.id === modal.id ? updated : b))
+      }
     } else {
       const created = await createBlock(formData)
       setBlocks(prev => [...prev, created])
@@ -1101,24 +1142,73 @@ export default function CalendarPage() {
   }
 
   async function handleDelete(blockId) {
-    if (!confirm('Delete this time block?')) return
-    await deleteBlock(blockId)
-    setBlocks(prev => prev.filter(b => b.id !== blockId))
+    const block = blocks.find(b => b.id === blockId)
+    const isRecurring = block?.recurrence && block.recurrence !== 'NONE'
+
+    if (isRecurring) {
+      // Ask user what scope to delete
+      const choice = window.confirm(
+        'Delete just this event or all following events in the series?\n\nOK = This and all following\nCancel = Just this event'
+      )
+      const scope = choice ? 'this_and_future' : 'this'
+      await deleteBlock(blockId, scope)
+      if (scope === 'this_and_future') {
+        // Remove all blocks in the same series from this point forward
+        const groupId   = block.recurrence_group_id
+        const startTime = block.start_time
+        setBlocks(prev => prev.filter(b =>
+          !(b.recurrence_group_id === groupId && b.start_time >= startTime)
+        ))
+      } else {
+        setBlocks(prev => prev.filter(b => b.id !== blockId))
+      }
+    } else {
+      if (!confirm('Delete this time block?')) return
+      await deleteBlock(blockId, 'this')
+      setBlocks(prev => prev.filter(b => b.id !== blockId))
+    }
     setPopover(null)
   }
 
   function handleEditFromPopover(event) {
     const ep = event.extendedProps
-    setModal({ id: ep.blockId, title: event.title, start_time: ep.start_time || fmtLocal(event.startStr), end_time: ep.end_time || fmtLocal(event.endStr), task_id: ep.task_id || '', color: ep.color || '#6366f1' })
+    setModal({
+      id:                  ep.blockId,
+      title:               event.title,
+      start_time:          ep.start_time || fmtLocal(event.startStr),
+      end_time:            ep.end_time   || fmtLocal(event.endStr),
+      task_id:             ep.task_id    || '',
+      color:               ep.color      || '#6366f1',
+      recurrence:          ep.recurrence || 'NONE',
+      recurrence_group_id: ep.recurrence_group_id || null,
+    })
     setPopover(null)
   }
 
   async function handleCompleteTask(taskId) {
     setCompleting(true)
     try {
-      await markTaskComplete(taskId)
+      const result = await markTaskComplete(taskId)
+      // result = { completed, next_task }
       setTasks(prev => prev.filter(t => t.id !== taskId))
       setPopover(null)
+
+      // If the task was recurring, the backend auto-created the next occurrence.
+      // Auto-schedule a calendar block for it (silent failure is OK).
+      const nextTask = result?.next_task
+      if (nextTask?.deadline) {
+        try {
+          const refreshedBlocks = await fetchBlocks()
+          const slots = generateRecurringSlots(nextTask, pageFocusMins, refreshedBlocks, nextTask.id)
+          if (slots.length === 1) {
+            const created = await createBlock(slots[0])
+            setBlocks(prev => [...prev, created])
+          } else if (slots.length > 1) {
+            const created = await createBlocksBulk(slots)
+            setBlocks(prev => [...prev, ...created])
+          }
+        } catch (_) { /* non-critical */ }
+      }
     } catch (_e) { /* non-blocking */ }
     setCompleting(false)
   }
