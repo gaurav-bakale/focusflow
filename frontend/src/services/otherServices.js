@@ -31,13 +31,36 @@ export async function createBlock(blockData) {
   return res.data
 }
 
-export async function updateBlock(blockId, blockData) {
-  const res = await api.put(`/calendar/blocks/${blockId}`, blockData)
+/**
+ * Create multiple calendar blocks in a single request.
+ * Used for recurring-task series so the whole batch is created atomically.
+ * @param {Array} blocks  Array of block-create payloads (each with title, start_time, etc.)
+ * @returns {Promise<Array>} Created TimeBlockResponse array.
+ */
+export async function createBlocksBulk(blocks) {
+  if (!blocks || blocks.length === 0) return []
+  const res = await api.post('/calendar/blocks/bulk', { blocks })
   return res.data
 }
 
-export async function deleteBlock(blockId) {
-  await api.delete(`/calendar/blocks/${blockId}`)
+/**
+ * Update a block with optional edit scope.
+ * @param {string} blockId
+ * @param {object} blockData
+ * @param {'this'|'this_and_future'} [scope='this']
+ */
+export async function updateBlock(blockId, blockData, scope = 'this') {
+  const res = await api.put(`/calendar/blocks/${blockId}?scope=${scope}`, blockData)
+  return res.data
+}
+
+/**
+ * Delete a block with optional delete scope.
+ * @param {string} blockId
+ * @param {'this'|'this_and_future'} [scope='this']
+ */
+export async function deleteBlock(blockId, scope = 'this') {
+  await api.delete(`/calendar/blocks/${blockId}?scope=${scope}`)
 }
 
 /**

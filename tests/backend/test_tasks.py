@@ -262,8 +262,9 @@ async def test_complete_task_sets_status_done():
 
     assert r.status_code == 200
     body = r.json()
-    assert body["status"] == "DONE"
-    assert body["is_complete"] is True
+    assert body["completed"]["status"] == "DONE"
+    assert body["completed"]["is_complete"] is True
+    assert body["next_task"] is None
 
 
 # ── TC-T08: Complete task — 404 ───────────────────────────────────────────────

@@ -19,9 +19,9 @@ import {
   deleteTask,
   markTaskComplete,
 } from '../services/taskService'
-import { fetchBlocks, createBlock } from '../services/otherServices'
+import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
 import { useTimer } from '../context/TimerContext'
-import { smartScheduleTask } from '../utils/smartSchedule'
+import { generateRecurringSlots } from '../utils/smartSchedule'
 import { suggestCategories } from '../utils/smartCategories'
 
 const COLUMNS = ['TODO', 'IN_PROGRESS', 'DONE']
@@ -311,20 +311,19 @@ export default function TasksPage() {
         const created = await createTask(payload)
         setTasks(prev => [created, ...prev])
 
-        // Auto-schedule: create a calendar block for the new task if it has a deadline.
-        // Non-critical — runs silently after task is already saved.
+        // Auto-schedule: generate blocks for all occurrences within the rolling
+        // window and create them in bulk. Non-critical — task is already saved.
         if (created.deadline) {
           try {
-            const blocks = await fetchBlocks()
-            const slot   = smartScheduleTask(created, focusMins, blocks)
-            if (slot) {
-              await createBlock({
-                title:      created.title,
-                start_time: slot.start_time,
-                end_time:   slot.end_time,
-                task_id:    created.id,
-                color:      '#6366f1',
-              })
+            const blocks  = await fetchBlocks()
+            const groupId = created.recurrence && created.recurrence !== 'NONE'
+              ? `${created.id}-${created.deadline}`
+              : null
+            const slots = generateRecurringSlots(created, focusMins, blocks, groupId)
+            if (slots.length === 1) {
+              await createBlock(slots[0])
+            } else if (slots.length > 1) {
+              await createBlocksBulk(slots)
             }
           } catch (_) { /* auto-schedule failure is non-critical */ }
         }
@@ -347,10 +346,32 @@ export default function TasksPage() {
 
   async function handleComplete(taskId) {
     try {
-      const updated = await markTaskComplete(taskId)
-      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
-      // Reload so recurring next-occurrence appears immediately
-      loadTasks()
+      const result = await markTaskComplete(taskId)
+      // result = { completed, next_task }
+      const completed = result?.completed ?? result
+      setTasks(prev => prev.map(t => t.id === completed.id ? completed : t))
+
+      // If recurring, add the new next-occurrence task to the board and
+      // auto-schedule a calendar block for it silently.
+      const nextTask = result?.next_task
+      if (nextTask) {
+        setTasks(prev => [nextTask, ...prev])
+        if (nextTask.deadline) {
+          try {
+            const existingBlocks = await fetchBlocks()
+            const groupId = `${nextTask.id}-${nextTask.deadline}`
+            const slots = generateRecurringSlots(nextTask, focusMins, existingBlocks, groupId)
+            if (slots.length === 1) {
+              await createBlock(slots[0])
+            } else if (slots.length > 1) {
+              await createBlocksBulk(slots)
+            }
+          } catch (_) { /* non-critical */ }
+        }
+      } else {
+        // Non-recurring — reload to get clean state
+        loadTasks()
+      }
     } catch (err) {
       console.error('Failed to complete task:', err)
     }
