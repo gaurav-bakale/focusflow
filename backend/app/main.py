@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.authentication.router import router as auth_router
 from app.db import connect_db, close_db, get_db
 from app.routers import timer, calendar, ai
+from app.sharing.router import router as sharing_router
 from app.tasks.router import router as tasks_router
 
 load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
@@ -26,6 +27,11 @@ async def lifespan(app: FastAPI):
     # Ensure unique index on users.email — idempotent, safe to run every boot
     db = get_db()
     await db["users"].create_index("email", unique=True, background=True)
+    # Indexes for task_shares — speeds up share lookups
+    await db["task_shares"].create_index(
+        [("task_id", 1), ("shared_with_id", 1)], background=True
+    )
+    await db["task_shares"].create_index("shared_with_email", background=True)
     yield
     await close_db()
 
@@ -52,6 +58,7 @@ app.include_router(tasks_router,  prefix="/api/tasks", tags=["Tasks"])
 app.include_router(timer.router,     prefix="/api/timer",    tags=["Timer"])
 app.include_router(calendar.router,  prefix="/api/calendar", tags=["Calendar"])
 app.include_router(ai.router,        prefix="/api/ai",       tags=["AI"])
+app.include_router(sharing_router,   prefix="/api/sharing",  tags=["Sharing"])
 
 
 @app.get("/", tags=["Health"])
