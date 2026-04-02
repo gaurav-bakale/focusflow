@@ -23,6 +23,7 @@ import TimerPage      from './pages/TimerPage'
 import CalendarPage   from './pages/CalendarPage'
 import CanvasAIPage      from './pages/CanvasAIPage'
 import SharedTasksPage   from './pages/SharedTasksPage'
+import WorkspacesPage    from './pages/WorkspacesPage'
 
 function Spinner() {
   return (
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="ai"       element={<CanvasAIPage />} />
               <Route path="shared"   element={<SharedTasksPage />} />
+              <Route path="workspaces" element={<WorkspacesPage />} />
             </Route>
 
             {/* Fallback */}
