@@ -19,13 +19,13 @@ const CATEGORIES = [
   },
   {
     label: 'Frontend',
-    nouns:   ['ui', 'ux', 'component', 'button', 'form', 'page', 'modal', 'css', 'html', 'view', 'screen', 'icon', 'navbar', 'sidebar', 'dropdown', 'theme', 'input', 'card', 'panel', 'animation', 'layout'],
+    nouns:   ['ui', 'ux', 'component', 'button', 'form', 'page', 'modal', 'css', 'html', 'view', 'screen', 'icon', 'navbar', 'sidebar', 'dropdown', 'theme', 'input', 'card', 'panel', 'animation', 'layout', 'frontend', 'wizard', 'onboarding', 'tooltip', 'popup', 'header', 'footer', 'website', 'webpage', 'app', 'interface'],
     verbs:   ['render', 'style', 'animate', 'align', 'design'],
-    phrases: ['user interface', 'dark mode', 'light mode', 'landing page', 'login page', 'sign up page', 'blank page'],
+    phrases: ['user interface', 'dark mode', 'light mode', 'landing page', 'login page', 'sign up page', 'blank page', 'onboard'],
   },
   {
     label: 'Backend',
-    nouns:   ['api', 'endpoint', 'route', 'server', 'database', 'schema', 'model', 'query', 'sql', 'mongo', 'redis', 'webhook', 'cron', 'worker', 'service', 'middleware', 'microservice', 'graphql'],
+    nouns:   ['api', 'endpoint', 'route', 'server', 'database', 'schema', 'model', 'query', 'sql', 'mongo', 'redis', 'webhook', 'cron', 'worker', 'service', 'middleware', 'microservice', 'graphql', 'backend'],
     verbs:   ['migrate', 'seed', 'index', 'cache', 'queue', 'refactor'],
     phrases: ['rest api', 'data model', 'database migration', 'background job', 'api endpoint'],
   },
@@ -49,7 +49,7 @@ const CATEGORIES = [
   },
   {
     label: 'Planning',
-    nouns:   ['meeting', 'standup', 'sprint', 'retrospective', 'grooming', 'backlog', 'roadmap', 'milestone', 'kickoff', 'agenda', 'okr', 'goal'],
+    nouns:   ['meeting', 'standup', 'sprint', 'retrospective', 'grooming', 'backlog', 'roadmap', 'milestone', 'kickoff', 'agenda', 'okr', 'goal', 'planning', 'discussion', 'review'],
     verbs:   ['plan', 'review', 'discuss', 'estimate', 'prioritize', 'schedule', 'strategize'],
     phrases: ['sprint planning', 'product review', 'team meeting', 'code review', 'design review'],
   },
@@ -129,15 +129,24 @@ export function suggestCategories(title, already = [], limit = 4) {
   if (!title || title.trim().length < 3) return []
 
   const lower = title.toLowerCase()
-  const doc   = nlp(title)
 
-  // Extract nouns and verbs via compromise (base/normal forms)
-  const extractedNouns = new Set(doc.nouns().out('array').map(w => w.toLowerCase()))
-  const extractedVerbs = new Set(doc.verbs().toInfinitive().out('array').map(w => w.toLowerCase()))
+  const extractedNouns = new Set()
+  const extractedVerbs = new Set()
 
-  // Also add individual tokens so short words aren't lost
+  try {
+    const doc = nlp(title)
+    // Singular nouns: "bugs"→"bug", "endpoints"→"endpoint"
+    doc.nouns().toSingular().out('array').forEach(w => extractedNouns.add(w.toLowerCase()))
+    // Infinitive verbs split on spaces so "fix backend"→"fix","backend"
+    doc.verbs().toInfinitive().out('array').forEach(phrase => {
+      phrase.toLowerCase().split(/\s+/).forEach(w => extractedVerbs.add(w))
+    })
+  } catch (_) { /* compromise failed — raw tokens will still run below */ }
+
+  // Raw tokens always run — catches short words and NLP misses
   lower.split(/[\s\-_/]+/).filter(t => t.length > 1).forEach(t => {
     extractedNouns.add(t)
+    extractedVerbs.add(t)
   })
 
   const alreadySet = new Set(already.map(a => a.toLowerCase()))
