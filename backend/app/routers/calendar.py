@@ -70,8 +70,8 @@ def _replace_time(date_str: str, h: int, mi: int, duration_mins: int) -> tuple:
     where the date is preserved but the time is replaced.
     """
     start = datetime(int(date_str[0:4]), int(date_str[5:7]), int(date_str[8:10]), h, mi)
-    end   = start + timedelta(minutes=duration_mins)
-    fmt   = "%Y-%m-%dT%H:%M"
+    end = start + timedelta(minutes=duration_mins)
+    fmt = "%Y-%m-%dT%H:%M"
     return start.strftime(fmt), end.strftime(fmt)
 
 
@@ -147,7 +147,11 @@ async def create_blocks_bulk(
     async for doc in db["time_blocks"].find({"_id": {"$in": result.inserted_ids}}):
         id_to_doc[str(doc["_id"])] = doc
 
-    return [_doc_to_block(id_to_doc[str(oid)]) for oid in result.inserted_ids if str(oid) in id_to_doc]
+    return [
+        _doc_to_block(id_to_doc[str(oid)])
+        for oid in result.inserted_ids
+        if str(oid) in id_to_doc
+    ]
 
 
 # ── Update (single or whole-series from this point forward) ──────────────────
@@ -193,7 +197,7 @@ async def update_block(
         return _doc_to_block(result)
 
     old_start_time = result["start_time"]   # the just-updated block's start
-    new_h, new_mi  = _parse_hm(data.start_time)
+    new_h, new_mi = _parse_hm(data.start_time)
     if new_h is None:
         return _doc_to_block(result)
 
