@@ -9,6 +9,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import { fetchSharedWithMe } from '../services/sharingService'
 import { updateTask } from '../services/taskService'
+import CommentThread from '../components/CommentThread'
 
 const PRIORITY_BADGE = {
   HIGH:   'bg-red-100   text-red-700   border-red-200   dark:bg-red-950/40   dark:text-red-400   dark:border-red-800',
@@ -34,6 +35,7 @@ export default function SharedTasksPage() {
   const [search, setSearch] = useState('')
   const [editingTask, setEditingTask] = useState(null)
   const [editForm, setEditForm] = useState({ status: '', priority: '' })
+  const [expandedComments, setExpandedComments] = useState(null)
 
   useEffect(() => { loadSharedTasks() }, [])
 
@@ -222,6 +224,12 @@ export default function SharedTasksPage() {
                   <span className={`px-2 py-1 text-[10px] font-bold uppercase border rounded ${PERMISSION_BADGE[task.permission] || PERMISSION_BADGE.VIEW}`}>
                     {task.permission}
                   </span>
+                  <button
+                    onClick={() => setExpandedComments(prev => prev === (task.task_id || task.id) ? null : (task.task_id || task.id))}
+                    className="px-2.5 py-1 text-xs font-bold border-2 border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  >
+                    Comments
+                  </button>
                   {task.permission === 'EDIT' && (
                     <button
                       onClick={() => openEdit(task)}
@@ -232,6 +240,7 @@ export default function SharedTasksPage() {
                   )}
                 </div>
               </div>
+              <CommentThread taskId={task.task_id || task.id} visible={expandedComments === (task.task_id || task.id)} />
             </div>
           ))}
         </div>

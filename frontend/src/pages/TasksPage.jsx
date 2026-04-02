@@ -21,6 +21,7 @@ import {
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
 import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
+import CommentThread from '../components/CommentThread'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import { suggestCategories } from '../utils/smartCategories'
@@ -1067,6 +1068,9 @@ export default function TasksPage() {
                 </div>
               )}
             </div>
+
+            {/* Comments thread */}
+            <CommentThread taskId={shareTaskId} visible={shareModal} />
           </div>
         </div>
       )}
