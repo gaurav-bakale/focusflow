@@ -18,6 +18,7 @@ import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
 import SketchLine from './SketchLine'
+import NotificationBell from './NotificationBell'
 
 const NAV = [
   { to: '/',         label: 'Dashboard',  end: true,  color: '#FBBF24' },
@@ -25,6 +26,10 @@ const NAV = [
   { to: '/timer',    label: 'Timer',      end: false, color: '#34D399' },
   { to: '/calendar', label: 'Calendar',   end: false, color: '#38BDF8' },
   { to: '/ai',       label: 'Canvas AI',  end: false, color: '#A78BFA' },
+  { to: '/shared',      label: 'Shared',      end: false, color: '#EC4899' },
+  { to: '/workspaces',  label: 'Workspaces',  end: false, color: '#F97316' },
+  { to: '/activity',    label: 'Activity',    end: false, color: '#8B5CF6' },
+  { to: '/settings',    label: 'Settings',    end: false, color: '#6B7280' },
 ]
 
 const PHASE_CONFIG = {
@@ -150,6 +155,8 @@ export default function Layout() {
             </div>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{user?.name}</span>
           </div>
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+          <NotificationBell />
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
           {/* Theme toggle */}
           <button

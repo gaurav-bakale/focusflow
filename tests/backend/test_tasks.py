@@ -186,7 +186,7 @@ async def test_update_task_priority():
     Failure: priority unchanged or 404.
     """
     updated_doc = {**MOCK_TASK_DOC, "priority": "LOW"}
-    db = _mock_db()
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=updated_doc)
     app.dependency_overrides[get_current_user_dependency] = _auth_override()
     app.dependency_overrides[get_db_dependency] = lambda: db

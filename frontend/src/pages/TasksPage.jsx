@@ -20,6 +20,9 @@ import {
   markTaskComplete,
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
+import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
+import { prioritizeTasks, breakdownTask } from '../services/otherServices'
+import CommentThread from '../components/CommentThread'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import { suggestCategories } from '../utils/smartCategories'
@@ -135,12 +138,32 @@ export default function TasksPage() {
 
   const [overlapError, setOverlapError] = useState('')
 
+  // ── Share dialog state ───────────────────────────────────────────────────
+  const [shareModal, setShareModal]       = useState(false)
+  const [shareTaskId, setShareTaskId]     = useState(null)
+  const [shareTaskTitle, setShareTaskTitle] = useState('')
+  const [shareEmail, setShareEmail]       = useState('')
+  const [sharePermission, setSharePermission] = useState('VIEW')
+  const [shareError, setShareError]       = useState('')
+  const [shareSuccess, setShareSuccess]   = useState('')
+  const [shareLoading, setShareLoading]   = useState(false)
+  const [existingShares, setExistingShares] = useState([])
+  const [sharesLoading, setSharesLoading] = useState(false)
+
   // ── Filter state ──────────────────────────────────────────────────────────
   const [searchText,       setSearchText]       = useState('')
   const [filterPriority,   setFilterPriority]   = useState('ALL')
   const [filterDeadline,   setFilterDeadline]   = useState('ALL')
   const [filterStatus,     setFilterStatus]     = useState('ALL')
   const [filterRecurrence, setFilterRecurrence] = useState('ALL')
+
+  // ── AI state ────────────────────────────────────────────────────────────
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError]     = useState('')
+  const [breakdownTaskId, setBreakdownTaskId]     = useState(null)
+  const [breakdownResult, setBreakdownResult]     = useState([])
+  const [breakdownLoading, setBreakdownLoading]   = useState(false)
+  const [subtaskInput, setSubtaskInput]           = useState('')
 
   useEffect(() => { loadTasks() }, [])
 
@@ -234,6 +257,7 @@ export default function TasksPage() {
         estimated_minutes: task.estimated_minutes ? String(task.estimated_minutes) : '',
         status:            task.status,
         categories:        task.categories || [],
+        subtasks:          (task.subtasks || []).map(s => ({ title: s.title, status: s.status })),
       })
     } else {
       setEditingTask(null)
@@ -241,6 +265,7 @@ export default function TasksPage() {
         title: '', description: '', priority: 'MEDIUM',
         deadline: '', due_time: '', recurrence: 'NONE',
         estimated_minutes: '', status: defaultStatus, categories: [],
+        subtasks: [],
       })
     }
     setShowModal(true)
@@ -250,6 +275,7 @@ export default function TasksPage() {
     setShowModal(false)
     setEditingTask(null)
     setCategoryInput('')
+    setSubtaskInput('')
     setOverlapError('')
   }
 
@@ -303,6 +329,8 @@ export default function TasksPage() {
     }
 
     const payload = { ...formData, estimated_minutes: estMins, due_time: dueTime }
+    // Only include subtasks if editing (new tasks start with no subtasks)
+    if (!editingTask) delete payload.subtasks
     try {
       if (editingTask) {
         const updated = await updateTask(editingTask.id, payload)
@@ -377,6 +405,72 @@ export default function TasksPage() {
     }
   }
 
+  // ── Share dialog handlers ─────────────────────────────────────────────────
+
+  async function openShareModal(task) {
+    setShareTaskId(task.id)
+    setShareTaskTitle(task.title)
+    setShareEmail('')
+    setSharePermission('VIEW')
+    setShareError('')
+    setShareSuccess('')
+    setShareModal(true)
+    // Load existing shares
+    setSharesLoading(true)
+    try {
+      const shares = await fetchTaskShares(task.id)
+      setExistingShares(Array.isArray(shares) ? shares : [])
+    } catch (_) {
+      setExistingShares([])
+    } finally {
+      setSharesLoading(false)
+    }
+  }
+
+  function closeShareModal() {
+    setShareModal(false)
+    setShareTaskId(null)
+    setShareTaskTitle('')
+    setShareEmail('')
+    setShareError('')
+    setShareSuccess('')
+    setExistingShares([])
+  }
+
+  async function handleShare(e) {
+    e.preventDefault()
+    if (!shareEmail.trim()) return
+    setShareLoading(true)
+    setShareError('')
+    setShareSuccess('')
+    try {
+      await shareTask({
+        task_id: shareTaskId,
+        email: shareEmail.trim(),
+        permission: sharePermission,
+      })
+      setShareSuccess(`Shared with ${shareEmail}`)
+      setShareEmail('')
+      // Refresh shares list
+      const shares = await fetchTaskShares(shareTaskId)
+      setExistingShares(Array.isArray(shares) ? shares : [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'Failed to share task'
+      setShareError(msg)
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  async function handleRevoke(shareId) {
+    try {
+      await revokeShare(shareId)
+      setExistingShares(prev => prev.filter(s => s.id !== shareId))
+    } catch (err) {
+      console.error('Failed to revoke share:', err)
+    }
+  }
+
   async function onDragEnd(result) {
     const { draggableId, source, destination } = result
     if (!destination) return
@@ -388,6 +482,90 @@ export default function TasksPage() {
     } catch {
       setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: source.droppableId } : t))
     }
+  }
+
+  // ── AI Prioritize handler ─────────────────────────────────────────────
+  async function handleAIPrioritize() {
+    const incomplete = tasks.filter(t => t.status !== 'DONE')
+    if (incomplete.length === 0) { setAiError('No incomplete tasks to prioritize.'); return }
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const payload = incomplete.map(t => ({
+        id: t.id, title: t.title, description: t.description || '',
+        priority: t.priority, deadline: t.deadline || null, status: t.status,
+      }))
+      const res = await prioritizeTasks(payload)
+      const ordered = res.prioritized_tasks || []
+      // Map AI-returned priorities back onto local tasks
+      const updates = {}
+      ordered.forEach(item => {
+        if (item.id && item.priority) updates[item.id] = item.priority
+      })
+      setTasks(prev => prev.map(t => updates[t.id] ? { ...t, priority: updates[t.id] } : t))
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'AI prioritization failed. Check your Gemini API key in settings.'
+      setAiError(msg)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  // ── AI Breakdown handler ─────────────────────────────────────────────
+  async function handleBreakdown(task) {
+    if (breakdownTaskId === task.id) {
+      // Toggle off
+      setBreakdownTaskId(null)
+      setBreakdownResult([])
+      return
+    }
+    setBreakdownTaskId(task.id)
+    setBreakdownResult([])
+    setBreakdownLoading(true)
+    try {
+      const res = await breakdownTask(task.id, task.title, task.description || '')
+      setBreakdownResult(res.subtasks || [])
+    } catch (err) {
+      const msg = err.response?.data?.detail || 'AI breakdown failed.'
+      setAiError(msg)
+      setBreakdownTaskId(null)
+    } finally {
+      setBreakdownLoading(false)
+    }
+  }
+
+  // ── Subtask handlers ─────────────────────────────────────────────────
+  async function handleToggleSubtask(task, subtaskId) {
+    const updatedSubtasks = (task.subtasks || []).map(s =>
+      s.id === subtaskId ? { ...s, status: s.status === 'DONE' ? 'TODO' : 'DONE' } : s
+    )
+    try {
+      const updated = await updateTask(task.id, {
+        subtasks: updatedSubtasks.map(s => ({ title: s.title, status: s.status })),
+      })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch (err) { console.error('Failed to toggle subtask:', err) }
+  }
+
+  async function handleDeleteSubtask(task, subtaskId) {
+    const filtered = (task.subtasks || [])
+      .filter(s => s.id !== subtaskId)
+      .map(s => ({ title: s.title, status: s.status }))
+    try {
+      const updated = await updateTask(task.id, { subtasks: filtered })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch (err) { console.error('Failed to delete subtask:', err) }
+  }
+
+  async function handleSaveBreakdownAsSubtasks(task) {
+    const current = (task.subtasks || []).map(s => ({ title: s.title, status: s.status }))
+    const newSubs = breakdownResult.map(title => ({ title, status: 'TODO' }))
+    try {
+      const updated = await updateTask(task.id, { subtasks: [...current, ...newSubs] })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+      setBreakdownTaskId(null)
+      setBreakdownResult([])
+    } catch (err) { console.error('Failed to save breakdown:', err) }
   }
 
   if (loading) {
@@ -417,17 +595,34 @@ export default function TasksPage() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
-                     font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
-                     hover:text-white dark:hover:text-gray-900 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          New Task
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleAIPrioritize}
+            disabled={aiLoading}
+            className={`flex items-center gap-2 border-2 font-bold text-sm px-4 py-2 rounded-lg transition-colors ${
+              aiLoading
+                ? 'border-purple-300 text-purple-300 cursor-wait'
+                : 'border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {aiLoading ? 'Prioritizing…' : 'AI Prioritize'}
+          </button>
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
+                       font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
+                       hover:text-white dark:hover:text-gray-900 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
+          </button>
+        </div>
       </div>
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
@@ -460,6 +655,18 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* ── AI Error banner ─────────────────────────────────────────────── */}
+      {aiError && (
+        <div className="mb-4 flex items-center justify-between bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3">
+          <p className="text-sm font-semibold text-red-700 dark:text-red-400">{aiError}</p>
+          <button onClick={() => setAiError('')} className="text-red-400 hover:text-red-700 dark:hover:text-red-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Search + Filters ──────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-4 mb-6">
@@ -636,6 +843,54 @@ export default function TasksPage() {
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                                 )}
 
+                                {/* Subtask progress + list */}
+                                {task.subtasks && task.subtasks.length > 0 && (() => {
+                                  const total = task.subtasks.length
+                                  const done = task.subtasks.filter(s => s.status === 'DONE').length
+                                  const pct = Math.round((done / total) * 100)
+                                  return (
+                                    <div className="mb-2">
+                                      <div className="flex items-center gap-2 mb-1.5">
+                                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                          <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <span className="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">{done}/{total}</span>
+                                      </div>
+                                      <ul className="space-y-0.5">
+                                        {task.subtasks.map(sub => (
+                                          <li key={sub.id} className="flex items-center gap-1.5 group/sub">
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleToggleSubtask(task, sub.id) }}
+                                              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                                sub.status === 'DONE'
+                                                  ? 'bg-emerald-500 border-emerald-500'
+                                                  : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
+                                              }`}
+                                            >
+                                              {sub.status === 'DONE' && (
+                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                              )}
+                                            </button>
+                                            <span className={`text-xs flex-1 truncate ${sub.status === 'DONE' ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
+                                              {sub.title}
+                                            </span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleDeleteSubtask(task, sub.id) }}
+                                              className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )
+                                })()}
+
                                 {/* Scheduling metadata row */}
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                   {/* Task type badge — always shown */}
@@ -705,9 +960,39 @@ export default function TasksPage() {
                                       {isRecurring ? 'Complete (↻ next)' : 'Complete'}
                                     </button>
                                   )}
+                                  <button onClick={() => handleBreakdown(task)}
+                                    disabled={breakdownLoading && breakdownTaskId === task.id}
+                                    className={`text-xs font-bold ${breakdownTaskId === task.id ? 'text-purple-600' : 'text-purple-500 hover:text-purple-700'}`}>
+                                    {breakdownLoading && breakdownTaskId === task.id ? 'Loading…' : breakdownTaskId === task.id ? 'Hide AI' : 'AI Breakdown'}
+                                  </button>
+                                  <button onClick={() => openShareModal(task)}
+                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-700">Share</button>
                                   <button onClick={() => handleDelete(task.id)}
                                     className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
                                 </div>
+
+                                {/* AI Breakdown results */}
+                                {breakdownTaskId === task.id && breakdownResult.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs font-bold text-purple-600 dark:text-purple-400">AI-Suggested Subtasks</p>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleSaveBreakdownAsSubtasks(task) }}
+                                        className="text-xs font-bold text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                      >
+                                        Save as Subtasks
+                                      </button>
+                                    </div>
+                                    <ul className="space-y-1">
+                                      {breakdownResult.map((sub, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+                                          <span className="text-purple-400 mt-0.5 shrink-0">-</span>
+                                          <span>{sub}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Draggable>
@@ -868,6 +1153,102 @@ export default function TasksPage() {
                 </div>
               </div>
 
+              {/* Subtasks (edit mode only) */}
+              {editingTask && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                    Subtasks
+                    {formData.subtasks && formData.subtasks.length > 0 && (
+                      <span className="ml-2 normal-case font-medium text-gray-400 dark:text-gray-500">
+                        {formData.subtasks.filter(s => s.status === 'DONE').length}/{formData.subtasks.length} done
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Existing subtasks */}
+                  {formData.subtasks && formData.subtasks.length > 0 && (
+                    <ul className="space-y-1 mb-2">
+                      {formData.subtasks.map((sub, i) => (
+                        <li key={i} className="flex items-center gap-2 group/msub">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                subtasks: prev.subtasks.map((s, j) =>
+                                  j === i ? { ...s, status: s.status === 'DONE' ? 'TODO' : 'DONE' } : s
+                                ),
+                              }))
+                            }}
+                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                              sub.status === 'DONE'
+                                ? 'bg-emerald-500 border-emerald-500'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
+                            }`}
+                          >
+                            {sub.status === 'DONE' && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`text-sm flex-1 ${sub.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {sub.title}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, subtasks: prev.subtasks.filter((_, j) => j !== i) }))}
+                            className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/msub:opacity-100 transition-opacity"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Add new subtask */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={subtaskInput}
+                      onChange={e => setSubtaskInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (subtaskInput.trim()) {
+                            setFormData(prev => ({
+                              ...prev,
+                              subtasks: [...(prev.subtasks || []), { title: subtaskInput.trim(), status: 'TODO' }],
+                            }))
+                            setSubtaskInput('')
+                          }
+                        }
+                      }}
+                      placeholder="Add subtask…"
+                      className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (subtaskInput.trim()) {
+                          setFormData(prev => ({
+                            ...prev,
+                            subtasks: [...(prev.subtasks || []), { title: subtaskInput.trim(), status: 'TODO' }],
+                          }))
+                          setSubtaskInput('')
+                        }
+                      }}
+                      className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-sm hover:border-gray-900 dark:hover:border-gray-400 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Overlap error */}
               {overlapError && (
                 <div className="flex items-start gap-2 bg-red-50 dark:bg-red-950/50 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2.5">
@@ -888,6 +1269,107 @@ export default function TasksPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share Dialog ──────────────────────────────────────────────────── */}
+      {shareModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeShareModal}>
+          <div
+            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-1">
+              Share Task
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
+              {shareTaskTitle}
+            </p>
+
+            {/* Share form */}
+            <form onSubmit={handleShare} className="space-y-3 mb-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  placeholder="collaborator@example.com"
+                  required
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                  Permission
+                </label>
+                <select
+                  value={sharePermission}
+                  onChange={e => setSharePermission(e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                >
+                  <option value="VIEW">View only</option>
+                  <option value="EDIT">Can edit</option>
+                </select>
+              </div>
+
+              {shareError && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400">{shareError}</p>
+              )}
+              {shareSuccess && (
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{shareSuccess}</p>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={closeShareModal}
+                  className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
+                  Close
+                </button>
+                <button type="submit" disabled={shareLoading}
+                  className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">
+                  {shareLoading ? 'Sharing...' : 'Share'}
+                </button>
+              </div>
+            </form>
+
+            {/* Existing shares */}
+            <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+                Shared with
+              </h3>
+              {sharesLoading ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">Loading...</p>
+              ) : existingShares.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-500">Not shared with anyone yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {existingShares.map(share => (
+                    <div key={share.id} className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                          {share.shared_with_email || share.email || 'Unknown'}
+                        </p>
+                        <p className="text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500">
+                          {share.permission} — {share.status}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRevoke(share.id)}
+                        className="text-xs font-bold text-red-500 hover:text-red-700 shrink-0"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Comments thread */}
+            <CommentThread taskId={shareTaskId} visible={shareModal} />
           </div>
         </div>
       )}

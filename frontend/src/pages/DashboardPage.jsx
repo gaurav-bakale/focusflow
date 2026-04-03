@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
-import { fetchStats, fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
+import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiSchedule, aiFrog, aiTips } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, fetchTaskAnalytics } from '../services/taskService'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
@@ -87,6 +87,15 @@ export default function DashboardPage() {
   const [adding, setAdding]               = useState(false)
   const [addError, setAddError]           = useState('')
   const [scheduleMsg, setScheduleMsg]     = useState('')
+
+  // AI widgets
+  const [aiScheduleData, setAiScheduleData] = useState(null)
+  const [aiScheduleLoading, setAiScheduleLoading] = useState(false)
+  const [aiFrogData, setAiFrogData]         = useState(null)
+  const [aiFrogLoading, setAiFrogLoading]   = useState(false)
+  const [aiTipsData, setAiTipsData]         = useState(null)
+  const [aiTipsLoading, setAiTipsLoading]   = useState(false)
+  const [aiWidgetError, setAiWidgetError]   = useState('')
 
   useEffect(() => {
     async function load() {
@@ -190,6 +199,56 @@ export default function DashboardPage() {
       setAddError('Could not add task — try again.')
     }
     setAdding(false)
+  }
+
+  // ── AI handlers ──────────────────────────────────────────────────────
+  async function handleAISchedule() {
+    if (tasks.length === 0) return
+    setAiScheduleLoading(true)
+    setAiWidgetError('')
+    try {
+      const payload = tasks.map(t => ({
+        id: t.id, title: t.title, priority: t.priority,
+        deadline: t.deadline || null, status: t.status,
+      }))
+      const res = await aiSchedule(payload)
+      setAiScheduleData(res)
+    } catch (err) {
+      setAiWidgetError(err.response?.data?.detail || 'AI schedule failed.')
+    } finally {
+      setAiScheduleLoading(false)
+    }
+  }
+
+  async function handleAIFrog() {
+    if (tasks.length === 0) return
+    setAiFrogLoading(true)
+    setAiWidgetError('')
+    try {
+      const payload = tasks.map(t => ({
+        id: t.id, title: t.title, priority: t.priority,
+        deadline: t.deadline || null, status: t.status,
+      }))
+      const res = await aiFrog(payload)
+      setAiFrogData(res)
+    } catch (err) {
+      setAiWidgetError(err.response?.data?.detail || 'AI frog failed.')
+    } finally {
+      setAiFrogLoading(false)
+    }
+  }
+
+  async function handleAITips() {
+    setAiTipsLoading(true)
+    setAiWidgetError('')
+    try {
+      const res = await aiTips()
+      setAiTipsData(res)
+    } catch (err) {
+      setAiWidgetError(err.response?.data?.detail || 'AI tips failed.')
+    } finally {
+      setAiTipsLoading(false)
+    }
   }
 
   const firstName  = user?.name?.split(' ')[0] || 'there'
@@ -589,6 +648,113 @@ export default function DashboardPage() {
           <AITaskGenerator onTasksCreated={() => {
             fetchTasks().then(t => setTasks(t.filter(tk => !tk.is_complete).slice(0, 8))).catch(() => {})
           }} />
+
+          {/* AI Widget Error */}
+          {aiWidgetError && (
+            <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3 flex items-center justify-between">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400">{aiWidgetError}</p>
+              <button onClick={() => setAiWidgetError('')} className="text-red-400 hover:text-red-700">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* AI Frog of the Day */}
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                Eat That Frog
+              </h2>
+              <button
+                onClick={handleAIFrog}
+                disabled={aiFrogLoading || tasks.length === 0}
+                className="text-xs font-bold text-green-600 hover:text-green-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {aiFrogLoading ? 'Thinking…' : 'Find My Frog'}
+              </button>
+            </div>
+            {aiFrogData ? (
+              <div>
+                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">{aiFrogData.task_title}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{aiFrogData.reason}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-300 dark:text-gray-600">
+                AI will identify your most important task of the day.
+              </p>
+            )}
+          </div>
+
+          {/* AI Daily Schedule */}
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                AI Schedule
+              </h2>
+              <button
+                onClick={handleAISchedule}
+                disabled={aiScheduleLoading || tasks.length === 0}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {aiScheduleLoading ? 'Planning…' : 'Plan My Day'}
+              </button>
+            </div>
+            {aiScheduleData ? (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{aiScheduleData.summary}</p>
+                <ul className="space-y-2">
+                  {(aiScheduleData.schedule || []).map((block, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-xs font-mono font-bold text-indigo-500 shrink-0 w-16">{block.time}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{block.task_title}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">{block.duration_minutes}min{block.reason ? ` — ${block.reason}` : ''}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-300 dark:text-gray-600">
+                AI will create an optimized daily schedule from your tasks.
+              </p>
+            )}
+          </div>
+
+          {/* AI Productivity Tips */}
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                AI Tips
+              </h2>
+              <button
+                onClick={handleAITips}
+                disabled={aiTipsLoading}
+                className="text-xs font-bold text-amber-600 hover:text-amber-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {aiTipsLoading ? 'Thinking…' : 'Get Tips'}
+              </button>
+            </div>
+            {aiTipsData ? (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{aiTipsData.summary}</p>
+                <ul className="space-y-2">
+                  {(aiTipsData.tips || []).map((tip, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
+                      <span className="text-amber-400 mt-0.5 shrink-0">-</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-300 dark:text-gray-600">
+                AI will analyze your task patterns and suggest productivity improvements.
+              </p>
+            )}
+          </div>
 
           {/* This week */}
           <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">

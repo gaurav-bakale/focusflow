@@ -12,6 +12,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { TimerProvider } from './context/TimerContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { NotificationProvider } from './context/NotificationContext'
+import ToastContainer from './components/ToastContainer'
 
 import LoginPage      from './pages/LoginPage'
 import RegisterPage   from './pages/RegisterPage'
@@ -21,7 +23,11 @@ import DashboardPage  from './pages/DashboardPage'
 import TasksPage      from './pages/TasksPage'
 import TimerPage      from './pages/TimerPage'
 import CalendarPage   from './pages/CalendarPage'
-import CanvasAIPage   from './pages/CanvasAIPage'
+import CanvasAIPage      from './pages/CanvasAIPage'
+import SharedTasksPage   from './pages/SharedTasksPage'
+import WorkspacesPage    from './pages/WorkspacesPage'
+import ActivityPage      from './pages/ActivityPage'
+import SettingsPage      from './pages/SettingsPage'
 
 function Spinner() {
   return (
@@ -61,8 +67,10 @@ export default function App() {
   return (
     <ThemeProvider>
     <AuthProvider>
+      <NotificationProvider>
       <TimerProvider>
         <BrowserRouter>
+          <ToastContainer />
           <Routes>
             {/* Public */}
             <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -85,6 +93,10 @@ export default function App() {
               <Route path="timer"    element={<TimerPage />} />
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="ai"       element={<CanvasAIPage />} />
+              <Route path="shared"   element={<SharedTasksPage />} />
+              <Route path="workspaces" element={<WorkspacesPage />} />
+              <Route path="activity"   element={<ActivityPage />} />
+              <Route path="settings"  element={<SettingsPage />} />
             </Route>
 
             {/* Fallback */}
@@ -92,6 +104,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
       </TimerProvider>
+      </NotificationProvider>
     </AuthProvider>
     </ThemeProvider>
   )

@@ -175,3 +175,38 @@ class AISuggestCategoriesRequest(BaseModel):
 class AISuggestCategoriesResponse(BaseModel):
     """Response with suggested category labels."""
     categories: List[str]
+
+
+# ── AI Schedule / Frog / Tips Models ──────────────────────────────────────
+
+class AIScheduleRequest(BaseModel):
+    """Request model for AI daily schedule suggestion."""
+    tasks: List[dict]
+    available_hours: float = Field(8.0, ge=1, le=16)
+
+
+class AIScheduleBlock(BaseModel):
+    """A single time block in the AI-suggested schedule."""
+    time: str
+    task_title: str
+    duration_minutes: int
+    reason: str = ""
+
+
+class AIScheduleResponse(BaseModel):
+    """Response with AI-suggested daily schedule."""
+    schedule: List[AIScheduleBlock]
+    summary: str
+
+
+class AIFrogResponse(BaseModel):
+    """Response identifying the user's 'frog' — most important task of the day."""
+    task_title: str
+    task_id: Optional[str] = None
+    reason: str
+
+
+class AITipsResponse(BaseModel):
+    """Response with AI-generated productivity tips based on task patterns."""
+    tips: List[str]
+    summary: str
