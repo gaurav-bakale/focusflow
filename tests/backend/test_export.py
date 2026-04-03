@@ -1,14 +1,10 @@
 """
-Export Router Test Suite — FocusFlow
+Export Router Test Suite - FocusFlow
 
 Tests all four export endpoints in JSON and CSV formats.
 Framework: pytest + httpx + AsyncMock
 
 Test IDs: TC-EX01 through TC-EX14
-
-Design patterns exercised:
-  Strategy  — JSON and CSV strategies tested independently.
-  Facade    — endpoints tested as thin wrappers; data logic verified via output.
 """
 
 import json
@@ -81,9 +77,12 @@ MOCK_BLOCK_DOC = {
 def _mock_db_lifecycle():
     with (
         patch("app.main.connect_db", new=AsyncMock()),
-        patch("app.main.close_db",   new=AsyncMock()),
+        patch("app.main.close_db", new=AsyncMock()),
         patch("app.main.scan_deadlines", new=AsyncMock()),
-        patch("app.main.start_deadline_scanner", return_value=MagicMock(shutdown=MagicMock())),
+        patch(
+            "app.main.start_deadline_scanner",
+            return_value=MagicMock(shutdown=MagicMock()),
+        ),
     ):
         yield
 
@@ -101,26 +100,41 @@ def _auth():
     return _get
 
 
+# ── Cursor helper — same pattern as test_tasks.py ─────────────────────────────
+
 async def _async_iter(items):
+    """Async generator wrapping a list for use as a Motor cursor mock."""
     for item in items:
         yield item
 
 
-def _make_cursor(items):
-    """Build a mock Motor cursor that supports async-for and .sort()."""
+def _make_sortable_cursor(items):
+    """
+    Build a mock that supports .sort() chaining and async-for iteration.
+    Motor cursors chain: db.col.find(q).sort(k, d) -> async iterable
+    """
     sortable = MagicMock()
-    sortable.__aiter__ = lambda self: _async_iter(items).__aiter__()
+    # capture items in a default arg so the lambda closes over it correctly
+    sortable.__aiter__ = lambda self, _items=items: _async_iter(_items).__aiter__()
+    sortable.to_list = AsyncMock(return_value=items)
+
     cursor = MagicMock()
     cursor.sort = MagicMock(return_value=sortable)
-    cursor.__aiter__ = lambda self: _async_iter(items).__aiter__()
+    cursor.__aiter__ = lambda self, _items=items: _async_iter(_items).__aiter__()
+    cursor.to_list = AsyncMock(return_value=items)
     return cursor
 
 
 def _make_db(tasks=None, sessions=None, blocks=None):
+    """Return a pre-wired mock DB covering all three collections."""
+    tasks = tasks or []
+    sessions = sessions or []
+    blocks = blocks or []
+
     db = MagicMock()
-    db["tasks"].find.return_value     = _make_cursor(tasks    or [])
-    db["sessions"].find.return_value  = _make_cursor(sessions or [])
-    db["time_blocks"].find.return_value = _make_cursor(blocks or [])
+    db["tasks"].find.return_value = _make_sortable_cursor(tasks)
+    db["sessions"].find.return_value = _make_sortable_cursor(sessions)
+    db["time_blocks"].find.return_value = _make_sortable_cursor(blocks)
     return db
 
 
@@ -131,14 +145,14 @@ async def test_export_tasks_json():
     """
     TC-EX01: GET /api/export/tasks?format=json returns JSON file.
     Input  : 1 task in DB, format=json
-    Oracle : 200, Content-Type contains application/json,
-             Content-Disposition has focusflow_tasks.json,
-             parsed body is a list with one task whose title matches.
-    Success: all conditions met.
-    Failure: wrong status, wrong content type, or wrong data.
+    Oracle : 200, content-type=application/json, list with 1 task.
+    Success: title and categories match.
+    Failure: empty list or wrong fields.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(tasks=[MOCK_TASK_DOC])
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
+        tasks=[MOCK_TASK_DOC]
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks?format=json")
@@ -161,14 +175,14 @@ async def test_export_tasks_csv():
     """
     TC-EX02: GET /api/export/tasks?format=csv returns CSV file.
     Input  : 1 task in DB, format=csv
-    Oracle : 200, Content-Type contains text/csv,
-             Content-Disposition has focusflow_tasks.csv,
-             first line is a header row containing 'title'.
-    Success: all conditions met.
+    Oracle : 200, content-type=text/csv, header row contains 'title'.
+    Success: header present, data row contains task title.
     Failure: wrong content type or missing header.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(tasks=[MOCK_TASK_DOC])
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
+        tasks=[MOCK_TASK_DOC]
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks?format=csv")
@@ -177,21 +191,18 @@ async def test_export_tasks_csv():
     assert "text/csv" in r.headers["content-type"]
     assert "focusflow_tasks.csv" in r.headers["content-disposition"]
     lines = r.text.strip().split("\n")
-    assert len(lines) >= 2          # header + at least 1 data row
+    assert len(lines) >= 2
     assert "title" in lines[0]
     assert "Write export tests" in r.text
 
 
-# ── TC-EX03: Export tasks — empty list ───────────────────────────────────────
+# ── TC-EX03: Export tasks empty ───────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_export_tasks_empty():
     """
     TC-EX03: GET /api/export/tasks with no tasks returns empty JSON array.
-    Input  : no tasks in DB
     Oracle : 200, body == []
-    Success: empty list returned without error.
-    Failure: error raised or non-empty body.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db(tasks=[])
@@ -210,12 +221,12 @@ async def test_export_sessions_json():
     """
     TC-EX04: GET /api/export/sessions?format=json returns session list.
     Input  : 1 session in DB
-    Oracle : 200, list with one session, phase=FOCUS, duration=25.
-    Success: fields match MOCK_SESSION_DOC.
-    Failure: wrong status or empty body.
+    Oracle : 200, phase=FOCUS, duration=25.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(sessions=[MOCK_SESSION_DOC])
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
+        sessions=[MOCK_SESSION_DOC]
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/sessions?format=json")
@@ -234,13 +245,12 @@ async def test_export_sessions_json():
 async def test_export_sessions_csv():
     """
     TC-EX05: GET /api/export/sessions?format=csv returns CSV with header row.
-    Input  : 1 session in DB, format=csv
     Oracle : header contains 'phase', 'duration_minutes', 'completed_at'.
-    Success: all header fields present.
-    Failure: missing header or wrong format.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(sessions=[MOCK_SESSION_DOC])
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
+        sessions=[MOCK_SESSION_DOC]
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/sessions?format=csv")
@@ -259,12 +269,12 @@ async def test_export_blocks_json():
     """
     TC-EX06: GET /api/export/blocks?format=json returns block list.
     Input  : 1 block in DB
-    Oracle : 200, block title, start_time, end_time present.
-    Success: all fields match MOCK_BLOCK_DOC.
-    Failure: empty body or wrong fields.
+    Oracle : title, start_time, end_time present.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(blocks=[MOCK_BLOCK_DOC])
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
+        blocks=[MOCK_BLOCK_DOC]
+    )
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/blocks?format=json")
@@ -274,8 +284,8 @@ async def test_export_blocks_json():
     assert len(body) == 1
     assert body[0]["title"] == "Deep Work"
     assert body[0]["start_time"] == "2026-04-01T09:00"
-    assert body[0]["end_time"]   == "2026-04-01T10:40"
-    assert body[0]["task_id"]    == FAKE_TASK_ID
+    assert body[0]["end_time"] == "2026-04-01T10:40"
+    assert body[0]["task_id"] == FAKE_TASK_ID
 
 
 # ── TC-EX07: Export all JSON ──────────────────────────────────────────────────
@@ -284,11 +294,7 @@ async def test_export_blocks_json():
 async def test_export_all_json():
     """
     TC-EX07: GET /api/export/all returns full data dump.
-    Input  : 1 task, 1 session, 1 block in DB
-    Oracle : 200, JSON with keys exported_at, user, tasks, sessions, blocks.
-             Each list has 1 item.
-    Success: all top-level keys present and counts match.
-    Failure: missing keys or empty lists.
+    Oracle : keys exported_at, user, tasks, sessions, blocks all present.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db(
@@ -303,24 +309,20 @@ async def test_export_all_json():
     assert r.status_code == 200
     assert "focusflow_export_all.json" in r.headers["content-disposition"]
     body = json.loads(r.text)
-
     assert "exported_at" in body
     assert body["user"]["email"] == "export@focusflow.dev"
-    assert len(body["tasks"])    == 1
+    assert len(body["tasks"]) == 1
     assert len(body["sessions"]) == 1
-    assert len(body["blocks"])   == 1
+    assert len(body["blocks"]) == 1
 
 
-# ── TC-EX08: Export all — empty DB ───────────────────────────────────────────
+# ── TC-EX08: Export all empty ─────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_export_all_empty():
     """
     TC-EX08: GET /api/export/all with no data returns empty lists.
-    Input  : no tasks, sessions, or blocks in DB
-    Oracle : all three lists are empty; user info still present.
-    Success: tasks/sessions/blocks all == [].
-    Failure: error or missing keys.
+    Oracle : tasks/sessions/blocks all == [], user info still present.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -330,9 +332,9 @@ async def test_export_all_empty():
 
     assert r.status_code == 200
     body = json.loads(r.text)
-    assert body["tasks"]    == []
+    assert body["tasks"] == []
     assert body["sessions"] == []
-    assert body["blocks"]   == []
+    assert body["blocks"] == []
     assert body["user"]["email"] == "export@focusflow.dev"
 
 
@@ -341,11 +343,8 @@ async def test_export_all_empty():
 @pytest.mark.asyncio
 async def test_unsupported_format_returns_400():
     """
-    TC-EX09: Requesting an unsupported format returns 400.
-    Input  : format=xlsx (not supported)
-    Oracle : 400 with detail mentioning the bad format.
-    Success: status==400, detail contains format name.
-    Failure: 200 or 500.
+    TC-EX09: format=xlsx returns 400.
+    Oracle : status==400, detail contains format name.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -357,18 +356,14 @@ async def test_unsupported_format_returns_400():
     assert "xlsx" in r.json()["detail"].lower()
 
 
-# ── TC-EX10: Unauthenticated export returns 401 ──────────────────────────────
+# ── TC-EX10: Unauthenticated returns 401 ─────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_unauthenticated_export_returns_401():
     """
-    TC-EX10: Calling export endpoints without auth returns 401.
-    Input  : no Authorization header
-    Oracle : 401 Unauthorized
-    Success: status in {401, 403}.
-    Failure: 200.
+    TC-EX10: No auth token returns 401.
+    Oracle : status in {401, 403}.
     """
-    # No dependency overrides — real JWT check runs
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks")
 
@@ -380,11 +375,8 @@ async def test_unauthenticated_export_returns_401():
 @pytest.mark.asyncio
 async def test_invalid_date_filter_returns_400():
     """
-    TC-EX11: Passing a malformed from_date returns 400.
-    Input  : from_date="not-a-date"
-    Oracle : 400 with a message about invalid date format.
-    Success: status==400.
-    Failure: 200 or 500.
+    TC-EX11: from_date=not-a-date returns 400.
+    Oracle : status==400, detail mentions date.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -396,16 +388,13 @@ async def test_invalid_date_filter_returns_400():
     assert "date" in r.json()["detail"].lower()
 
 
-# ── TC-EX12: CSV with multiple tasks has correct row count ───────────────────
+# ── TC-EX12: CSV multiple tasks row count ────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_csv_multiple_tasks_row_count():
     """
     TC-EX12: CSV export with 3 tasks produces 4 lines (1 header + 3 data rows).
-    Input  : 3 task docs
-    Oracle : line count == 4
-    Success: len(lines) == 4 (trailing newline accounted for).
-    Failure: wrong count.
+    Oracle : len(non-empty lines) == 4
     """
     task2 = {**MOCK_TASK_DOC, "_id": ObjectId(), "title": "Task 2"}
     task3 = {**MOCK_TASK_DOC, "_id": ObjectId(), "title": "Task 3"}
@@ -420,18 +409,16 @@ async def test_csv_multiple_tasks_row_count():
 
     assert r.status_code == 200
     lines = [l for l in r.text.split("\n") if l.strip()]
-    assert len(lines) == 4   # 1 header + 3 data rows
+    assert len(lines) == 4  # 1 header + 3 data rows
 
 
-# ── TC-EX13: Export all Content-Disposition header ───────────────────────────
+# ── TC-EX13: Export all Content-Disposition ──────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_export_all_content_disposition():
     """
-    TC-EX13: GET /api/export/all sets correct Content-Disposition filename.
+    TC-EX13: GET /api/export/all sets correct filename in Content-Disposition.
     Oracle : filename == focusflow_export_all.json
-    Success: header present with correct filename.
-    Failure: missing header.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -440,20 +427,16 @@ async def test_export_all_content_disposition():
         r = await c.get("/api/export/all")
 
     assert r.status_code == 200
-    cd = r.headers.get("content-disposition", "")
-    assert "focusflow_export_all.json" in cd
+    assert "focusflow_export_all.json" in r.headers.get("content-disposition", "")
 
 
-# ── TC-EX14: Category filter limits tasks ────────────────────────────────────
+# ── TC-EX14: Category filter passes correct query ────────────────────────────
 
 @pytest.mark.asyncio
 async def test_export_tasks_category_filter_passes_query():
     """
-    TC-EX14: GET /api/export/tasks?category=backend calls DB with category filter.
-    Input  : category=backend
-    Oracle : db["tasks"].find called with query containing categories filter.
-    Success: find called with correct query.
-    Failure: find called without category filter.
+    TC-EX14: category=backend causes DB find() to include categories filter.
+    Oracle : find() called with query containing 'categories' key.
     """
     mock_db = _make_db(tasks=[MOCK_TASK_DOC])
     app.dependency_overrides[get_current_user_dependency] = _auth()
@@ -463,7 +446,6 @@ async def test_export_tasks_category_filter_passes_query():
         r = await c.get("/api/export/tasks?category=backend")
 
     assert r.status_code == 200
-    # Verify the find() call included the categories filter
     call_args = mock_db["tasks"].find.call_args
     assert call_args is not None
     query = call_args[0][0]
