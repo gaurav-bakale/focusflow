@@ -100,41 +100,54 @@ def _auth():
     return _get
 
 
-# ── Cursor helper — same pattern as test_tasks.py ─────────────────────────────
+# ── Async cursor mock ──────────────────────────────────────────────────────────
+#
+# Root cause of previous failures:
+#   MagicMock.__getitem__ returns a NEW mock object on every call, so
+#   db["tasks"].find.return_value = x sets it on one mock instance,
+#   but db["tasks"].find({...}) calls find on a DIFFERENT instance.
+#
+# Fix: override __getitem__ on the db mock to always return the SAME
+#   collection mock, ensuring find().sort() reaches our _AsyncIterMock.
 
-async def _async_iter(items):
-    """Async generator wrapping a list for use as a Motor cursor mock."""
-    for item in items:
-        yield item
-
-
-def _make_sortable_cursor(items):
+class _AsyncIterMock:
     """
-    Build a mock that supports .sort() chaining and async-for iteration.
-    Motor cursors chain: db.col.find(q).sort(k, d) -> async iterable
+    Reusable async iterable that creates a fresh generator on every
+    __aiter__ call — safe across shared event loops.
     """
-    sortable = MagicMock()
-    # capture items in a default arg so the lambda closes over it correctly
-    sortable.__aiter__ = lambda self, _items=items: _async_iter(_items).__aiter__()
-    sortable.to_list = AsyncMock(return_value=items)
+    def __init__(self, items):
+        self._items = list(items)
 
+    def __aiter__(self):
+        return self._aiter()
+
+    async def _aiter(self):
+        for item in self._items:
+            yield item
+
+
+def _make_collection(items):
+    """Build a mock collection whose find().sort() returns an async iterable."""
+    sortable = _AsyncIterMock(items)
     cursor = MagicMock()
-    cursor.sort = MagicMock(return_value=sortable)
-    cursor.__aiter__ = lambda self, _items=items: _async_iter(_items).__aiter__()
-    cursor.to_list = AsyncMock(return_value=items)
-    return cursor
+    cursor.sort.return_value = sortable
+    col = MagicMock()
+    col.find.return_value = cursor
+    return col
 
 
 def _make_db(tasks=None, sessions=None, blocks=None):
-    """Return a pre-wired mock DB covering all three collections."""
-    tasks = tasks or []
-    sessions = sessions or []
-    blocks = blocks or []
-
+    """
+    Return a mock DB where db[collection_name] always returns the same
+    collection mock, so find().sort() chains work correctly.
+    """
+    collections = {
+        "tasks":       _make_collection(list(tasks    or [])),
+        "sessions":    _make_collection(list(sessions or [])),
+        "time_blocks": _make_collection(list(blocks   or [])),
+    }
     db = MagicMock()
-    db["tasks"].find.return_value = _make_sortable_cursor(tasks)
-    db["sessions"].find.return_value = _make_sortable_cursor(sessions)
-    db["time_blocks"].find.return_value = _make_sortable_cursor(blocks)
+    db.__getitem__ = lambda self, key: collections.get(key, MagicMock())
     return db
 
 
@@ -145,14 +158,12 @@ async def test_export_tasks_json():
     """
     TC-EX01: GET /api/export/tasks?format=json returns JSON file.
     Input  : 1 task in DB, format=json
-    Oracle : 200, content-type=application/json, list with 1 task.
-    Success: title and categories match.
+    Oracle : 200, application/json, list with 1 task matching MOCK_TASK_DOC.
+    Success: title, priority, categories all match.
     Failure: empty list or wrong fields.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
-        tasks=[MOCK_TASK_DOC]
-    )
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(tasks=[MOCK_TASK_DOC])
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks?format=json")
@@ -175,14 +186,12 @@ async def test_export_tasks_csv():
     """
     TC-EX02: GET /api/export/tasks?format=csv returns CSV file.
     Input  : 1 task in DB, format=csv
-    Oracle : 200, content-type=text/csv, header row contains 'title'.
-    Success: header present, data row contains task title.
-    Failure: wrong content type or missing header.
+    Oracle : 200, text/csv, header row + 1 data row.
+    Success: 'title' in header, task title in body.
+    Failure: wrong content type or missing rows.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: _make_db(
-        tasks=[MOCK_TASK_DOC]
-    )
+    app.dependency_overrides[get_db_dependency] = lambda: _make_db(tasks=[MOCK_TASK_DOC])
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks?format=csv")
@@ -221,7 +230,7 @@ async def test_export_sessions_json():
     """
     TC-EX04: GET /api/export/sessions?format=json returns session list.
     Input  : 1 session in DB
-    Oracle : 200, phase=FOCUS, duration=25.
+    Oracle : 200, phase=FOCUS, duration=25, task_id matches.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db(
@@ -268,8 +277,7 @@ async def test_export_sessions_csv():
 async def test_export_blocks_json():
     """
     TC-EX06: GET /api/export/blocks?format=json returns block list.
-    Input  : 1 block in DB
-    Oracle : title, start_time, end_time present.
+    Oracle : title, start_time, end_time, task_id all match.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db(
@@ -294,7 +302,7 @@ async def test_export_blocks_json():
 async def test_export_all_json():
     """
     TC-EX07: GET /api/export/all returns full data dump.
-    Oracle : keys exported_at, user, tasks, sessions, blocks all present.
+    Oracle : exported_at, user, tasks, sessions, blocks all present with 1 item each.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db(
@@ -322,7 +330,7 @@ async def test_export_all_json():
 async def test_export_all_empty():
     """
     TC-EX08: GET /api/export/all with no data returns empty lists.
-    Oracle : tasks/sessions/blocks all == [], user info still present.
+    Oracle : tasks/sessions/blocks == [], user info present.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -343,8 +351,8 @@ async def test_export_all_empty():
 @pytest.mark.asyncio
 async def test_unsupported_format_returns_400():
     """
-    TC-EX09: format=xlsx returns 400.
-    Oracle : status==400, detail contains format name.
+    TC-EX09: format=xlsx returns 400 with detail mentioning the bad format.
+    Oracle : status==400, 'xlsx' in detail.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -361,7 +369,7 @@ async def test_unsupported_format_returns_400():
 @pytest.mark.asyncio
 async def test_unauthenticated_export_returns_401():
     """
-    TC-EX10: No auth token returns 401.
+    TC-EX10: No auth token returns 401 or 403.
     Oracle : status in {401, 403}.
     """
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
@@ -376,7 +384,7 @@ async def test_unauthenticated_export_returns_401():
 async def test_invalid_date_filter_returns_400():
     """
     TC-EX11: from_date=not-a-date returns 400.
-    Oracle : status==400, detail mentions date.
+    Oracle : status==400, 'date' in detail.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -408,7 +416,7 @@ async def test_csv_multiple_tasks_row_count():
         r = await c.get("/api/export/tasks?format=csv")
 
     assert r.status_code == 200
-    lines = [l for l in r.text.split("\n") if l.strip()]
+    lines = [ln for ln in r.text.split("\n") if ln.strip()]
     assert len(lines) == 4  # 1 header + 3 data rows
 
 
@@ -417,8 +425,8 @@ async def test_csv_multiple_tasks_row_count():
 @pytest.mark.asyncio
 async def test_export_all_content_disposition():
     """
-    TC-EX13: GET /api/export/all sets correct filename in Content-Disposition.
-    Oracle : filename == focusflow_export_all.json
+    TC-EX13: GET /api/export/all sets correct filename.
+    Oracle : 'focusflow_export_all.json' in Content-Disposition header.
     """
     app.dependency_overrides[get_current_user_dependency] = _auth()
     app.dependency_overrides[get_db_dependency] = lambda: _make_db()
@@ -438,15 +446,23 @@ async def test_export_tasks_category_filter_passes_query():
     TC-EX14: category=backend causes DB find() to include categories filter.
     Oracle : find() called with query containing 'categories' key.
     """
-    mock_db = _make_db(tasks=[MOCK_TASK_DOC])
+    tasks_col = _make_collection([MOCK_TASK_DOC])
+    collections = {
+        "tasks":       tasks_col,
+        "sessions":    _make_collection([]),
+        "time_blocks": _make_collection([]),
+    }
+    db = MagicMock()
+    db.__getitem__ = lambda self, key: collections.get(key, MagicMock())
+
     app.dependency_overrides[get_current_user_dependency] = _auth()
-    app.dependency_overrides[get_db_dependency] = lambda: mock_db
+    app.dependency_overrides[get_db_dependency] = lambda: db
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         r = await c.get("/api/export/tasks?category=backend")
 
     assert r.status_code == 200
-    call_args = mock_db["tasks"].find.call_args
+    call_args = tasks_col.find.call_args
     assert call_args is not None
     query = call_args[0][0]
     assert "categories" in query
