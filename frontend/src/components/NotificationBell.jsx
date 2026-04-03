@@ -44,7 +44,7 @@ export default function NotificationBell() {
     try {
       const res = await fetchUnreadCount()
       setUnreadCount(res.count)
-    } catch (_) {}
+    } catch (_) { /* non-critical */ }
   }, [])
 
   // Request browser notification permission on mount
@@ -116,7 +116,7 @@ export default function NotificationBell() {
       await markNotificationRead(id)
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
       setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch (_) {}
+    } catch (_) { /* non-critical */ }
   }
 
   async function handleMarkAllRead() {
@@ -124,7 +124,7 @@ export default function NotificationBell() {
       await markAllNotificationsRead()
       setNotifications(prev => prev.map(n => ({ ...n, read: true })))
       setUnreadCount(0)
-    } catch (_) {}
+    } catch (_) { /* non-critical */ }
   }
 
   async function handleDelete(id) {
@@ -133,7 +133,7 @@ export default function NotificationBell() {
       await deleteNotification(id)
       setNotifications(prev => prev.filter(n => n.id !== id))
       if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1))
-    } catch (_) {}
+    } catch (_) { /* non-critical */ }
   }
 
   function timeAgo(dateStr) {
