@@ -19,6 +19,7 @@ from app.sharing.router import router as sharing_router
 from app.tasks.router import router as tasks_router
 from app.workspaces.router import router as workspaces_router
 from app.activity.router import router as activity_router
+from app.notifications.router import router as notifications_router
 from app.ws import manager as ws_manager
 
 load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
@@ -51,6 +52,13 @@ async def lifespan(app: FastAPI):
     await db["activities"].create_index(
         [("actor_id", 1), ("created_at", -1)], background=True
     )
+    # Indexes for notifications — speeds up user feed and dedup checks
+    await db["notifications"].create_index(
+        [("user_id", 1), ("created_at", -1)], background=True
+    )
+    await db["notifications"].create_index(
+        [("user_id", 1), ("task_id", 1), ("type", 1)], background=True
+    )
     yield
     await close_db()
 
@@ -81,6 +89,7 @@ app.include_router(sharing_router,   prefix="/api/sharing",  tags=["Sharing"])
 app.include_router(comments_router,  prefix="/api",          tags=["Comments"])
 app.include_router(workspaces_router, prefix="/api/workspaces", tags=["Workspaces"])
 app.include_router(activity_router,   prefix="/api/activity",   tags=["Activity"])
+app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
 
 
 @app.get("/", tags=["Health"])
