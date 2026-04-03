@@ -433,7 +433,7 @@ async def test_update_task_title_only():
     Pass     : status==200, body['title']=='New Title'.
     """
     updated_doc = {**MOCK_TASK_DOC, "title": "New Title"}
-    db = _mock_db()
+    db = _mock_db(task_doc=MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=updated_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
@@ -456,7 +456,7 @@ async def test_update_task_status_in_progress():
     Pass     : status==200, body['status']=='IN_PROGRESS'.
     """
     in_progress_doc = {**MOCK_TASK_DOC, "status": "IN_PROGRESS"}
-    db = _mock_db()
+    db = _mock_db(task_doc=MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=in_progress_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
