@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.authentication.router import router as auth_router
 from app.db import connect_db, close_db, get_db
-from app.routers import timer, calendar, ai
+from app.routers import timer, calendar, ai, export
 from app.comments.router import router as comments_router
 from app.sharing.router import router as sharing_router
 from app.tasks.router import router as tasks_router
@@ -95,6 +95,7 @@ app.include_router(comments_router,  prefix="/api",          tags=["Comments"])
 app.include_router(workspaces_router, prefix="/api/workspaces", tags=["Workspaces"])
 app.include_router(activity_router,   prefix="/api/activity",   tags=["Activity"])
 app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(export.router,        prefix="/api/export",        tags=["Export"])
 
 
 @app.get("/", tags=["Health"])
