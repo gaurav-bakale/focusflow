@@ -131,3 +131,33 @@ export async function markAllNotificationsRead() {
 export async function deleteNotification(id) {
   await api.delete(`/notifications/${id}`)
 }
+
+/**
+ * Export user data as CSV or JSON.
+ * Triggers a file download in the browser.
+ *
+ * @param {string} type   - "tasks" | "sessions" | "blocks" | "all"
+ * @param {string} format - "csv" | "json"
+ */
+export async function exportData(type, format = 'json') {
+  const url = type === 'all'
+    ? '/export/all'
+    : `/export/${type}?format=${format}`
+
+  const res = await api.get(url, { responseType: 'blob' })
+
+  // Build filename from Content-Disposition header or fallback
+  const disposition = res.headers['content-disposition'] || ''
+  const match = disposition.match(/filename="(.+)"/)
+  const filename = match ? match[1] : `focusflow_${type}.${format}`
+
+  // Trigger browser download
+  const blob = new Blob([res.data])
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(link.href)
+}
