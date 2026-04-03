@@ -1042,8 +1042,9 @@ describe('BlockModal end-time validation', () => {
     // Wait for React 18 batched state to flush (start change shifts end to 11:40)
     await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
 
-    // Manually set end to before start
+    // Manually set end to before start, then flush state before submitting
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
+    await act(async () => {}) // ensure end-change state is committed before submit
 
     // Try to submit
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
@@ -1069,6 +1070,7 @@ describe('BlockModal end-time validation', () => {
     await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
 
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T10:00' } })
+    await act(async () => {}) // ensure end-change state is committed before submit
 
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
 
@@ -1095,6 +1097,8 @@ describe('BlockModal end-time validation', () => {
     await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
 
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
+    await act(async () => {}) // ensure end-change state is committed before submit
+
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
 
     await waitFor(() => {
