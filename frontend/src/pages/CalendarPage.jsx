@@ -653,7 +653,11 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleEndChange(val) {
-    setTimeError('')
+    if (val && form.start_time && val <= form.start_time) {
+      setTimeError('End time must be after start time.')
+    } else {
+      setTimeError('')
+    }
     setForm(f => ({ ...f, end_time: val }))
     checkOverlap(form.start_time, val)
   }
