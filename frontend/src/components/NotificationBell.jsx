@@ -47,6 +47,13 @@ export default function NotificationBell() {
     } catch (_) {}
   }, [])
 
+  // Request browser notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+  }, [])
+
   // Poll unread count every 30s
   useEffect(() => {
     refreshCount()
@@ -61,6 +68,16 @@ export default function NotificationBell() {
       // If dropdown is open, refresh the list
       if (open) {
         loadNotifications()
+      }
+      // Browser push notification
+      const n = lastMessage.notification
+      if (n && 'Notification' in window && Notification.permission === 'granted') {
+        const typeLabel = TYPE_LABELS[n.notification_type] || 'Deadline'
+        new Notification(`${typeLabel}: ${n.task_title}`, {
+          body: n.message,
+          icon: '/favicon.ico',
+          tag: n.id, // prevent duplicate browser notifications
+        })
       }
     }
   }, [lastMessage])
