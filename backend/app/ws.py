@@ -10,7 +10,6 @@ Design patterns:
   Singleton  — a single ConnectionManager instance shared across the app.
 """
 
-import json
 from typing import Dict, List
 
 from fastapi import WebSocket
