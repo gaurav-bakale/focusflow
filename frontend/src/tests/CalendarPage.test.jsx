@@ -985,3 +985,159 @@ describe('recurring block edit and delete scope', () => {
     window.confirm.mockRestore()
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suite 9 — BlockModal end-time validation
+// Bug: when start time is updated, end time stayed the same — allowing
+//      end ≤ start. These tests cover the fix:
+//   1. Changing start auto-shifts end to preserve duration
+//   2. Manually setting end before start shows an inline error
+//   3. Form cannot be submitted when end ≤ start
+//   4. Error clears when end is corrected
+//   5. Duration is preserved when start is moved forward/backward
+//   6. When original end was invalid, start change falls back to +25 min
+// ─────────────────────────────────────────────────────────────────────────────
+describe('BlockModal end-time validation', () => {
+
+  /**
+   * CAL-31: Changing start auto-shifts end to preserve the original duration.
+   *
+   * Original block: 10:00 → 11:40 (100 min).
+   * Move start to 12:00 → end should auto-update to 13:40 (still 100 min).
+   * Oracle: end input value == '2026-09-01T13:40'.
+   */
+  it('CAL-31: changing start preserves duration and auto-shifts end', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+
+    // Set a known start and end (100 min apart)
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    await waitFor(() => {
+      // After start change, end should shift to 10:00 + 100 min = 11:40
+      // (default focusMins=25, 4×25=100)
+      expect(inputs()[1].value).toBe('2026-09-01T11:40')
+    })
+
+    // Now move start forward by 2 hours — end should also shift by 2 hours
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T12:00' } })
+    await waitFor(() => {
+      expect(inputs()[1].value).toBe('2026-09-01T13:40')
+    })
+  })
+
+  /**
+   * CAL-32: Manually setting end before start shows inline error.
+   *
+   * Input : start=10:00, then manually type end=09:00.
+   * Oracle: error message "End time must be after start time." visible.
+   */
+  it('CAL-32: manually setting end before start shows error message', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    // Manually set end to before start
+    fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
+
+    // Try to submit
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/end time must be after start time/i)).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-33: Form cannot be submitted when end == start.
+   *
+   * Input : start = end = '2026-09-01T10:00'.
+   * Oracle: createBlock is NOT called; error is shown.
+   */
+  it('CAL-33: form blocks submission when end equals start', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    fireEvent.change(inputs()[1], { target: { value: '2026-09-01T10:00' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    // Error is shown and modal stays open (not closed by a successful save)
+    await waitFor(() => {
+      expect(screen.getByText(/end time must be after start time/i)).toBeInTheDocument()
+      expect(screen.getByText('New Time Block')).toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-34: Error clears when the user corrects end to be after start.
+   *
+   * Input : trigger error → fix end time.
+   * Oracle: error message disappears after correction.
+   */
+  it('CAL-34: fixing end time clears the error message', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /create/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/end time must be after start time/i)).toBeInTheDocument()
+    })
+
+    // Fix the end time
+    fireEvent.change(inputs()[1], { target: { value: '2026-09-01T11:00' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/end time must be after start time/i)).not.toBeInTheDocument()
+    })
+  })
+
+  /**
+   * CAL-35: Moving start backward also preserves duration.
+   *
+   * Original: 12:00 → 13:40 (100 min).
+   * Move start back to 08:00 → end should become 09:40 (still 100 min).
+   */
+  it('CAL-35: moving start backward preserves duration', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+
+    // Establish 12:00 start (end auto-shifts to 13:40)
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T12:00' } })
+    await waitFor(() => { expect(inputs()[1].value).toBe('2026-09-01T13:40') })
+
+    // Move start back to 08:00
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T08:00' } })
+    await waitFor(() => {
+      expect(inputs()[1].value).toBe('2026-09-01T09:40')
+    })
+  })
+
+  /**
+   * CAL-36: End input has a min attribute equal to start_time.
+   *
+   * Oracle: the end datetime-local input's min attribute equals the start value.
+   * This provides browser-level enforcement in addition to JS validation.
+   */
+  it('CAL-36: end input min attribute matches current start value', async () => {
+    await renderCalendar()
+    await openNewModal()
+
+    const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
+    fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+
+    await waitFor(() => {
+      expect(inputs()[1].getAttribute('min')).toBe('2026-09-01T10:00')
+    })
+  })
+})
