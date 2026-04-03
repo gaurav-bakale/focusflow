@@ -25,7 +25,6 @@ from bson import ObjectId
 from fastapi import HTTPException, status
 
 from app.sharing.models import (
-    Permission,
     ShareCreate,
     ShareResponse,
     ShareStatus,

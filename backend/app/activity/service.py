@@ -21,7 +21,7 @@ to record events. The feed endpoints read these entries back for display.
 # ─────────────────────────────────────────────────────────────────────────────
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from bson import ObjectId
 from fastapi import HTTPException, status

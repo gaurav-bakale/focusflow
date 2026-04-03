@@ -13,9 +13,8 @@ NotificationResponse — full notification entry returned to clients
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class NotificationType(str, Enum):

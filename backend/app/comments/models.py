@@ -5,7 +5,6 @@ All task-comment schemas live here so the comments package is self-contained.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
