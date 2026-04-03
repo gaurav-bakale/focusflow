@@ -163,6 +163,7 @@ export default function TasksPage() {
   const [breakdownTaskId, setBreakdownTaskId]     = useState(null)
   const [breakdownResult, setBreakdownResult]     = useState([])
   const [breakdownLoading, setBreakdownLoading]   = useState(false)
+  const [subtaskInput, setSubtaskInput]           = useState('')
 
   useEffect(() => { loadTasks() }, [])
 
@@ -256,6 +257,7 @@ export default function TasksPage() {
         estimated_minutes: task.estimated_minutes ? String(task.estimated_minutes) : '',
         status:            task.status,
         categories:        task.categories || [],
+        subtasks:          (task.subtasks || []).map(s => ({ title: s.title, status: s.status })),
       })
     } else {
       setEditingTask(null)
@@ -263,6 +265,7 @@ export default function TasksPage() {
         title: '', description: '', priority: 'MEDIUM',
         deadline: '', due_time: '', recurrence: 'NONE',
         estimated_minutes: '', status: defaultStatus, categories: [],
+        subtasks: [],
       })
     }
     setShowModal(true)
@@ -272,6 +275,7 @@ export default function TasksPage() {
     setShowModal(false)
     setEditingTask(null)
     setCategoryInput('')
+    setSubtaskInput('')
     setOverlapError('')
   }
 
@@ -325,6 +329,8 @@ export default function TasksPage() {
     }
 
     const payload = { ...formData, estimated_minutes: estMins, due_time: dueTime }
+    // Only include subtasks if editing (new tasks start with no subtasks)
+    if (!editingTask) delete payload.subtasks
     try {
       if (editingTask) {
         const updated = await updateTask(editingTask.id, payload)
@@ -526,6 +532,50 @@ export default function TasksPage() {
     } finally {
       setBreakdownLoading(false)
     }
+  }
+
+  // ── Subtask handlers ─────────────────────────────────────────────────
+  async function handleToggleSubtask(task, subtaskId) {
+    const updatedSubtasks = (task.subtasks || []).map(s =>
+      s.id === subtaskId ? { ...s, status: s.status === 'DONE' ? 'TODO' : 'DONE' } : s
+    )
+    try {
+      const updated = await updateTask(task.id, {
+        subtasks: updatedSubtasks.map(s => ({ title: s.title, status: s.status })),
+      })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch (err) { console.error('Failed to toggle subtask:', err) }
+  }
+
+  async function handleAddSubtask(task, title) {
+    if (!title.trim()) return
+    const current = (task.subtasks || []).map(s => ({ title: s.title, status: s.status }))
+    current.push({ title: title.trim(), status: 'TODO' })
+    try {
+      const updated = await updateTask(task.id, { subtasks: current })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch (err) { console.error('Failed to add subtask:', err) }
+  }
+
+  async function handleDeleteSubtask(task, subtaskId) {
+    const filtered = (task.subtasks || [])
+      .filter(s => s.id !== subtaskId)
+      .map(s => ({ title: s.title, status: s.status }))
+    try {
+      const updated = await updateTask(task.id, { subtasks: filtered })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+    } catch (err) { console.error('Failed to delete subtask:', err) }
+  }
+
+  async function handleSaveBreakdownAsSubtasks(task) {
+    const current = (task.subtasks || []).map(s => ({ title: s.title, status: s.status }))
+    const newSubs = breakdownResult.map(title => ({ title, status: 'TODO' }))
+    try {
+      const updated = await updateTask(task.id, { subtasks: [...current, ...newSubs] })
+      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+      setBreakdownTaskId(null)
+      setBreakdownResult([])
+    } catch (err) { console.error('Failed to save breakdown:', err) }
   }
 
   if (loading) {
@@ -803,6 +853,54 @@ export default function TasksPage() {
                                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                                 )}
 
+                                {/* Subtask progress + list */}
+                                {task.subtasks && task.subtasks.length > 0 && (() => {
+                                  const total = task.subtasks.length
+                                  const done = task.subtasks.filter(s => s.status === 'DONE').length
+                                  const pct = Math.round((done / total) * 100)
+                                  return (
+                                    <div className="mb-2">
+                                      <div className="flex items-center gap-2 mb-1.5">
+                                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                          <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <span className="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">{done}/{total}</span>
+                                      </div>
+                                      <ul className="space-y-0.5">
+                                        {task.subtasks.map(sub => (
+                                          <li key={sub.id} className="flex items-center gap-1.5 group/sub">
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleToggleSubtask(task, sub.id) }}
+                                              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                                sub.status === 'DONE'
+                                                  ? 'bg-emerald-500 border-emerald-500'
+                                                  : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
+                                              }`}
+                                            >
+                                              {sub.status === 'DONE' && (
+                                                <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                              )}
+                                            </button>
+                                            <span className={`text-xs flex-1 truncate ${sub.status === 'DONE' ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
+                                              {sub.title}
+                                            </span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleDeleteSubtask(task, sub.id) }}
+                                              className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )
+                                })()}
+
                                 {/* Scheduling metadata row */}
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                   {/* Task type badge — always shown */}
@@ -886,7 +984,15 @@ export default function TasksPage() {
                                 {/* AI Breakdown results */}
                                 {breakdownTaskId === task.id && breakdownResult.length > 0 && (
                                   <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
-                                    <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mb-2">AI-Suggested Subtasks</p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs font-bold text-purple-600 dark:text-purple-400">AI-Suggested Subtasks</p>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleSaveBreakdownAsSubtasks(task) }}
+                                        className="text-xs font-bold text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                                      >
+                                        Save as Subtasks
+                                      </button>
+                                    </div>
                                     <ul className="space-y-1">
                                       {breakdownResult.map((sub, i) => (
                                         <li key={i} className="flex items-start gap-2 text-xs text-gray-700 dark:text-gray-300">
@@ -1056,6 +1162,102 @@ export default function TasksPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Subtasks (edit mode only) */}
+              {editingTask && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                    Subtasks
+                    {formData.subtasks && formData.subtasks.length > 0 && (
+                      <span className="ml-2 normal-case font-medium text-gray-400 dark:text-gray-500">
+                        {formData.subtasks.filter(s => s.status === 'DONE').length}/{formData.subtasks.length} done
+                      </span>
+                    )}
+                  </label>
+
+                  {/* Existing subtasks */}
+                  {formData.subtasks && formData.subtasks.length > 0 && (
+                    <ul className="space-y-1 mb-2">
+                      {formData.subtasks.map((sub, i) => (
+                        <li key={i} className="flex items-center gap-2 group/msub">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                subtasks: prev.subtasks.map((s, j) =>
+                                  j === i ? { ...s, status: s.status === 'DONE' ? 'TODO' : 'DONE' } : s
+                                ),
+                              }))
+                            }}
+                            className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                              sub.status === 'DONE'
+                                ? 'bg-emerald-500 border-emerald-500'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
+                            }`}
+                          >
+                            {sub.status === 'DONE' && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className={`text-sm flex-1 ${sub.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-700 dark:text-gray-300'}`}>
+                            {sub.title}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, subtasks: prev.subtasks.filter((_, j) => j !== i) }))}
+                            className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/msub:opacity-100 transition-opacity"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Add new subtask */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={subtaskInput}
+                      onChange={e => setSubtaskInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (subtaskInput.trim()) {
+                            setFormData(prev => ({
+                              ...prev,
+                              subtasks: [...(prev.subtasks || []), { title: subtaskInput.trim(), status: 'TODO' }],
+                            }))
+                            setSubtaskInput('')
+                          }
+                        }
+                      }}
+                      placeholder="Add subtask…"
+                      className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (subtaskInput.trim()) {
+                          setFormData(prev => ({
+                            ...prev,
+                            subtasks: [...(prev.subtasks || []), { title: subtaskInput.trim(), status: 'TODO' }],
+                          }))
+                          setSubtaskInput('')
+                        }
+                      }}
+                      className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-sm hover:border-gray-900 dark:hover:border-gray-400 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Overlap error */}
               {overlapError && (
