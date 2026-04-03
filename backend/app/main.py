@@ -20,6 +20,7 @@ from app.tasks.router import router as tasks_router
 from app.workspaces.router import router as workspaces_router
 from app.activity.router import router as activity_router
 from app.notifications.router import router as notifications_router
+from app.notifications.scanner import start_deadline_scanner, scan_deadlines
 from app.ws import manager as ws_manager
 
 load_dotenv()  # load backend/.env before any os.getenv() calls at runtime
@@ -59,7 +60,11 @@ async def lifespan(app: FastAPI):
     await db["notifications"].create_index(
         [("user_id", 1), ("task_id", 1), ("type", 1)], background=True
     )
+    # Run an initial deadline scan, then start the background scheduler
+    await scan_deadlines(db)
+    scheduler = start_deadline_scanner(db)
     yield
+    scheduler.shutdown(wait=False)
     await close_db()
 
 
