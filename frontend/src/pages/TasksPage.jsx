@@ -547,16 +547,6 @@ export default function TasksPage() {
     } catch (err) { console.error('Failed to toggle subtask:', err) }
   }
 
-  async function handleAddSubtask(task, title) {
-    if (!title.trim()) return
-    const current = (task.subtasks || []).map(s => ({ title: s.title, status: s.status }))
-    current.push({ title: title.trim(), status: 'TODO' })
-    try {
-      const updated = await updateTask(task.id, { subtasks: current })
-      setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
-    } catch (err) { console.error('Failed to add subtask:', err) }
-  }
-
   async function handleDeleteSubtask(task, subtaskId) {
     const filtered = (task.subtasks || [])
       .filter(s => s.id !== subtaskId)
