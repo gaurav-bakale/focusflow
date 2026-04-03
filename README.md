@@ -13,9 +13,11 @@
 |---|---|
 | Frontend | React 18 + Tailwind CSS + React Router |
 | Backend | Python 3.11 + FastAPI + Pydantic |
-| Database | MongoDB 6 (Motor async driver) |
-| AI | OpenAI API (gpt-4o-mini) |
-| Auth | JWT (python-jose) + bcrypt |
+| Database | MongoDB 7 (Motor async driver) |
+| AI | Google Gemini API + OpenAI API (user-configurable) |
+| Auth | JWT (PyJWT) + bcrypt + passlib |
+| Real-time | WebSocket (collaboration notifications) |
+| Scheduler | APScheduler (deadline notifications) |
 | CI/CD | GitHub Actions |
 | Containers | Docker + Docker Compose |
 
@@ -26,7 +28,38 @@
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Node.js 18+](https://nodejs.org/) for local frontend dev
 - [Python 3.11+](https://python.org/) for local backend dev
-- An [OpenAI API key](https://platform.openai.com/) — optional; core features work without it
+- A MongoDB instance — local or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (free tier)
+- A [Gemini API key](https://aistudio.google.com/app/apikey) or [OpenAI API key](https://platform.openai.com/) — optional; AI features are opt-in
+
+---
+
+## Environment Setup
+
+### 1. Copy the example environment file
+
+```bash
+cp .env.example backend/.env
+```
+
+### 2. Fill in your values
+
+Open `backend/.env` and set at minimum:
+
+```env
+# MongoDB Atlas (recommended)
+MONGODB_URL=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/focusflow?retryWrites=true&w=majority
+
+# JWT — generate with: python -c "import secrets; print(secrets.token_hex(32))"
+JWT_SECRET=your-long-random-secret-here
+
+# AI features (optional — users can also add their own key in Settings)
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
+```
+
+See `.env.example` for the full list of all available variables with descriptions.
+
+> ⚠️ Never commit `backend/.env` to version control. It is listed in `.gitignore`.
 
 ---
 
@@ -37,21 +70,31 @@
 git clone https://github.com/gaurav-bakale/focusflow.git
 cd focusflow
 
-# 2. Configure environment
-cp .env.example .env
-# Edit .env: set JWT_SECRET and OPENAI_API_KEY
+# 2. Set up environment
+cp .env.example backend/.env
+# Edit backend/.env — fill in MONGODB_URL and JWT_SECRET at minimum
 
 # 3. Build and start all containers
 docker-compose up --build
 
 # 4. Open the app
-#    App:         http://localhost:3000
+#    App:         http://localhost:3001
 #    API Swagger: http://localhost:8000/docs
 #    API ReDoc:   http://localhost:8000/redoc
 
 # 5. Stop
 docker-compose down
 ```
+
+### Password requirements
+
+When creating an account your password must contain:
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 number
+- At least 1 special character (e.g. `!@#$%`)
+
+Example: `MyPass@123`
 
 ---
 
@@ -69,12 +112,69 @@ npm run dev          # http://localhost:5173
 
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload   # http://localhost:8000
+uvicorn app.main:app --reload  # http://localhost:8000
 ```
 
-Ensure MongoDB is running locally on port 27017.
+The backend loads `backend/.env` automatically via `python-dotenv`.
+
+---
+
+## Features
+
+| Feature | Description |
+|---|---|
+| **Task Management** | Kanban board, priorities, deadlines, recurring tasks, subtasks, categories |
+| **Pomodoro Timer** | Configurable work/break durations, session logging, streak tracking |
+| **Time Blocking** | Weekly calendar with drag-to-create blocks, recurring series, auto-schedule on task creation |
+| **AI Assistant** | Task breakdown, prioritization, goal-based task generation, daily scheduling, productivity tips |
+| **Collaboration** | Task sharing, team workspaces, activity feed, real-time WebSocket notifications |
+| **Comments** | Per-task threaded comments |
+| **Notifications** | Deadline reminders via background scheduler and real-time push |
+| **Data Export** | Export tasks, sessions, and calendar blocks as CSV or JSON |
+| **Dark Mode** | Full dark/light theme toggle |
+| **Onboarding** | First-login preferences (Pomodoro durations, timezone, theme) |
+
+---
+
+## Data Export
+
+Export your data at any time via the API (JWT token required):
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/export/tasks` | All tasks |
+| `GET /api/export/sessions` | All Pomodoro sessions |
+| `GET /api/export/blocks` | All calendar time blocks |
+| `GET /api/export/all` | Complete data dump (JSON only) |
+
+**Supported formats:** `json` (default) and `csv`
+
+**Optional filters:**
+
+```
+?format=csv
+?from_date=2026-01-01&to_date=2026-12-31
+?category=backend        (tasks only)
+```
+
+**Examples:**
+
+```bash
+# All tasks as CSV
+GET /api/export/tasks?format=csv
+
+# Tasks filtered by date range and category
+GET /api/export/tasks?format=json&from_date=2026-01-01&to_date=2026-12-31&category=backend
+
+# All Pomodoro sessions as CSV
+GET /api/export/sessions?format=csv
+
+# Complete data dump
+GET /api/export/all
+```
 
 ---
 
@@ -92,19 +192,49 @@ Test files in `frontend/src/tests/`:
 
 | File | Tests | Coverage |
 |---|---|---|
-| `TaskService.test.js` | 11 tests | Task CRUD service |
-| `TimerPage.test.jsx` | 9 tests | Pomodoro timer component |
-| `AuthPages.test.jsx` | 5 tests | Login / Register pages |
+| `DashboardPage.test.jsx` | 33 | Dashboard, analytics, auto-schedule, recurrence |
+| `TimerContext.test.jsx` | 5 | Timer context + user preferences |
+| `AuthContext.test.jsx` | 5 | Auth state + token validation |
+| `TaskService.test.js` | 11 | Task CRUD service |
+| `TimerPage.test.jsx` | 9 | Pomodoro timer component |
+| `AuthPages.test.jsx` | 5 | Login / Register pages |
+| `CalendarPage.test.jsx` | — | Calendar interactions + recurrence |
+| `TasksPage.test.jsx` | — | Kanban board interactions |
+| `LoginPage.test.jsx` | — | Login page |
+| `RegisterPage.test.jsx` | — | Register page |
+| `OnboardingPage.test.jsx` | — | Onboarding flow |
+| `AuthService.test.js` | — | Auth service calls |
+| `api.test.js` | — | Axios interceptors |
+| `detectOverlap.test.js` | — | Overlap detection utility |
+| `smartSchedule.test.js` | — | Smart scheduling utility |
+| `smartCategories.test.js` | — | Category suggestion utility |
 
 ### Backend — pytest
 
 ```bash
-cd backend
+# From the project root
 pytest tests/ -v
-pytest tests/ -v --cov=app    # with coverage
+
+# With coverage report
+pytest tests/ -v --cov=app --cov-report=html
 ```
 
-Test file: `tests/backend/test_api.py` — 7 tests covering auth and task endpoints.
+Test files in `tests/`:
+
+| File | Tests | Coverage |
+|---|---|---|
+| `tests/backend/test_tasks.py` | 18 | Full task CRUD, analytics, error cases |
+| `tests/backend/test_ai.py` | 12 | All AI endpoints, rate limiting, errors |
+| `tests/backend/test_export.py` | 14 | Export endpoints, formats, filters, auth |
+| `tests/test_calendar.py` | 12 | Calendar CRUD, scoped updates/deletes |
+| `tests/backend/test_api.py` | 3 | Auth and task creation |
+| `tests/backend/authentication/` | 8 files | Full auth flow |
+| `tests/backend/test_comments.py` | — | Task comments |
+| `tests/backend/test_sharing.py` | — | Task sharing |
+| `tests/backend/test_workspaces.py` | — | Team workspaces |
+| `tests/backend/test_activity.py` | — | Activity feed |
+| `tests/backend/test_notifications.py` | — | Notifications + deadline scanner |
+| `tests/backend/test_websocket.py` | — | WebSocket connections |
 
 ---
 
@@ -136,9 +266,10 @@ Pipeline: `.github/workflows/ci.yml`
 |---|---|
 | `DOCKER_USERNAME` | Docker Hub username |
 | `DOCKER_PASSWORD` | Docker Hub access token |
-| `MONGODB_URL` | Production MongoDB URL |
+| `MONGODB_URL` | Production MongoDB connection string |
 | `JWT_SECRET` | JWT signing secret |
-| `OPENAI_API_KEY` | OpenAI key for AI features |
+| `OPENAI_API_KEY` | OpenAI key for server-side AI (optional) |
+| `GEMINI_API_KEY` | Gemini key for server-side AI (optional) |
 
 ---
 
@@ -146,32 +277,56 @@ Pipeline: `.github/workflows/ci.yml`
 
 ```
 focusflow/
-├── frontend/src/
-│   ├── pages/        LoginPage, RegisterPage, DashboardPage,
-│   │                 TasksPage, TimerPage, CalendarPage, CanvasAIPage
-│   ├── components/   Layout (sidebar + navigation)
-│   ├── context/      AuthContext, TimerContext
-│   ├── services/     api.js, taskService.js, authService.js, otherServices.js
-│   └── tests/        Jest test suites
-├── backend/app/
-│   ├── routers/      auth, tasks, timer, calendar, ai
-│   ├── main.py       FastAPI entry point
-│   ├── models.py     Pydantic schemas
-│   ├── auth.py       JWT + bcrypt
-│   └── db.py         MongoDB singleton
-├── tests/backend/    pytest test suite
-├── .github/workflows/ci.yml
+├── .env.example                  ← copy to backend/.env and fill in values
 ├── docker-compose.yml
-└── .env.example
+├── README.md
+├── backend/
+│   ├── .env                      ← your secrets (gitignored)
+│   ├── Dockerfile
+│   ├── requirements.txt
+│   └── app/
+│       ├── main.py               ← FastAPI entry point + WebSocket
+│       ├── db.py                 ← MongoDB singleton connection
+│       ├── auth.py               ← JWT + bcrypt utilities
+│       ├── models.py             ← shared Pydantic schemas
+│       ├── ws.py                 ← WebSocket connection manager
+│       ├── authentication/       ← register, login, onboarding, password
+│       ├── tasks/                ← task CRUD + analytics + recurrence
+│       ├── comments/             ← task comments
+│       ├── sharing/              ← task sharing between users
+│       ├── workspaces/           ← team workspaces
+│       ├── activity/             ← activity feed
+│       ├── notifications/        ← deadline scanner + notifications
+│       └── routers/
+│           ├── timer.py          ← Pomodoro sessions + stats
+│           ├── calendar.py       ← time blocks + bulk + scoped ops
+│           ├── ai.py             ← AI endpoints (Strategy + Adapter pattern)
+│           └── export.py         ← data export CSV / JSON
+├── frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   ├── package.json
+│   └── src/
+│       ├── pages/                ← 12 pages
+│       ├── components/           ← Layout, AITaskGenerator, CommentThread, etc.
+│       ├── context/              ← Auth, Timer, Theme, Notification contexts
+│       ├── services/             ← api.js, taskService, authService, sharingService
+│       ├── utils/                ← detectOverlap, smartSchedule, smartCategories
+│       └── tests/                ← 16 Jest test files
+├── tests/
+│   ├── backend/                  ← pytest test suites (22 files)
+│   └── conftest.py
+└── .github/
+    └── workflows/
+        └── ci.yml
 ```
 
 ---
 
 ## API Documentation
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc:       http://localhost:8000/redoc
-- Static HTML: `/docs/api/index.html`
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
 
 ---
 
