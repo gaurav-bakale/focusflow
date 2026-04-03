@@ -69,13 +69,71 @@ async def get_sessions(user=Depends(get_current_user), db=Depends(get_db)):
     return [_doc_to_session(doc) async for doc in cursor]
 
 
+async def _calculate_streak(db, user_id) -> int:
+    """
+    Calculate the user's current task-completion streak.
+
+    Algorithm:
+      1. Query all DONE tasks for the user, sorted by updated_at descending.
+      2. Extract unique completion dates (YYYY-MM-DD).
+      3. Walk backwards from today: if today has completions, count it;
+         then check each preceding day. Stop at the first gap.
+      4. If today has no completions yet, start from yesterday (to avoid
+         breaking the streak mid-day before the user completes anything).
+
+    Returns:
+        Number of consecutive days with at least one completed task.
+    """
+    from datetime import date, timedelta
+
+    # Get all completion dates for this user's DONE tasks
+    pipeline = [
+        {"$match": {"user_id": user_id, "status": "DONE"}},
+        {
+            "$project": {
+                "date": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date": "$updated_at",
+                    }
+                }
+            }
+        },
+        {"$group": {"_id": "$date"}},
+        {"$sort": {"_id": -1}},
+    ]
+    results = await db["tasks"].aggregate(pipeline).to_list(None)
+    if not results:
+        return 0
+
+    completion_dates = {r["_id"] for r in results if r["_id"]}
+    today = date.today()
+    today_str = today.isoformat()
+
+    # Decide starting point: today if it has completions, else yesterday
+    if today_str in completion_dates:
+        check_date = today
+    else:
+        check_date = today - timedelta(days=1)
+        if check_date.isoformat() not in completion_dates:
+            return 0
+
+    streak = 0
+    while check_date.isoformat() in completion_dates:
+        streak += 1
+        check_date -= timedelta(days=1)
+
+    return streak
+
+
 @router.get("/stats")
 async def get_stats(user=Depends(get_current_user), db=Depends(get_db)):
     """
     Compute daily productivity stats for the dashboard.
 
     Returns:
-        Dict with tasks_done (today), deep_work_minutes (today), and streak (days).
+        Dict with tasks_done (today), deep_work_minutes (today),
+        deep_work_hours, and streak_days.
     """
     from datetime import date
     today_start = datetime.combine(date.today(), datetime.min.time())
@@ -101,8 +159,12 @@ async def get_stats(user=Depends(get_current_user), db=Depends(get_db)):
     result = await db["sessions"].aggregate(pipeline).to_list(1)
     deep_work_minutes = result[0]["total"] if result else 0
 
+    # Calculate streak
+    streak_days = await _calculate_streak(db, user["_id"])
+
     return {
         "tasks_done": tasks_done,
         "deep_work_minutes": deep_work_minutes,
         "deep_work_hours": round(deep_work_minutes / 60, 1),
+        "streak_days": streak_days,
     }
