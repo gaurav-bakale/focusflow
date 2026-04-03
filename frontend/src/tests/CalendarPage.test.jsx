@@ -1039,6 +1039,9 @@ describe('BlockModal end-time validation', () => {
 
     const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
     fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    // Wait for React 18 batched state to flush (start change shifts end to 11:40)
+    await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
+
     // Manually set end to before start
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
 
@@ -1062,6 +1065,9 @@ describe('BlockModal end-time validation', () => {
 
     const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
     fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    // Wait for React 18 batched state to flush before overriding end
+    await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
+
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T10:00' } })
 
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
@@ -1085,6 +1091,9 @@ describe('BlockModal end-time validation', () => {
 
     const inputs = () => document.querySelectorAll('input[type="datetime-local"]')
     fireEvent.change(inputs()[0], { target: { value: '2026-09-01T10:00' } })
+    // Wait for React 18 batched state to flush before overriding end
+    await waitFor(() => expect(inputs()[1].value).toBe('2026-09-01T11:40'))
+
     fireEvent.change(inputs()[1], { target: { value: '2026-09-01T09:00' } })
     fireEvent.click(screen.getByRole('button', { name: /create/i }))
 
