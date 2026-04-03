@@ -18,6 +18,7 @@ import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
 import SketchLine from './SketchLine'
+import NotificationBell from './NotificationBell'
 
 const NAV = [
   { to: '/',         label: 'Dashboard',  end: true,  color: '#FBBF24' },
@@ -154,6 +155,8 @@ export default function Layout() {
             </div>
             <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{user?.name}</span>
           </div>
+          <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+          <NotificationBell />
           <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
           {/* Theme toggle */}
           <button
