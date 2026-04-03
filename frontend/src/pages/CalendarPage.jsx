@@ -591,6 +591,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   })
   const [saving,    setSaving]    = useState(false)
   const [overlap,   setOverlap]   = useState(null)  // warning message or null
+  const [timeError, setTimeError] = useState('')
   // Edit scope: only relevant when editing an existing recurring block
   const [editScope, setEditScope] = useState('this') // 'this' | 'this_and_future'
 
@@ -635,11 +636,28 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleStartChange(val) {
-    setForm(f => ({ ...f, start_time: val }))
+    setTimeError('')
+    setForm(f => {
+      const DEFAULT_DURATION_MS = 25 * 60 * 1000
+      let newEnd = f.end_time
+      if (val) {
+        const startMs = new Date(val).getTime()
+        const durMs = (f.start_time && f.end_time && f.end_time > f.start_time)
+          ? new Date(f.end_time).getTime() - new Date(f.start_time).getTime()
+          : DEFAULT_DURATION_MS
+        newEnd = new Date(startMs + durMs).toISOString().slice(0, 16)
+      }
+      return { ...f, start_time: val, end_time: newEnd }
+    })
     checkOverlap(val, form.end_time)
   }
 
   function handleEndChange(val) {
+    if (val && form.start_time && val <= form.start_time) {
+      setTimeError('End time must be after start time.')
+    } else {
+      setTimeError('')
+    }
     setForm(f => ({ ...f, end_time: val }))
     checkOverlap(form.start_time, val)
   }
@@ -683,6 +701,10 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   async function handleSubmit(e) {
     e.preventDefault()
     if (overlap) return
+    if (form.end_time && form.start_time && form.end_time <= form.start_time) {
+      setTimeError('End time must be after start time.')
+      return
+    }
     setSaving(true)
     try {
       await onSave(
@@ -757,9 +779,17 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">End</label>
               <input type="datetime-local" required
                 value={form.end_time}
+                min={form.start_time}
                 onChange={e => handleEndChange(e.target.value)}
-                className={inputCls}
+                className={`${inputCls}${timeError ? ' border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
               />
+              {timeError && (
+                <div className="flex items-start gap-2 px-3 py-2.5 mt-2 rounded-xl text-xs font-semibold"
+                  style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#dc2626' }}>
+                  <span className="shrink-0 mt-0.5">⚠</span>
+                  <span>{timeError}</span>
+                </div>
+              )}
             </div>
 
             {/* Overlap warning */}
