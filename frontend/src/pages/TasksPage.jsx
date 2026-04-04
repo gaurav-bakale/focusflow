@@ -37,18 +37,6 @@ const COLUMN_CONFIG = {
   DONE:        { label: 'Done',        color: 'text-emerald-500' },
 }
 
-const CARD_COLORS = {
-  TODO:        'bg-amber-50   border-amber-200   dark:bg-amber-950/40  dark:border-amber-800',
-  IN_PROGRESS: 'bg-sky-50     border-sky-200     dark:bg-sky-950/40    dark:border-sky-800',
-  DONE:        'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800',
-}
-
-const PRIORITY_BADGE = {
-  HIGH:   'bg-red-100   text-red-700   border-red-200',
-  MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200',
-  LOW:    'bg-green-100 text-green-700 border-green-200',
-}
-
 const RECURRENCE_LABELS = {
   NONE:     'One-time',
   DAILY:    'Daily',
@@ -715,12 +703,12 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto">
+    <div className="p-10 max-w-7xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Project Board</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>Project Board</h1>
           {overlappingIds.size > 0 && (
             <p className="text-xs font-bold text-amber-600 mt-1 flex items-center gap-1.5">
               <span>⚠</span>
@@ -746,9 +734,8 @@ export default function TasksPage() {
           </button>
           <button
             onClick={() => openModal()}
-            className="flex items-center gap-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100
-                       font-bold text-sm px-4 py-2 rounded-lg hover:bg-gray-900 dark:hover:bg-gray-100
-                       hover:text-white dark:hover:text-gray-900 transition-colors"
+            className="flex items-center gap-2 font-bold text-sm px-4 py-2 rounded-xl transition-colors"
+            style={{ background: '#3a6758', color: '#ffffff' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -760,19 +747,19 @@ export default function TasksPage() {
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
       <div data-testid="analytics-strip" className="grid grid-cols-5 gap-4 mb-8">
-        <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Total</p>
           <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.total}</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
           <p className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-0.5">To Do</p>
           <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.TODO}</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
           <p className="text-xs font-bold uppercase tracking-widest text-sky-500 mb-0.5">In Progress</p>
           <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.IN_PROGRESS}</p>
         </div>
-        <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
           <p className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-0.5">Done</p>
           <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.DONE}</p>
         </div>
@@ -782,7 +769,7 @@ export default function TasksPage() {
             <p className="text-2xl font-extrabold text-red-600 font-mono">{analytics.overdue}</p>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3">
+          <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Done Rate</p>
             <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.completion_rate}%</p>
           </div>
@@ -802,7 +789,7 @@ export default function TasksPage() {
       )}
 
       {/* ── Search + Filters ──────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-4 mb-6">
+      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-6" style={{ border: '1px solid #dee4da' }}>
         <div className="relative mb-4">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500"
             fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -811,10 +798,11 @@ export default function TasksPage() {
           </svg>
           <input type="text" value={searchText} onChange={e => setSearchText(e.target.value)}
             placeholder="Search tasks by title or description…"
-            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 dark:border-gray-700 rounded-lg text-sm
+            className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm
                        font-medium text-gray-700 dark:text-gray-300 placeholder-gray-300 dark:placeholder-gray-600
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                       focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+                       text-gray-900 dark:text-gray-100
+                       focus:ring-0 outline-none transition-colors"
+            style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
           {searchText && (
             <button onClick={() => setSearchText('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100">
@@ -910,17 +898,18 @@ export default function TasksPage() {
       </div>
 
       {/* ── AI Schedule bar ──────────────────────────────────────────────── */}
-      <div className="mb-4 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 dark:bg-indigo-950/40">
+      <div className="mb-4 rounded-2xl overflow-hidden" style={{ background: '#ecefe7', border: '1px solid #dee4da' }}>
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-extrabold text-indigo-700 dark:text-indigo-300">📅 AI Schedule</span>
-            <span className="text-xs text-indigo-500 dark:text-indigo-400">Auto-plan your tasks for today</span>
+            <span className="text-sm font-extrabold" style={{ color: '#3a6758' }}>📅 AI Schedule</span>
+            <span className="text-xs" style={{ color: '#5b6159' }}>Auto-plan your tasks for today</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setScheduleOpen(o => !o); if (!scheduleOpen && !scheduleData) handleAISchedule() }}
               disabled={scheduleLoading || tasks.filter(t => t.status !== 'DONE').length === 0}
-              className="px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-40 transition-colors"
+              className="px-4 py-1.5 text-xs font-bold rounded-xl disabled:opacity-40 transition-colors"
+              style={{ background: '#3a6758', color: '#ffffff' }}
             >
               {scheduleLoading ? 'Planning…' : scheduleOpen ? 'Hide' : 'Plan My Day'}
             </button>
@@ -928,13 +917,13 @@ export default function TasksPage() {
         </div>
 
         {scheduleOpen && (
-          <div className="px-4 py-4 bg-white dark:bg-gray-900 border-t border-indigo-100 dark:border-indigo-900">
+          <div className="px-4 py-4 bg-white dark:bg-gray-900 border-t" style={{ borderColor: '#dee4da' }}>
             {scheduleError && (
               <p className="text-xs text-red-500 font-medium mb-3">{scheduleError}</p>
             )}
             {scheduleLoading && (
               <div className="flex items-center gap-2 py-2">
-                <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#3a6758', borderTopColor: 'transparent' }} />
                 <span className="text-xs text-gray-400">AI is building your schedule…</span>
               </div>
             )}
@@ -943,8 +932,8 @@ export default function TasksPage() {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{scheduleData.summary}</p>
                 <div className="grid grid-cols-2 gap-2 mb-4 sm:grid-cols-3 lg:grid-cols-4">
                   {(scheduleData.schedule || []).map((block, i) => (
-                    <div key={i} className="flex items-start gap-2 border border-indigo-100 dark:border-indigo-900 rounded-lg p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20">
-                      <span className="text-xs font-mono font-bold text-indigo-500 shrink-0 mt-0.5">{block.time}</span>
+                    <div key={i} className="flex items-start gap-2 rounded-lg p-2.5" style={{ background: '#ecefe7', border: '1px solid #dee4da' }}>
+                      <span className="text-xs font-mono font-bold shrink-0 mt-0.5" style={{ color: '#3a6758' }}>{block.time}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{block.task_title}</p>
                         <p className="text-xs text-gray-400">{block.duration_minutes}min</p>
@@ -969,13 +958,15 @@ export default function TasksPage() {
                     <button
                       onClick={handleAddScheduleToCalendar}
                       disabled={scheduleAdding}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg disabled:opacity-50 transition-colors"
+                      className="px-4 py-2 font-bold text-xs rounded-xl disabled:opacity-50 transition-colors"
+                      style={{ background: '#3a6758', color: '#ffffff' }}
                     >
                       {scheduleAdding ? 'Adding…' : '📅 Add to Calendar'}
                     </button>
                     <button
                       onClick={() => { setScheduleData(null); setScheduleAdded(false); handleAISchedule() }}
-                      className="px-4 py-2 border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-lg hover:bg-indigo-50 transition-colors"
+                      className="px-4 py-2 font-bold text-xs rounded-xl hover:opacity-80 transition-colors"
+                      style={{ background: '#ecefe7', color: '#5b6159', border: '1px solid #dee4da' }}
                     >
                       Regenerate
                     </button>
@@ -993,18 +984,21 @@ export default function TasksPage() {
           {COLUMNS.map(colStatus => {
             const config   = COLUMN_CONFIG[colStatus]
             const colTasks = tasksByStatus[colStatus]
+            const colStripColor = colStatus === 'TODO' ? '#aeb4aa' : colStatus === 'IN_PROGRESS' ? '#3a6758' : '#10b981'
             return (
-              <div key={colStatus} className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 min-h-[300px]">
+              <div key={colStatus} className="rounded-2xl p-4 min-h-[300px]" style={{ background: '#f3f4ee', boxShadow: '0 4px 12px rgba(46,52,45,0.04)' }}>
+                {/* Thin color strip at top of column */}
+                <div className="h-1 rounded-full mb-4 -mx-4 -mt-4 rounded-t-2xl" style={{ background: colStripColor }} />
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <h2 className="font-extrabold text-gray-900 dark:text-gray-100">{config.label}</h2>
-                    <span className="text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#dee4da', color: '#5b6159' }}>
                       {colTasks.length}
                     </span>
                   </div>
                   <button onClick={() => openModal(null, colStatus)}
-                    className="w-7 h-7 rounded-full border-2 border-gray-900 dark:border-gray-600 flex items-center
-                               justify-center hover:bg-gray-900 dark:hover:bg-gray-100 hover:text-white dark:hover:text-gray-900 transition-colors text-gray-900 dark:text-gray-100">
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                    style={{ border: '1px solid #dee4da', background: '#ffffff', color: '#3a6758' }}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
                     </svg>
@@ -1014,9 +1008,8 @@ export default function TasksPage() {
                 <Droppable droppableId={colStatus}>
                   {(provided, snapshot) => (
                     <div ref={provided.innerRef} {...provided.droppableProps}
-                      className={`space-y-3 min-h-[100px] rounded-lg transition-colors ${
-                        snapshot.isDraggingOver ? 'bg-gray-100/60' : ''
-                      }`}>
+                      className="space-y-3 min-h-[100px] rounded-lg transition-colors"
+                      style={snapshot.isDraggingOver ? { background: '#ecefe7', outline: '2px dashed #3a6758' } : {}}>
                       {colTasks.map((task, index) => {
                         const isOverdue = task.deadline && task.status !== 'DONE' && (
                           task.due_time
@@ -1032,10 +1025,10 @@ export default function TasksPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`border-2 rounded-lg p-4 group cursor-grab active:cursor-grabbing
-                                  ${CARD_COLORS[colStatus]}
+                                className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing
                                   ${hasOverlap ? 'ring-2 ring-amber-400' : ''}
                                   ${snapshot.isDragging ? 'shadow-lg rotate-1' : ''}`}
+                                style={{ background: '#ffffff', boxShadow: '0 2px 8px rgba(46,52,45,0.05)' }}
                               >
                                 {/* Title + priority */}
                                 <div className="flex justify-between items-start mb-2 gap-2">
@@ -1043,9 +1036,23 @@ export default function TasksPage() {
                                     {hasOverlap && (
                                       <span title="Scheduling conflict" className="text-amber-500 text-xs shrink-0 mt-0.5">⚠</span>
                                     )}
-                                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-snug truncate">{task.title}</h3>
+                                    <h3 className="font-bold text-sm leading-snug truncate" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}>{task.title}</h3>
                                   </div>
-                                  <span className={`text-xs px-2 py-0.5 rounded border font-bold shrink-0 ${PRIORITY_BADGE[task.priority] || PRIORITY_BADGE.MEDIUM}`}>
+                                  <span className={`text-xs px-2 py-0.5 rounded border font-bold shrink-0 ${
+                                    task.priority === 'HIGH'
+                                      ? ''
+                                      : task.priority === 'MEDIUM'
+                                      ? ''
+                                      : ''
+                                  }`}
+                                    style={
+                                      task.priority === 'HIGH'
+                                        ? { background: '#fee2e2', color: '#9f403d' }
+                                        : task.priority === 'MEDIUM'
+                                        ? { background: '#fef3c7', color: '#92400e' }
+                                        : { background: '#ecefe7', color: '#5b6159' }
+                                    }
+                                  >
                                     {task.priority}
                                   </span>
                                 </div>
@@ -1106,7 +1113,7 @@ export default function TasksPage() {
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                   {/* Task type badge — always shown */}
                                   {isRecurring ? (
-                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color: '#3a6758', background: '#ecefe7', border: '1px solid #dee4da' }}>
                                       ↻ {RECURRENCE_LABELS[task.recurrence]}
                                     </span>
                                   ) : (
@@ -1129,9 +1136,11 @@ export default function TasksPage() {
                                         title={display.inferred ? 'Auto-suggested (not saved)' : undefined}
                                         className={`text-xs font-bold px-1.5 py-0.5 rounded border ${
                                           display.inferred
-                                            ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800 text-indigo-500 dark:text-indigo-400 opacity-70'
+                                            ? 'opacity-70'
                                             : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
-                                        }`}>
+                                        }`}
+                                        style={display.inferred ? { background: '#ecefe7', border: '1px solid #dee4da', color: '#3a6758' } : {}}
+                                      >
                                         {cat}
                                       </span>
                                     ))
@@ -1155,7 +1164,7 @@ export default function TasksPage() {
 
                                 {/* Next occurrence info for completed recurring tasks */}
                                 {isRecurring && task.status === 'DONE' && task.deadline && (
-                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800 rounded px-2 py-1">
+                                  <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold rounded px-2 py-1" style={{ color: '#3a6758', background: '#ecefe7', border: '1px solid #dee4da' }}>
                                     <span>↻</span>
                                     <span>Next occurrence: {nextRecurDate(task.deadline, task.recurrence) ?? '—'}</span>
                                   </div>
@@ -1166,7 +1175,8 @@ export default function TasksPage() {
                                   <div className="mt-3">
                                     <button
                                       onClick={() => { startFocus(task.id); navigate('/timer') }}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold text-xs hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:border-orange-500 hover:scale-105 active:scale-95 transition-all duration-150 shadow-sm"
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 active:scale-95 transition-all duration-150 shadow-sm"
+                                      style={{ background: '#3a6758', color: '#ffffff' }}
                                     >
                                       <span className="animate-pulse">🍅</span>
                                       Start Pomodoro
@@ -1190,7 +1200,7 @@ export default function TasksPage() {
                                     {breakdownLoading && breakdownTaskId === task.id ? 'Loading…' : breakdownTaskId === task.id ? 'Hide AI' : 'AI Breakdown'}
                                   </button>
                                   <button onClick={() => openShareModal(task)}
-                                    className="text-xs font-bold text-indigo-500 hover:text-indigo-700">Share</button>
+                                    className="text-xs font-bold text-[#3a6758] hover:opacity-70">Share</button>
                                   <button onClick={() => handleDelete(task.id)}
                                     className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
                                 </div>
@@ -1238,7 +1248,8 @@ export default function TasksPage() {
       {/* ── Create / Edit modal ───────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeModal}>
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          <div className="rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            style={{ background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-5">
               {editingTask ? 'Edit Task' : 'New Task'}
@@ -1261,7 +1272,8 @@ export default function TasksPage() {
                       return next
                     })
                   }}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+                  className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                  style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
               </div>
 
               {/* Description */}
@@ -1269,7 +1281,8 @@ export default function TasksPage() {
                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Description</label>
                 <textarea value={formData.description} rows={2}
                   onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors resize-none" />
+                  className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors resize-none"
+                  style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
               </div>
 
               {/* Priority + Status */}
@@ -1278,7 +1291,8 @@ export default function TasksPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Priority</label>
                   <select value={formData.priority}
                     onChange={e => setFormData(p => ({ ...p, priority: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}>
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="HIGH">High</option>
@@ -1288,7 +1302,8 @@ export default function TasksPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Status</label>
                   <select value={formData.status}
                     onChange={e => setFormData(p => ({ ...p, status: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}>
                     <option value="TODO">To Do</option>
                     <option value="IN_PROGRESS">In Progress</option>
                     <option value="DONE">Done</option>
@@ -1302,13 +1317,15 @@ export default function TasksPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Due Date</label>
                   <input type="date" value={formData.deadline}
                     onChange={e => { setFormData(p => ({ ...p, deadline: e.target.value })); setOverlapError('') }}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Due Time <span className="normal-case font-medium text-gray-400 dark:text-gray-500">(optional)</span></label>
                   <input type="time" value={formData.due_time}
                     onChange={e => { setFormData(p => ({ ...p, due_time: e.target.value })); setOverlapError('') }}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
                 </div>
               </div>
 
@@ -1318,7 +1335,8 @@ export default function TasksPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Repeat</label>
                   <select value={formData.recurrence}
                     onChange={e => setFormData(p => ({ ...p, recurrence: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}>
                     <option value="NONE">One-time</option>
                     <option value="DAILY">Daily</option>
                     <option value="WEEKDAYS">Weekdays (Mon–Fri)</option>
@@ -1330,7 +1348,8 @@ export default function TasksPage() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">Duration</label>
                   <select value={formData.estimated_minutes}
                     onChange={e => setFormData(p => ({ ...p, estimated_minutes: e.target.value }))}
-                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors">
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}>
                     <option value="">— none —</option>
                     {DURATION_PRESETS.map(d => (
                       <option key={d} value={d}>{d} min{d === 25 ? ' (1 🍅)' : d === 50 ? ' (2 🍅)' : ''}</option>
@@ -1341,9 +1360,9 @@ export default function TasksPage() {
 
               {/* Recurrence hint */}
               {formData.recurrence !== 'NONE' && (
-                <div className="flex items-start gap-2 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2">
-                  <span className="text-indigo-500 text-sm mt-0.5">↻</span>
-                  <p className="text-xs text-indigo-700 font-medium">
+                <div className="flex items-start gap-2 rounded-xl px-3 py-2" style={{ background: '#ecefe7', border: '1px solid #dee4da' }}>
+                  <span className="text-sm mt-0.5" style={{ color: '#3a6758' }}>↻</span>
+                  <p className="text-xs font-medium" style={{ color: '#3a6758' }}>
                     {formData.recurrence === 'DAILY'    && 'A new task will appear every day after you complete this one.'}
                     {formData.recurrence === 'WEEKDAYS' && 'A new task will appear every weekday (Mon–Fri) after completion.'}
                     {formData.recurrence === 'WEEKLY'   && 'A new task will appear every week after you complete this one.'}
@@ -1361,17 +1380,19 @@ export default function TasksPage() {
                     onChange={e => setCategoryInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCategory())}
                     placeholder="Add category…"
-                    className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors" />
+                    className="flex-1 px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
                   <button type="button" onClick={addCategory}
-                    className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-sm hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
+                    className="px-4 py-2 rounded-xl font-bold text-sm transition-colors"
+                    style={{ background: '#ecefe7', color: '#5b6159' }}>
                     Add
                   </button>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {formData.categories.map(cat => (
-                    <span key={cat} className="inline-flex items-center gap-1 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100 px-2 py-0.5 rounded text-xs font-bold">
+                    <span key={cat} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold" style={{ border: '1px solid #dee4da', background: '#ecefe7', color: '#5b6159' }}>
                       {cat}
-                      <button type="button" onClick={() => removeCategory(cat)} className="text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 ml-0.5">×</button>
+                      <button type="button" onClick={() => removeCategory(cat)} className="ml-0.5 hover:opacity-60">×</button>
                     </span>
                   ))}
                 </div>
@@ -1452,7 +1473,8 @@ export default function TasksPage() {
                         }
                       }}
                       placeholder="Add subtask…"
-                      className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors text-sm"
+                      className="flex-1 px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors text-sm"
+                      style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}
                     />
                     <button
                       type="button"
@@ -1465,7 +1487,8 @@ export default function TasksPage() {
                           setSubtaskInput('')
                         }
                       }}
-                      className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-bold text-sm hover:border-gray-900 dark:hover:border-gray-400 transition-colors"
+                      className="px-4 py-2 rounded-xl font-bold text-sm transition-colors"
+                      style={{ background: '#ecefe7', color: '#5b6159' }}
                     >
                       Add
                     </button>
@@ -1484,11 +1507,13 @@ export default function TasksPage() {
               {/* Actions */}
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={closeModal}
-                  className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+                  className="px-4 py-2 font-bold text-sm rounded-xl transition-colors"
+                  style={{ background: '#ecefe7', color: '#5b6159' }}>
                   Cancel
                 </button>
                 <button type="submit"
-                  className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors">
+                  className="px-5 py-2 font-bold text-sm rounded-xl transition-colors"
+                  style={{ background: '#3a6758', color: '#ffffff' }}>
                   {editingTask ? 'Update' : 'Create'}
                 </button>
               </div>
@@ -1501,7 +1526,8 @@ export default function TasksPage() {
       {shareModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeShareModal}>
           <div
-            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            className="rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+            style={{ background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}
           >
             <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-1">
@@ -1523,7 +1549,8 @@ export default function TasksPage() {
                   onChange={e => setShareEmail(e.target.value)}
                   placeholder="collaborator@example.com"
                   required
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 text-sm focus:ring-0 outline-none transition-colors"
+                  style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}
                 />
               </div>
               <div>
@@ -1533,7 +1560,8 @@ export default function TasksPage() {
                 <select
                   value={sharePermission}
                   onChange={e => setSharePermission(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 text-sm focus:ring-0 outline-none transition-colors"
+                  style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}
                 >
                   <option value="VIEW">View only</option>
                   <option value="EDIT">Can edit</option>
@@ -1549,18 +1577,20 @@ export default function TasksPage() {
 
               <div className="flex gap-3 justify-end">
                 <button type="button" onClick={closeShareModal}
-                  className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
+                  className="px-4 py-2 font-bold text-sm rounded-xl transition-colors"
+                  style={{ background: '#ecefe7', color: '#5b6159' }}>
                   Close
                 </button>
                 <button type="submit" disabled={shareLoading}
-                  className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors disabled:opacity-50">
+                  className="px-5 py-2 font-bold text-sm rounded-xl transition-colors disabled:opacity-50"
+                  style={{ background: '#3a6758', color: '#ffffff' }}>
                   {shareLoading ? 'Sharing...' : 'Share'}
                 </button>
               </div>
             </form>
 
             {/* Existing shares */}
-            <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4">
+            <div className="border-t pt-4" style={{ borderColor: '#dee4da' }}>
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
                 Shared with
               </h3>
@@ -1571,7 +1601,7 @@ export default function TasksPage() {
               ) : (
                 <div className="space-y-2">
                   {existingShares.map(share => (
-                    <div key={share.id} className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div key={share.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg" style={{ border: '1px solid #dee4da' }}>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
                           {share.shared_with_email || share.email || 'Unknown'}

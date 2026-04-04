@@ -2,27 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
 body {
-  @apply bg-gray-50 text-gray-900 font-sans;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  background-color: #fafaf5;
+  color: #2e342d;
+  -webkit-font-smoothing: antialiased;
 }
 
 .dark body {
-  @apply bg-gray-950 text-gray-100;
+  background-color: #1a1c18;
+  color: #e5eae0;
 }
 
-/* Custom scrollbar */
+/* ── Typography helpers ────────────────────────────────────────────────────── */
+
+.font-headline {
+  font-family: 'Epilogue', sans-serif;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { @apply bg-gray-100; }
-::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
+::-webkit-scrollbar-track { background: #f3f4ee; }
+::-webkit-scrollbar-thumb { background: #aeb4aa; border-radius: 9999px; }
 
-.dark ::-webkit-scrollbar-track { @apply bg-gray-800; }
-.dark ::-webkit-scrollbar-thumb { @apply bg-gray-600; }
+.dark ::-webkit-scrollbar-track { background: #2e342d; }
+.dark ::-webkit-scrollbar-thumb { background: #5b6159; }
 
-/* ── Sketch underline animation ──────────────────────────────────── */
+/* ── Papercut card ─────────────────────────────────────────────────────────── */
 
-.sketch-line svg {
-  overflow: visible;
+.pc-card {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(46, 52, 45, 0.06);
 }
+
+.dark .pc-card {
+  background: #2a2d28;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Sketch underline (legacy, kept for SketchLine component) ──────────────── */
+
+.sketch-line svg { overflow: visible; }
 
 .sketch-line path {
   stroke-dasharray: 300;
@@ -30,26 +54,28 @@ body {
   transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Draw on hover (parent hover triggers child) */
 .sketch-hover:hover .sketch-line path,
-/* Always drawn for active nav items */
 .sketch-active .sketch-line path {
   stroke-dashoffset: 0;
 }
 
-/* ── Toast slide-in animation ───────────────────────────────────── */
+/* ── Toast ─────────────────────────────────────────────────────────────────── */
 
 @keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
+
+/* ── Page wrapper ──────────────────────────────────────────────────────────── */
+
+.page-wrapper {
+  padding: 2.5rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .page-wrapper { padding: 1.5rem; }
 }
