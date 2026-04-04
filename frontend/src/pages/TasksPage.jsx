@@ -421,17 +421,17 @@ export default function TasksPage() {
       const allBlocks  = [...existingBlocks] // grows so each slot-search sees prior placements
 
       // Parse a local datetime string ("YYYY-MM-DDTHH:MM") safely as local time
-      function parseLocal(str) {
+      const parseLocal = (str) => {
         const [datePart, timePart = '00:00'] = str.split('T')
         const [y, mo, d] = datePart.split('-').map(Number)
         const [h = 0, mi = 0] = timePart.split(':').map(Number)
         return new Date(y, mo - 1, d, h, mi)
       }
-      function toLocalStr(dt) {
+      const toLocalStr = (dt) => {
         const p = n => String(n).padStart(2, '0')
         return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}T${p(dt.getHours())}:${p(dt.getMinutes())}`
       }
-      function dateStr(dt) {
+      const dateStr = (dt) => {
         const p = n => String(n).padStart(2, '0')
         return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`
       }

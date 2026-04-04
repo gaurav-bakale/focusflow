@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
-import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiSchedule, aiFrog, aiTips } from '../services/otherServices'
+import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiFrog, aiTips } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, updateTask, fetchTaskAnalytics } from '../services/taskService'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
@@ -89,10 +89,6 @@ export default function DashboardPage() {
   const [scheduleMsg, setScheduleMsg]     = useState('')
 
   // AI widgets
-  const [aiScheduleData, setAiScheduleData] = useState(null)
-  const [aiScheduleLoading, setAiScheduleLoading] = useState(false)
-  const [aiScheduleAdding, setAiScheduleAdding] = useState(false)
-  const [aiScheduleAdded, setAiScheduleAdded] = useState(false)
   const [aiFrogData, setAiFrogData]         = useState(null)
   const [aiFrogLoading, setAiFrogLoading]   = useState(false)
   const [frogStarting, setFrogStarting]     = useState(false)
@@ -202,60 +198,6 @@ export default function DashboardPage() {
       setAddError('Could not add task — try again.')
     }
     setAdding(false)
-  }
-
-  // ── AI handlers ──────────────────────────────────────────────────────
-  async function handleAISchedule() {
-    if (tasks.length === 0) return
-    setAiScheduleLoading(true)
-    setAiWidgetError('')
-    try {
-      const payload = tasks.map(t => ({
-        id: t.id, title: t.title, priority: t.priority,
-        deadline: t.deadline || null, status: t.status,
-      }))
-      const res = await aiSchedule(payload)
-      setAiScheduleData(res)
-      setAiScheduleAdded(false)
-    } catch (err) {
-      setAiWidgetError(err.response?.data?.detail || 'AI schedule failed.')
-    } finally {
-      setAiScheduleLoading(false)
-    }
-  }
-
-  async function handleAddScheduleToCalendar() {
-    if (!aiScheduleData?.schedule?.length) return
-    setAiScheduleAdding(true)
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const titleToTask = {}
-      tasks.forEach(t => { titleToTask[t.title.toLowerCase()] = t })
-
-      const blocks = aiScheduleData.schedule.map(block => {
-        // Parse "9:00 AM" / "2:30 PM" → local ISO datetime string for today
-        const [timePart, meridiem] = block.time.split(' ')
-        let [hours, minutes] = timePart.split(':').map(Number)
-        if (meridiem === 'PM' && hours !== 12) hours += 12
-        if (meridiem === 'AM' && hours === 12) hours = 0
-        const start = new Date(`${today}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`)
-        const end   = new Date(start.getTime() + (block.duration_minutes || 30) * 60000)
-        const matchedTask = titleToTask[block.task_title?.toLowerCase()]
-        return {
-          title:      block.task_title,
-          start_time: start.toISOString(),
-          end_time:   end.toISOString(),
-          task_id:    matchedTask?.id || null,
-          color:      '#6366f1',
-        }
-      })
-
-      await createBlocksBulk(blocks)
-      setAiScheduleAdded(true)
-    } catch (err) {
-      setAiWidgetError(err.response?.data?.detail || 'Failed to add schedule to calendar.')
-    }
-    setAiScheduleAdding(false)
   }
 
   async function handleAIFrog() {
@@ -703,7 +645,7 @@ export default function DashboardPage() {
               <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
                 <p className="text-2xl mb-2">🐸</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-                  Brian Tracy's method: start your day by doing the hardest, most important task.
+                  Brian Tracy&apos;s method: start your day by doing the hardest, most important task.
                 </p>
                 <button
                   onClick={handleAIFrog}
@@ -717,7 +659,6 @@ export default function DashboardPage() {
 
             {!aiFrogLoading && aiFrogData && (() => {
               const frogTask = tasks.find(t => t.id === aiFrogData.task_id)
-              const PRIORITY_DOT_COLOR = { HIGH: 'bg-red-400', MEDIUM: 'bg-amber-400', LOW: 'bg-gray-300' }
               const PRIORITY_BADGE = { HIGH: 'bg-red-100 text-red-700 border-red-200', MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200', LOW: 'bg-green-100 text-green-700 border-green-200' }
               const priority = frogTask?.priority || 'HIGH'
               return (
