@@ -381,7 +381,7 @@ export default function RegisterPage() {
                       background:'#f3f4ee',
                       border: form.confirm
                         ? form.confirm === form.password
-                          ? '1.5px solid rgba(16,185,129,0.6)'
+                          ? '1.5px solid rgba(52,211,153,0.5)'
                           : '1.5px solid rgba(239,68,68,0.5)'
                         : '1.5px solid #dee4da',
                       color:'#2e342d'
