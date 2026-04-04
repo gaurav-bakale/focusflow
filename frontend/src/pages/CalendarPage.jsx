@@ -48,6 +48,14 @@ const BLOCK_PALETTE = ['#6366f1','#3b82f6','#0ea5e9','#10b981','#f59e0b','#ef444
 const FC_CSS = `
   .fc { font-family: inherit; }
 
+  /* Today button override */
+  .fc .fc-today-button {
+    background: #3a6758 !important; color: white !important;
+    border-radius: 0.75rem !important; border: none !important;
+    text-transform: capitalize !important;
+  }
+  .fc .fc-today-button:hover { opacity: 0.88 !important; }
+
   /* Remove harsh scrollgrid borders */
   .fc .fc-scrollgrid { border: none !important; }
   .fc .fc-scrollgrid-section > * { border: none !important; }
@@ -254,16 +262,18 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
           <button
             onClick={() => setPicker(p => p === 'month' ? null : 'month')}
             className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'month' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              picker === 'month' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
+            style={picker === 'month' ? { background: '#ecefe7' } : {}}
           >
             {monthLabel}
           </button>
           <button
             onClick={() => { setPicker(p => p === 'year' ? null : 'year'); setYearPage(month.getFullYear()) }}
             className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'year' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              picker === 'year' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
+            style={picker === 'year' ? { background: '#ecefe7' } : {}}
           >
             {yearLabel}
           </button>
@@ -345,7 +355,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
                 >
                   {d.getDate()}
                   {hasEvents && !isToday && (
-                    <span className="absolute bottom-0.5 w-1 h-1 rounded-full bg-indigo-400" />
+                    <span className="absolute bottom-0.5 w-1 h-1 rounded-full" style={{ background: '#3a6758' }} />
                   )}
                 </button>
               )
@@ -434,7 +444,7 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
                   {S_LABEL[task.status] || task.status}
                 </span>
                 {task.recurrence && task.recurrence !== 'NONE' && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-[#3a6758]" style={{ background: '#ecefe7' }}>
                     ↻ {task.recurrence[0] + task.recurrence.slice(1).toLowerCase()}
                   </span>
                 )}
@@ -566,8 +576,8 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
   return (
     <div
       ref={ref}
-      style={{ position: 'fixed', left, top, zIndex: 200, width: W }}
-      className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in"
+      className="rounded-3xl overflow-hidden animate-in"
+      style={{ position: 'fixed', left, top, zIndex: 200, width: W, background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)', border: '1px solid #dee4da' }}
     >
       {renderContent()}
     </div>
@@ -714,12 +724,14 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
     } finally { setSaving(false) }
   }
 
-  const inputCls = "w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:bg-white dark:focus:bg-gray-800 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+  const inputCls = "w-full px-3 py-2.5 rounded-xl text-sm text-gray-900 dark:text-gray-100 focus:ring-2 outline-none transition-all"
+  const inputStyle = { background: '#f3f4ee', border: '1px solid #dee4da' }
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-center justify-center z-[150]" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto"
+        className="rounded-3xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto"
+        style={{ background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Color top bar */}
@@ -740,6 +752,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 className={inputCls}
+                style={inputStyle}
               />
             </div>
 
@@ -750,6 +763,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                 value={form.start_time}
                 onChange={e => handleStartChange(e.target.value)}
                 className={inputCls}
+                style={inputStyle}
               />
             </div>
 
@@ -764,7 +778,8 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                     <button
                       key={p.label} type="button"
                       onClick={() => applyDuration(p.mins)}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-700 dark:hover:text-indigo-400 transition-all"
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 hover:text-[#3a6758] transition-all"
+                      style={{ border: '1px solid #dee4da', background: '#f3f4ee' }}
                     >
                       <div>{p.label}</div>
                       <div className="text-[10px] font-normal text-gray-400 dark:text-gray-500">{p.desc}</div>
@@ -781,7 +796,8 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                 value={form.end_time}
                 min={form.start_time}
                 onChange={e => handleEndChange(e.target.value)}
-                className={`${inputCls}${timeError ? ' border-red-400 focus:border-red-400 focus:ring-red-100' : ''}`}
+                className={inputCls}
+                style={timeError ? { background: '#f3f4ee', border: '1px solid #f87171' } : inputStyle}
               />
               {timeError && (
                 <div className="flex items-start gap-2 px-3 py-2.5 mt-2 rounded-xl text-xs font-semibold"
@@ -810,6 +826,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                 value={form.task_id}
                 onChange={e => handleTaskChange(e.target.value)}
                 className={inputCls}
+                style={inputStyle}
               >
                 <option value="">— No linked task —</option>
                 {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
@@ -835,8 +852,8 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
 
             {/* Edit scope — only shown when editing an existing recurring block */}
             {isRecurring && (
-              <div className="rounded-xl border border-indigo-100 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/20 p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-400 mb-1">Edit recurring event</p>
+              <div className="rounded-xl p-3 space-y-1.5" style={{ border: '1px solid #dee4da', background: '#ecefe7' }}>
+                <p className="text-xs font-semibold mb-1" style={{ color: '#3a6758' }}>Edit recurring event</p>
                 {[
                   { v: 'this',            label: 'Just this event' },
                   { v: 'this_and_future', label: 'This and all following events' },
@@ -846,7 +863,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                       type="radio" name="editScope" value={v}
                       checked={editScope === v}
                       onChange={() => setEditScope(v)}
-                      className="accent-indigo-600"
+                      className="accent-[#3a6758]"
                     />
                     {label}
                   </label>
@@ -856,12 +873,13 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
 
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={onClose}
-                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-semibold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl transition-colors hover:opacity-90"
+                style={{ background: '#ecefe7', color: '#5b6159' }}>
                 Cancel
               </button>
               <button type="submit" disabled={saving || !!overlap}
-                style={{ background: overlap ? undefined : form.color }}
-                className={`flex-1 py-2.5 text-white text-sm font-bold rounded-xl transition-opacity ${overlap ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed opacity-50' : 'hover:opacity-90 disabled:opacity-50'}`}>
+                style={{ background: overlap ? '#d1d5db' : form.color, color: '#ffffff' }}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-opacity ${overlap ? 'cursor-not-allowed opacity-50' : 'hover:opacity-90 disabled:opacity-50'}`}>
                 {saving ? 'Saving…' : isNew ? 'Create' : 'Save'}
               </button>
             </div>
@@ -925,6 +943,13 @@ export default function CalendarPage() {
     tasks.forEach(t => { m[t.id] = t })
     return m
   }, [tasks])
+
+  // Task IDs that already have at least one calendar block linked to them
+  const scheduledTaskIds = useMemo(() => {
+    const s = new Set()
+    blocks.forEach(b => { if (b.task_id) s.add(b.task_id) })
+    return s
+  }, [blocks])
 
   // Build all events
   const allEvents = useMemo(() => {
@@ -1188,6 +1213,8 @@ export default function CalendarPage() {
       for (const taskId of importSelected) {
         const task = tasks.find(t => t.id === taskId)
         if (!task) continue
+        // Skip if already on the calendar
+        if (scheduledTaskIds.has(taskId)) continue
         const dateStr = task.deadline || today
         const durationMins = task.estimated_minutes || pageFocusMins
 
@@ -1305,11 +1332,11 @@ export default function CalendarPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full overflow-hidden bg-white dark:bg-gray-900" onClick={() => setPopover(null)}>
+    <div className="flex h-full overflow-hidden" style={{ background: '#fafaf5', minHeight: '100%' }} onClick={() => setPopover(null)}>
       <style>{FC_CSS}</style>
 
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
+      <aside className="w-56 shrink-0 flex flex-col overflow-y-auto rounded-2xl m-3 mr-0" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
 
         {/* Create button */}
         <div className="p-4 space-y-2">
@@ -1318,20 +1345,18 @@ export default function CalendarPage() {
               const { start, end } = defaultBlockTimes(pageFocusMins)
               setModal({ title: '', start_time: start, end_time: end, task_id: '', color: '#6366f1' })
             }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl
-                       border border-gray-200 dark:border-gray-700 hover:shadow-md text-sm font-semibold
-                       text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 transition-all hover:border-gray-300 dark:hover:border-gray-600 group"
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+            style={{ background: '#3a6758', color: '#ffffff' }}
           >
-            <svg className="w-4 h-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
             </svg>
             New Task Block
           </button>
           <button
             onClick={() => { setImportOpen(o => !o); setImportDone(false); setImportError(''); setImportSelected(new Set()) }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl
-                       border border-indigo-200 dark:border-indigo-800 hover:shadow-md text-sm font-semibold
-                       text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 transition-all hover:border-indigo-400 group"
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+            style={{ background: '#ecefe7', color: '#5b6159' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -1342,10 +1367,10 @@ export default function CalendarPage() {
 
         {/* Import Tasks panel */}
         {importOpen && (
-          <div className="mx-4 mb-3 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden">
-            <div className="bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Import Tasks</span>
-              <button onClick={() => setImportOpen(false)} className="text-indigo-400 hover:text-indigo-700">
+          <div className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ border: '1px solid #dee4da', background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <div className="px-3 py-2 flex items-center justify-between" style={{ background: '#ecefe7' }}>
+              <span className="text-xs font-bold" style={{ color: '#3a6758', fontFamily: 'Epilogue, sans-serif', fontWeight: 700 }}>Import Tasks</span>
+              <button onClick={() => setImportOpen(false)} className="hover:opacity-70 transition-opacity" style={{ color: '#3a6758' }}>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
                 </svg>
@@ -1357,21 +1382,34 @@ export default function CalendarPage() {
               ) : (
                 tasks.filter(t => t.status !== 'DONE').map(task => {
                   const checked = importSelected.has(task.id)
+                  const alreadyScheduled = scheduledTaskIds.has(task.id)
                   const dotColor = task.priority === 'HIGH' ? 'bg-red-400' : task.priority === 'LOW' ? 'bg-emerald-400' : 'bg-amber-400'
                   return (
-                    <label key={task.id} className="flex items-start gap-2 cursor-pointer group p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <label
+                      key={task.id}
+                      className={`flex items-start gap-2 p-1.5 rounded-xl transition-colors ${alreadyScheduled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#f3f4ee]'}`}
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => setImportSelected(prev => {
-                          const next = new Set(prev)
-                          checked ? next.delete(task.id) : next.add(task.id)
-                          return next
-                        })}
-                        className="mt-0.5 w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer shrink-0"
+                        disabled={alreadyScheduled}
+                        onChange={() => {
+                          if (alreadyScheduled) return
+                          setImportSelected(prev => {
+                            const next = new Set(prev)
+                            checked ? next.delete(task.id) : next.add(task.id)
+                            return next
+                          })
+                        }}
+                        className="mt-0.5 w-3.5 h-3.5 rounded accent-[#3a6758] shrink-0"
                       />
                       <span className={`w-2 h-2 rounded-full shrink-0 mt-1 ${dotColor}`} />
-                      <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight line-clamp-2">{task.title}</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight line-clamp-2 flex-1">{task.title}</span>
+                      {alreadyScheduled && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: '#ecefe7', color: '#3a6758' }}>
+                          Scheduled
+                        </span>
+                      )}
                     </label>
                   )
                 })
@@ -1390,7 +1428,8 @@ export default function CalendarPage() {
                 <button
                   onClick={handleImportTasks}
                   disabled={importAdding || importSelected.size === 0}
-                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg disabled:opacity-40 transition-colors"
+                  className="w-full py-1.5 font-bold text-xs rounded-xl disabled:opacity-40 transition-all hover:opacity-90"
+                  style={{ background: '#3a6758', color: '#ffffff' }}
                 >
                   {importAdding ? 'Scheduling…' : `Schedule ${importSelected.size || ''} Task${importSelected.size !== 1 ? 's' : ''}`}
                 </button>
@@ -1415,16 +1454,16 @@ export default function CalendarPage() {
             {/* Blocks */}
             <label className="flex items-center gap-2.5 cursor-pointer group">
               <input type="checkbox" checked={showBlocks} onChange={e => setShowBlocks(e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
+                className="w-3.5 h-3.5 rounded accent-[#3a6758] cursor-pointer" />
               <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100">
-                <span className="w-2.5 h-2.5 rounded-sm bg-indigo-400" />
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: '#3a6758' }} />
                 Time Blocks
               </span>
             </label>
             {/* Tasks */}
             <label className="flex items-center gap-2.5 cursor-pointer group">
               <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer" />
+                className="w-3.5 h-3.5 rounded accent-[#3a6758] cursor-pointer" />
               <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100">
                 <span className="w-2.5 h-2.5 rounded-sm bg-gray-300 dark:bg-gray-600" />
                 Task Deadlines
@@ -1474,7 +1513,7 @@ export default function CalendarPage() {
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+        <div className="flex items-center gap-3 px-6 py-3 shrink-0" style={{ background: '#fafaf5', borderBottom: '1px solid #dee4da' }}>
           {/* Nav */}
           <div className="flex items-center gap-1">
             <button
@@ -1495,12 +1534,12 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-200 tracking-tight min-w-0 flex-1">{calTitle}</h1>
+          <h1 className="text-lg tracking-tight min-w-0 flex-1" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>{calTitle}</h1>
 
           <button
             onClick={() => calRef.current?.getApi().today()}
-            className="px-4 py-1.5 text-sm font-semibold text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700
-                       rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="px-4 py-1.5 text-sm font-semibold rounded-xl transition-all hover:opacity-90"
+            style={{ background: '#3a6758', color: '#ffffff' }}
           >
             Today
           </button>
@@ -1532,10 +1571,11 @@ export default function CalendarPage() {
         <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-64 gap-3">
-              <span className="w-6 h-6 border-3 border-gray-200 dark:border-gray-700 border-t-indigo-500 rounded-full animate-spin" style={{ borderWidth: 3 }} />
+              <span className="w-6 h-6 border-3 border-gray-200 dark:border-gray-700 rounded-full animate-spin" style={{ borderWidth: 3, borderTopColor: '#3a6758' }} />
               <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">Loading calendar…</span>
             </div>
           ) : (
+            <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
             <FullCalendar
               ref={calRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -1568,6 +1608,7 @@ export default function CalendarPage() {
                 setSyncMonth(start)
               }}
             />
+            </div>
           )}
         </div>
       </div>

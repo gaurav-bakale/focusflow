@@ -25,7 +25,7 @@ import AITaskGenerator from '../components/AITaskGenerator'
 const PRIORITY_DOT = {
   HIGH:   'bg-red-400',
   MEDIUM: 'bg-amber-400',
-  LOW:    'bg-gray-300',
+  LOW:    'bg-[#aeb4aa]',
 }
 
 const PRIORITY_LABEL = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
@@ -33,7 +33,7 @@ const PRIORITY_LABEL = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
 // ── Small inline stat card (matches Layout's daily-goal card style) ───────────
 function StatCard({ label, value, color }) {
   return (
-    <div className="sketch-hover bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-5 relative overflow-hidden">
+    <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden" style={{ background: '#f3f4ee' }}>
       <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
       <p className="text-3xl font-extrabold font-mono" style={{ color }}>{value}</p>
       <SketchLine color={color} thickness={4} />
@@ -52,7 +52,7 @@ function ProgressRing({ pct }) {
         <circle cx="40" cy="40" r={r} fill="none" stroke="#e5e7eb" strokeWidth="8" />
         <circle
           cx="40" cy="40" r={r} fill="none"
-          stroke="#6366f1" strokeWidth="8"
+          stroke="#3a6758" strokeWidth="8"
           strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`}
           className="transition-all duration-700"
@@ -257,14 +257,15 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="px-10 py-10 max-w-5xl mx-auto">
+    <div className="px-10 py-10 max-w-5xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
 
       {/* ── Timer callout ─────────────────────────────────────────────────── */}
       {phase !== PHASES.IDLE && (
         <Link
           to="/timer"
-          className="inline-flex items-center gap-2 bg-gray-900 text-white
-                     text-sm font-bold px-4 py-2 rounded-lg mb-6 hover:bg-gray-700 transition-colors"
+          className="inline-flex items-center gap-2 text-white
+                     text-sm font-bold px-4 py-2 rounded-xl mb-6 hover:opacity-90 transition-colors"
+          style={{ background: '#3a6758' }}
         >
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           Focus session active
@@ -273,8 +274,8 @@ export default function DashboardPage() {
 
       {/* ── Greeting ──────────────────────────────────────────────────────── */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
-          Hello, <span style={{ color: '#6366f1' }}>{firstName}</span>.
+        <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>
+          Hello, <span style={{ color: '#3a6758' }}>{firstName}</span>.
         </h1>
         <p className="text-base text-gray-400 dark:text-gray-500 mt-1">
           {loading
@@ -289,7 +290,7 @@ export default function DashboardPage() {
       {loading ? (
         <div className="grid grid-cols-4 gap-4 mb-8">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="border-2 border-gray-200 dark:border-gray-700 rounded-lg h-24 animate-pulse" />
+            <div key={i} className="border border-[#dee4da] rounded-2xl h-24 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -308,8 +309,8 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Quick-add card */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               New Task
             </h2>
             <form onSubmit={handleAddTask}>
@@ -319,9 +320,9 @@ export default function DashboardPage() {
                 value={newTitle}
                 onChange={e => setNewTitle(e.target.value)}
                 placeholder="What needs to get done?"
-                className="w-full px-3 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm
+                className="w-full px-3 py-2.5 border border-[#dee4da] rounded-xl text-sm
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                           focus:border-[#3a6758] focus:ring-0 outline-none transition-colors
                            placeholder-gray-300 dark:placeholder-gray-600 mb-3"
               />
 
@@ -331,9 +332,9 @@ export default function DashboardPage() {
                 onChange={e => setNewDescription(e.target.value)}
                 placeholder="Description (optional)"
                 rows={2}
-                className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm
+                className="w-full px-3 py-2 border border-[#dee4da] rounded-xl text-sm
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                           focus:border-[#3a6758] focus:ring-0 outline-none transition-colors
                            placeholder-gray-300 dark:placeholder-gray-600 mb-3 resize-none"
               />
 
@@ -343,8 +344,8 @@ export default function DashboardPage() {
                   type="date"
                   value={newDeadline}
                   onChange={e => setNewDeadline(e.target.value)}
-                  className="flex-1 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium
-                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="flex-1 px-3 py-2 border border-[#dee4da] rounded-xl text-xs font-medium
+                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-[#3a6758] focus:ring-0 outline-none transition-colors"
                 />
                 <input
                   type="time"
@@ -352,8 +353,8 @@ export default function DashboardPage() {
                   onChange={e => setNewTime(e.target.value)}
                   disabled={!newDeadline}
                   title={newDeadline ? 'Set a specific time' : 'Set a date first'}
-                  className="w-28 px-3 py-2 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-xs font-medium
-                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
+                  className="w-28 px-3 py-2 border border-[#dee4da] rounded-xl text-xs font-medium
+                             bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 focus:border-[#3a6758] focus:ring-0 outline-none transition-colors
                              disabled:opacity-40 disabled:cursor-not-allowed"
                 />
               </div>
@@ -364,7 +365,7 @@ export default function DashboardPage() {
                 <div className="flex gap-1.5 flex-wrap">
                   {[
                     { r: 'NONE',     label: 'One-time', activeClass: 'border-gray-600 bg-gray-600 text-white' },
-                    { r: 'DAILY',    label: '↻ Daily',    activeClass: 'border-indigo-500 bg-indigo-500 text-white' },
+                    { r: 'DAILY',    label: '↻ Daily',    activeClass: 'border-[#3a6758] bg-[#3a6758] text-white' },
                     { r: 'WEEKDAYS', label: '↻ Weekdays', activeClass: 'border-blue-500 bg-blue-500 text-white' },
                     { r: 'WEEKLY',   label: '↻ Weekly',   activeClass: 'border-violet-500 bg-violet-500 text-white' },
                     { r: 'MONTHLY',  label: '↻ Monthly',  activeClass: 'border-pink-500 bg-pink-500 text-white' },
@@ -373,10 +374,10 @@ export default function DashboardPage() {
                       key={r}
                       type="button"
                       onClick={() => setNewRecurrence(r)}
-                      className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
+                      className={`px-3 py-1 rounded-xl text-xs font-bold border transition-colors ${
                         newRecurrence === r
                           ? activeClass
-                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                          : 'border-[#dee4da] text-gray-500 dark:text-gray-400 hover:border-[#3a6758] hover:text-[#3a6758]'
                       }`}
                     >
                       {label}
@@ -398,10 +399,10 @@ export default function DashboardPage() {
                       key={p}
                       type="button"
                       onClick={() => setNewPriority(p)}
-                      className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
+                      className={`px-3 py-1 rounded-xl text-xs font-bold border transition-colors ${
                         newPriority === p
                           ? activeClass
-                          : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                          : 'border-[#dee4da] text-gray-500 dark:text-gray-400 hover:border-[#3a6758] hover:text-[#3a6758]'
                       }`}
                     >
                       {PRIORITY_LABEL[p]}
@@ -411,9 +412,10 @@ export default function DashboardPage() {
                 <button
                   type="submit"
                   disabled={adding || !newTitle.trim()}
-                  className="ml-auto flex items-center gap-1.5 px-4 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900
-                             text-xs font-bold rounded-lg hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors
+                  className="ml-auto flex items-center gap-1.5 px-4 py-1.5 text-white
+                             text-xs font-bold rounded-xl hover:opacity-90 transition-colors
                              disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: '#3a6758' }}
                 >
                   {adding ? (
                     <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -430,7 +432,7 @@ export default function DashboardPage() {
                 <p className="mt-2 text-xs text-red-500 font-medium">{addError}</p>
               )}
               {scheduleMsg && (
-                <p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                <p className="mt-2 text-xs text-[#3a6758] font-medium">
                   ✓ {scheduleMsg}
                 </p>
               )}
@@ -438,14 +440,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Task list card */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b-2 border-gray-900 dark:border-gray-700 flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <div className="px-6 py-4 border-b border-[#dee4da] flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 Active Tasks
               </h2>
               <Link
                 to="/board"
-                className="text-xs font-bold text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                className="text-xs font-bold text-[#3a6758] hover:opacity-70 transition-colors"
               >
                 View board →
               </Link>
@@ -455,7 +457,7 @@ export default function DashboardPage() {
               <div className="p-6 space-y-4">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-gray-700 animate-pulse shrink-0" />
+                    <div className="w-4 h-4 rounded-full border border-[#dee4da] animate-pulse shrink-0" />
                     <div className="flex-1 h-3.5 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
                     <div className="w-12 h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
                   </div>
@@ -476,20 +478,20 @@ export default function DashboardPage() {
                     <li
                       key={task.id}
                       className={`flex items-center gap-3 px-6 py-3.5 group transition-colors
-                        hover:bg-gray-50 dark:hover:bg-gray-800 ${i !== 0 ? 'border-t border-gray-100 dark:border-gray-800' : ''}`}
+                        hover:bg-[#f3f4ee] ${i !== 0 ? 'border-t border-[#dee4da]' : ''}`}
                     >
                       {/* Priority dot */}
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority] || 'bg-gray-300'}`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority] || 'bg-[#aeb4aa]'}`} />
 
                       {/* Complete button */}
                       <button
                         onClick={() => handleComplete(task.id)}
                         disabled={completing === task.id}
                         aria-label={`Complete ${task.title}`}
-                        className="w-5 h-5 rounded-full border-2 border-gray-300
-                                   group-hover:border-gray-500 flex items-center justify-center
-                                   shrink-0 transition-colors hover:bg-gray-900
-                                   hover:border-gray-900 disabled:opacity-40"
+                        className="w-5 h-5 rounded-full border border-[#dee4da]
+                                   group-hover:border-[#3a6758] flex items-center justify-center
+                                   shrink-0 transition-colors hover:bg-[#3a6758]
+                                   hover:border-[#3a6758] disabled:opacity-40"
                       >
                         {completing === task.id ? (
                           <span className="w-2.5 h-2.5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -510,12 +512,12 @@ export default function DashboardPage() {
                       {(() => {
                         const r = task.recurrence || 'NONE'
                         const cfg = {
-                          NONE:     { label: 'One-time', cls: 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700' },
-                          DAILY:    { label: '↻ Daily',    cls: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700' },
+                          NONE:     { label: 'One-time', cls: 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border-[#dee4da]' },
+                          DAILY:    { label: '↻ Daily',    cls: 'text-[#3a6758] bg-[#ecefe7] border-transparent' },
                           WEEKDAYS: { label: '↻ Weekdays', cls: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700' },
                           WEEKLY:   { label: '↻ Weekly',   cls: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 border-violet-200 dark:border-violet-700' },
                           MONTHLY:  { label: '↻ Monthly',  cls: 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700' },
-                        }[r] || { label: 'One-time', cls: 'text-gray-500 bg-gray-100 border-gray-200' }
+                        }[r] || { label: 'One-time', cls: 'text-gray-500 bg-gray-100 border-[#dee4da]' }
                         return (
                           <span className={`hidden sm:inline-flex items-center text-xs font-bold border px-1.5 py-0.5 rounded shrink-0 ${cfg.cls}`}>
                             {cfg.label}
@@ -564,13 +566,13 @@ export default function DashboardPage() {
         <div className="space-y-6">
 
           {/* Completion ring */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-5">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               Progress
             </h2>
 
             {loading ? (
-              <div className="w-24 h-24 rounded-full border-8 border-gray-200 dark:border-gray-700 animate-pulse mx-auto mb-5" />
+              <div className="w-24 h-24 rounded-full border-8 border-[#dee4da] animate-pulse mx-auto mb-5" />
             ) : (
               <div className="mb-5">
                 <ProgressRing pct={donePct} />
@@ -586,8 +588,8 @@ export default function DashboardPage() {
               ) : analytics ? (
                 [
                   { label: 'Done',        count: analytics.by_status.DONE,        shade: 'bg-emerald-500' },
-                  { label: 'In Progress', count: analytics.by_status.IN_PROGRESS, shade: 'bg-indigo-400'  },
-                  { label: 'To Do',       count: analytics.by_status.TODO,        shade: 'bg-gray-300'    },
+                  { label: 'In Progress', count: analytics.by_status.IN_PROGRESS, shade: 'bg-[#3a6758]'  },
+                  { label: 'To Do',       count: analytics.by_status.TODO,        shade: 'bg-[#aeb4aa]'    },
                 ].map(({ label, count, shade }) => (
                   <div key={label}>
                     <div className="flex justify-between items-center mb-1">
@@ -608,7 +610,7 @@ export default function DashboardPage() {
 
           {/* AI Widget Error */}
           {aiWidgetError && (
-            <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3 flex items-center justify-between">
+            <div className="rounded-2xl border border-red-300 dark:border-red-800 px-4 py-3 flex items-center justify-between" style={{ background: '#fff0f0' }}>
               <p className="text-xs font-semibold text-red-700 dark:text-red-400">{aiWidgetError}</p>
               <button onClick={() => setAiWidgetError('')} className="text-red-400 hover:text-red-700">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -619,9 +621,9 @@ export default function DashboardPage() {
           )}
 
           {/* Eat That Frog */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+              <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 Eat That Frog 🐸
               </h2>
               <button
@@ -642,7 +644,7 @@ export default function DashboardPage() {
             )}
 
             {!aiFrogLoading && !aiFrogData && (
-              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
+              <div className="border border-[#dee4da] border-dashed rounded-2xl p-4 text-center">
                 <p className="text-2xl mb-2">🐸</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
                   Brian Tracy&apos;s method: start your day by doing the hardest, most important task.
@@ -650,7 +652,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleAIFrog}
                   disabled={tasks.length === 0}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg disabled:opacity-40 transition-colors"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl disabled:opacity-40 transition-colors"
                 >
                   {tasks.length === 0 ? 'Add tasks first' : 'Find My Frog'}
                 </button>
@@ -663,7 +665,7 @@ export default function DashboardPage() {
               const priority = frogTask?.priority || 'HIGH'
               return (
                 <div>
-                  <div className="border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 rounded-lg p-4 mb-3">
+                  <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 rounded-2xl p-4 mb-3">
                     <div className="flex items-start gap-3">
                       <span className="text-xl shrink-0 mt-0.5">🐸</span>
                       <div className="flex-1 min-w-0">
@@ -694,7 +696,7 @@ export default function DashboardPage() {
                     <button
                       onClick={handleFrogStart}
                       disabled={frogStarting}
-                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-lg disabled:opacity-60 transition-colors"
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl disabled:opacity-60 transition-colors"
                     >
                       {frogStarting ? 'Starting…' : 'Start Now →'}
                     </button>
@@ -705,8 +707,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Priority breakdown */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               By Priority
             </h2>
 
@@ -719,7 +721,7 @@ export default function DashboardPage() {
                 {[
                   { label: 'High',   count: analytics.by_priority.HIGH,   dot: 'bg-red-400'   },
                   { label: 'Medium', count: analytics.by_priority.MEDIUM, dot: 'bg-amber-400' },
-                  { label: 'Low',    count: analytics.by_priority.LOW,    dot: 'bg-gray-300'  },
+                  { label: 'Low',    count: analytics.by_priority.LOW,    dot: 'bg-[#aeb4aa]'  },
                 ].map(({ label, count, dot }) => (
                   <div key={label} className="flex items-center gap-3">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
@@ -729,7 +731,7 @@ export default function DashboardPage() {
                 ))}
 
                 {analytics.overdue > 0 && (
-                  <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                  <div className="mt-2 pt-3 border-t border-[#dee4da] flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse shrink-0" />
                     <span className="text-xs font-bold text-red-500">
                       {analytics.overdue} overdue
@@ -741,9 +743,9 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Productivity Tips */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+              <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 AI Tips
               </h2>
               <button
@@ -774,8 +776,8 @@ export default function DashboardPage() {
           </div>
 
           {/* This week */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
+          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               This Week
             </h2>
 
@@ -791,7 +793,7 @@ export default function DashboardPage() {
                     {analytics.completed_this_week}
                   </span>
                 </div>
-                <div className="h-px bg-gray-100 dark:bg-gray-800" />
+                <div className="h-px bg-[#dee4da]" />
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-500 dark:text-gray-400">Today</span>
                   <span className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">
