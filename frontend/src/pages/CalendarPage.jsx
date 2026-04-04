@@ -646,21 +646,25 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleStartChange(val) {
-    setTimeError('')
-    setForm(f => {
-      const DEFAULT_DURATION_MS = 25 * 60 * 1000
-      let newEnd = f.end_time
-      if (val) {
-        const startMs = new Date(val).getTime()
-        const durMs = (f.start_time && f.end_time && f.end_time > f.start_time)
-          ? new Date(f.end_time).getTime() - new Date(f.start_time).getTime()
-          : DEFAULT_DURATION_MS
-        newEnd = new Date(startMs + durMs).toISOString().slice(0, 16)
-      }
-      return { ...f, start_time: val, end_time: newEnd }
-    })
-    checkOverlap(val, form.end_time)
-  }
+  setTimeError('')
+  setForm(f => {
+    const DEFAULT_DURATION_MS = focusMins * 4 * 60 * 1000
+    let newEnd = f.end_time
+    if (val) {
+      const startMs = new Date(val).getTime()
+      const durMs = (f.start_time && f.end_time && f.end_time > f.start_time)
+        ? new Date(f.end_time).getTime() - new Date(f.start_time).getTime()
+        : DEFAULT_DURATION_MS
+      // Use LOCAL time formatting — toISOString() returns UTC which breaks
+      // datetime-local inputs on non-UTC machines and in jsdom tests
+      const d = new Date(startMs + durMs)
+      const pad = n => String(n).padStart(2, '0')
+      newEnd = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
+    checkOverlap(val, newEnd)
+    return { ...f, start_time: val, end_time: newEnd }
+  })
+}
 
   function handleEndChange(val) {
     if (val && form.start_time && val <= form.start_time) {
