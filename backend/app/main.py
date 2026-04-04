@@ -79,7 +79,7 @@ app = FastAPI(
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://focusflow-sandy-six.vercel.app",
+    "https://focusflow-rbo6.vercel.app",
 ]
 
 app.add_middleware(
