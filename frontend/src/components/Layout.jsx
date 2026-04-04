@@ -6,7 +6,7 @@
  *   • Nav items as rounded-l-full pills (active = forest green fill)
  *   • Active timer badge
  *   • Daily goal progress
- *   • Theme toggle + logout at bottom
+ *   • Logout at bottom
  *
  * Header:
  *   • Frosted glass bar with user avatar + notification bell
@@ -16,7 +16,6 @@ import React, { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
-import { useTheme } from '../context/ThemeContext'
 import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
@@ -60,7 +59,6 @@ const PHASE_CONFIG = {
 export default function Layout() {
   const { user, logout } = useAuth()
   const { phase, display } = useTimer()
-  const { dark, toggle } = useTheme()
   const navigate = useNavigate()
   const [goalPct, setGoalPct] = useState(0)
 
@@ -184,26 +182,8 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Bottom: theme + logout */}
-        <div className="px-6 pt-4 space-y-1" style={{ borderTop: '1px solid rgba(174,180,170,0.2)' }}>
-          <button
-            onClick={toggle}
-            className="flex items-center gap-3 w-full px-4 py-2.5 rounded-l-full text-sm font-medium transition-colors"
-            style={{ color: '#5b6159' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#dee4da' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-          >
-            {dark ? (
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-            {dark ? 'Light Mode' : 'Dark Mode'}
-          </button>
+        {/* Bottom: logout */}
+        <div className="px-6 pt-4" style={{ borderTop: '1px solid rgba(174,180,170,0.2)' }}>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-2.5 rounded-l-full text-sm font-medium transition-colors"

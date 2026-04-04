@@ -11,11 +11,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.dark body {
-  background-color: #1a1c18;
-  color: #e5eae0;
-}
-
 /* ── Typography helpers ────────────────────────────────────────────────────── */
 
 .font-headline {
@@ -28,8 +23,6 @@ body {
 ::-webkit-scrollbar-track { background: #f3f4ee; }
 ::-webkit-scrollbar-thumb { background: #aeb4aa; border-radius: 9999px; }
 
-.dark ::-webkit-scrollbar-track { background: #2e342d; }
-.dark ::-webkit-scrollbar-thumb { background: #5b6159; }
 
 /* ── Papercut card ─────────────────────────────────────────────────────────── */
 
@@ -39,10 +32,6 @@ body {
   box-shadow: 0 4px 20px rgba(46, 52, 45, 0.06);
 }
 
-.dark .pc-card {
-  background: #2a2d28;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
 
 /* ── Sketch underline (legacy, kept for SketchLine component) ──────────────── */
 
