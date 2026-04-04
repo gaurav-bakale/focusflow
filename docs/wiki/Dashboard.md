@@ -7,7 +7,7 @@ The Dashboard is your daily productivity command center. It gives you an at-a-gl
 ## Accessing the Dashboard
 
 Click **Dashboard** in the left sidebar (house icon) or navigate to http://localhost:3001/dashboard.
-
+![alt text](image-12.png)
 ---
 
 ## Sections
@@ -25,8 +25,7 @@ The AI Task Planner helps you turn a vague goal into 5 actionable tasks.
    - **Suggest Changes** — type feedback (e.g., *"make them more specific"*) and click **Revise Tasks**
    - **Discard** — clears the suggestions with no changes
 
-<!-- SCREENSHOT: AI Task Planner showing goal input and 5 suggested tasks with action buttons -->
-
+![alt text](image-10.png)
 ---
 
 ### Eat That Frog
@@ -39,8 +38,7 @@ Based on Brian Tracy's productivity principle — tackle the hardest, most impac
 
 > If you have no tasks, an empty state with a 🐸 emoji prompts you to add tasks first.
 
-<!-- SCREENSHOT: Eat That Frog card showing a high-priority task with Start Now button -->
-
+![alt text](image-11.png)
 ---
 
 ### By Priority
@@ -63,4 +61,3 @@ Click any task to open its detail/edit modal.
 | Focus Time | Total focused minutes today |
 | Streak | Consecutive days with at least one Pomodoro session |
 
-<!-- SCREENSHOT: Dashboard stats row showing 4 metric cards -->

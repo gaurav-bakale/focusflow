@@ -21,8 +21,7 @@ FocusFlow's AI features work with either Google Gemini or OpenAI.
 
 Your key is stored securely in your account and used only for your AI requests. The app-level key (if configured by the admin in `.env`) is used as a fallback.
 
-<!-- SCREENSHOT: Settings page showing AI key input field -->
-
+![alt text](image-13.png)
 ---
 
 ## Pomodoro Durations
@@ -36,14 +35,6 @@ Customize the three timer phases to match your work style:
 | Long Break | 15 min | 1–60 min |
 
 Changes apply immediately to the Timer page.
-
----
-
-## Theme
-
-Toggle between **Light** and **Dark** mode using the moon/sun icon in the sidebar header (or in Settings). Your preference is saved to your account.
-
-<!-- SCREENSHOT: Settings page showing Pomodoro duration sliders and theme toggle -->
 
 ---
 

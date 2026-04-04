@@ -35,7 +35,7 @@ The board has three columns:
    - **Subtasks** (optional inline checklist)
 3. Click **Create**
 
-<!-- SCREENSHOT: Task creation modal with all fields -->
+![alt text](image.png)
 
 ---
 
@@ -57,7 +57,7 @@ Each card shows:
 
 Click the **🍅** button on any IN_PROGRESS card to instantly start a Pomodoro focus session linked to that task. The timer starts counting down immediately.
 
-<!-- SCREENSHOT: IN_PROGRESS card with the 🍅 Pomodoro button highlighted -->
+![alt text](image-1.png)
 
 ---
 
@@ -76,7 +76,7 @@ The **AI Schedule** banner sits above the Kanban grid.
    - If tasks don't fit today, they roll over to the next available day (up to 7 days ahead)
    - No double-booking — uses existing calendar blocks to find free slots
 
-<!-- SCREENSHOT: AI Schedule banner showing task list with durations and Add to Calendar button -->
+![alt text](image-2.png)
 
 ---
 

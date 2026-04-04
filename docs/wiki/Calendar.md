@@ -14,7 +14,7 @@ Click **Calendar** in the left sidebar (calendar icon) or navigate to http://loc
 
 The calendar shows a full 7-day week grid with hourly time slots. Each block you create appears as a colored rectangle on the grid.
 
-<!-- SCREENSHOT: Calendar weekly view with several colored time blocks -->
+![alt text](image-3.png)
 
 ---
 
@@ -40,8 +40,7 @@ The calendar shows a full 7-day week grid with hourly time slots. Each block you
 | Color | Hex color picker for visual organization |
 | Recurrence | NONE / DAILY / WEEKDAYS / WEEKLY / MONTHLY |
 
-<!-- SCREENSHOT: Block modal with all fields visible -->
-
+![alt text](image-6.png)
 ---
 
 ## Editing a Block
@@ -74,8 +73,7 @@ The **Import Tasks** feature lets you schedule your TODO tasks directly into the
    - Color-codes blocks by priority: 🔴 HIGH, 🔵 MEDIUM, 🟢 LOW
    - If a task doesn't fit today, it rolls over to the next available day
 
-<!-- SCREENSHOT: Import Tasks panel showing task checkboxes with priority dots -->
-<!-- SCREENSHOT: Calendar after import showing new colored blocks scheduled in free slots -->
+![alt text](image-5.png)
 
 ---
 

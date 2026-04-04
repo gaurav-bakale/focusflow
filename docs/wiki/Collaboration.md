@@ -16,7 +16,7 @@ You can share any task you own with other FocusFlow users.
 
 The recipient can view and edit the shared task. Shared tasks appear in their **Shared** section in the sidebar.
 
-<!-- SCREENSHOT: Share task dialog with email input -->
+![alt text](image-7.png)
 
 ---
 
@@ -35,7 +35,7 @@ Workspaces are collaborative spaces where team members can work together.
 - See tasks and activity associated with the workspace
 - All members receive real-time updates
 
-<!-- SCREENSHOT: Workspaces page showing workspace card with member avatars -->
+![alt text](image-8.png)
 
 ---
 
@@ -47,22 +47,7 @@ The **Activity** page shows a real-time timeline of all actions taken on tasks y
 - Tasks shared with you
 - Workspace member joined
 
-<!-- SCREENSHOT: Activity feed showing timeline entries with user avatars and timestamps -->
-
----
-
-## Comments
-
-Every task supports threaded comments.
-
-**Adding a comment:**
-1. Open a task (click the task card)
-2. Scroll to the **Comments** section
-3. Type your comment and press **Enter** or click **Post**
-
-You can also **edit** or **delete** your own comments inline.
-
-<!-- SCREENSHOT: Task detail with comment thread -->
+![alt text](image-9.png)
 
 ---
 
@@ -77,5 +62,3 @@ You receive notifications for:
 - A workspace member joins
 
 Notifications are pushed in real-time via WebSocket — no page refresh needed.
-
-<!-- SCREENSHOT: Notification bell dropdown with unread notifications -->
