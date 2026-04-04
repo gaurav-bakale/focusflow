@@ -49,9 +49,10 @@ function DurationInput({ label, value, onChange, min = 1, max = 90, disabled }) 
         <button
           onClick={() => !disabled && onChange(Math.max(min, value - 1))}
           disabled={disabled || value <= min}
-          className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center
-                     text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
+          className="w-6 h-6 rounded-full flex items-center justify-center
+                     text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
                      disabled:opacity-30 disabled:cursor-not-allowed text-sm font-bold"
+          style={{ background: '#ecefe7', border: 'none' }}
         >−</button>
         <input
           type="number"
@@ -63,17 +64,19 @@ function DurationInput({ label, value, onChange, min = 1, max = 90, disabled }) 
             setLocal(String(n))
             onChange(n)
           }}
-          className="w-10 text-center text-sm font-bold border border-gray-200 dark:border-gray-700 rounded-lg py-0.5
+          className="w-10 text-center text-sm font-bold rounded-lg py-0.5
                      bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                     focus:outline-none focus:border-gray-900 dark:focus:border-gray-400 transition-colors disabled:opacity-40"
+                     focus:outline-none transition-colors disabled:opacity-40"
+          style={{ border: '1px solid #dee4da' }}
         />
         <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">min</span>
         <button
           onClick={() => !disabled && onChange(Math.min(max, value + 1))}
           disabled={disabled || value >= max}
-          className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 flex items-center justify-center
-                     text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
+          className="w-6 h-6 rounded-full flex items-center justify-center
+                     text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors
                      disabled:opacity-30 disabled:cursor-not-allowed text-sm font-bold"
+          style={{ background: '#ecefe7', border: 'none' }}
         >+</button>
       </div>
     </div>
@@ -97,10 +100,11 @@ function TaskPicker({ tasks, selectedId, onSelect, disabled }) {
       <button
         onClick={() => !disabled && setOpen(o => !o)}
         disabled={disabled}
-        className={`w-full flex items-center gap-3 px-4 py-3 border-2 rounded-xl text-left
-                    transition-colors bg-white dark:bg-gray-800 ${disabled ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700' :
-                    'border-gray-200 dark:border-gray-700 hover:border-gray-900 dark:hover:border-gray-400 cursor-pointer'}
-                    ${open ? 'border-gray-900 dark:border-gray-400' : ''}`}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left
+                    transition-colors bg-white dark:bg-gray-800 ${disabled ? 'opacity-50 cursor-not-allowed' :
+                    'hover:border-gray-900 dark:hover:border-gray-400 cursor-pointer'}
+                    ${open ? '' : ''}`}
+        style={{ border: '1px solid #dee4da' }}
       >
         {selected ? (
           <>
@@ -128,8 +132,10 @@ function TaskPicker({ tasks, selectedId, onSelect, disabled }) {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600
-                        rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900
+                        rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto"
+          style={{ border: '1px solid #dee4da' }}
+        >
           {/* No task option */}
           <button
             onClick={() => { onSelect(null); setOpen(false) }}
@@ -232,7 +238,7 @@ export default function TimerPage() {
   const cyclesComplete  = Math.floor(cycleCount / 4)
 
   return (
-    <div className="min-h-full bg-gray-50 dark:bg-gray-900">
+    <div style={{ background: '#fafaf5', minHeight: '100%' }}>
       <div className="max-w-5xl mx-auto px-8 py-8">
 
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
@@ -242,7 +248,9 @@ export default function TimerPage() {
             { label: 'Focus Time',     value: totalFocusMins,  unit: 'min', accent: '#10b981' },
             { label: 'Full Cycles',    value: cyclesComplete,  unit: '',    accent: '#f59e0b' },
           ].map(({ label, value, unit, accent }) => (
-            <div key={label} className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-xl px-5 py-4 relative overflow-hidden">
+            <div key={label} className="rounded-xl px-5 py-4 relative overflow-hidden"
+              style={{ background: '#f3f4ee' }}
+            >
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
               <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">{label}</p>
               <p className="text-3xl font-extrabold font-mono" style={{ color: accent }}>
@@ -256,25 +264,30 @@ export default function TimerPage() {
         <div className="grid grid-cols-5 gap-6">
 
           {/* ── Left: timer ──────────────────────────────────────────────────── */}
-          <div className="col-span-3 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl p-8 flex flex-col items-center">
+          <div className="col-span-3 rounded-2xl p-8 flex flex-col items-center"
+            style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+          >
 
             {/* Phase tabs */}
-            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1 mb-8 w-full max-w-sm">
+            <div className="flex rounded-xl p-1 mb-8 w-full max-w-sm"
+              style={{ background: '#f3f4ee' }}
+            >
               {[
                 { p: PHASES.FOCUS,       label: 'Focus',       color: '#6366f1' },
                 { p: PHASES.SHORT_BREAK, label: 'Short Break', color: '#10b981' },
                 { p: PHASES.LONG_BREAK,  label: 'Long Break',  color: '#0ea5e9' },
-              ].map(({ p, label, color }) => {
+              ].map(({ p, label }) => {
                 const isActive = phase === p || (isIdle && p === PHASES.FOCUS)
                 return (
                   <button
                     key={p}
                     disabled={isRunning}
                     onClick={() => selectPhase(p)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
-                      ${isRunning ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
-                      ${isActive ? 'bg-white dark:bg-gray-900 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
-                    style={isActive ? { color } : {}}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all
+                      ${isRunning ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                    style={isActive
+                      ? { background: '#3a6758', color: '#ffffff' }
+                      : { background: '#ecefe7', color: '#5b6159' }}
                   >
                     {label}
                   </button>
@@ -284,7 +297,11 @@ export default function TimerPage() {
 
             {/* Ring timer */}
             <div className="relative mb-6" style={{ width: 300, height: 300 }}>
-              <svg width="300" height="300" className="-rotate-90" viewBox="0 0 300 300">
+              {/* bg container */}
+              <div className="absolute inset-0 rounded-full"
+                style={{ background: '#f3f4ee', boxShadow: '0 20px 50px rgba(46,52,45,0.08)' }}
+              />
+              <svg width="300" height="300" className="-rotate-90 relative" viewBox="0 0 300 300">
                 {/* Track */}
                 <circle cx="150" cy="150" r={R} fill="none" stroke={trackColor} strokeWidth="12" />
                 {/* Progress */}
@@ -312,8 +329,8 @@ export default function TimerPage() {
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span
                   data-testid="timer-display"
-                  className="text-6xl font-extrabold font-mono tracking-tighter leading-none transition-colors duration-500"
-                  style={{ color: cfg.color }}
+                  className="text-6xl tracking-tighter leading-none transition-colors duration-500"
+                  style={{ color: cfg.color, fontFamily: 'Epilogue, sans-serif', fontWeight: 900 }}
                 >
                   {display}
                 </span>
@@ -337,11 +354,11 @@ export default function TimerPage() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-3 h-3 rounded-full border-2 transition-all duration-300"
+                  className="w-3 h-3 rounded-full transition-all duration-300"
                   style={
                     i < (cycleCount % 4)
-                      ? { background: cfg.color, borderColor: cfg.color }
-                      : { background: 'transparent', borderColor: '#d1d5db' }
+                      ? { background: cfg.color, borderColor: cfg.color, border: '2px solid' }
+                      : { background: 'transparent', borderColor: '#d1d5db', border: '2px solid' }
                   }
                 />
               ))}
@@ -360,8 +377,8 @@ export default function TimerPage() {
                 <button
                   onClick={resume}
                   className="flex items-center gap-2 text-white font-bold text-sm
-                             px-8 py-3.5 rounded-xl transition-all duration-300"
-                  style={{ background: cfg.color }}
+                             px-8 py-3.5 rounded-2xl transition-all duration-300"
+                  style={{ background: '#3a6758' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
@@ -387,8 +404,8 @@ export default function TimerPage() {
                     }
                   }}
                   className="flex items-center gap-2 text-white font-bold text-sm
-                             px-8 py-3.5 rounded-xl transition-all duration-300"
-                  style={{ background: cfg.color }}
+                             px-8 py-3.5 rounded-2xl transition-all duration-300"
+                  style={{ background: '#3a6758' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
@@ -399,8 +416,8 @@ export default function TimerPage() {
                 <button
                   onClick={pause}
                   className="flex items-center gap-2 text-white font-bold text-sm
-                             px-8 py-3.5 rounded-xl transition-all duration-300"
-                  style={{ background: cfg.color }}
+                             px-8 py-3.5 rounded-2xl transition-all duration-300"
+                  style={{ background: '#3a6758' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
@@ -414,9 +431,8 @@ export default function TimerPage() {
                 <button
                   onClick={skipPhase}
                   title="Skip to next phase"
-                  className="flex items-center gap-1.5 border-2 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400
-                             font-bold text-xs px-4 py-3.5 rounded-xl hover:border-gray-900 dark:hover:border-gray-400
-                             hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  className="flex items-center gap-1.5 font-bold text-xs px-4 py-3.5 rounded-2xl transition-colors"
+                  style={{ background: '#ecefe7', color: '#5b6159' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z"/>
@@ -429,9 +445,8 @@ export default function TimerPage() {
               <button
                 onClick={reset}
                 title="Reset timer"
-                className="w-12 h-12 flex items-center justify-center border-2 border-gray-200 dark:border-gray-700
-                           rounded-xl text-gray-400 dark:text-gray-500 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100
-                           transition-colors"
+                className="w-12 h-12 flex items-center justify-center rounded-2xl transition-colors"
+                style={{ background: '#ecefe7', color: '#5b6159' }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
@@ -445,8 +460,12 @@ export default function TimerPage() {
           <div className="col-span-2 flex flex-col gap-5">
 
             {/* Task picker */}
-            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl p-5">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: cfg.color }}>
+            <div className="rounded-2xl p-5"
+              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+            >
+              <p className="text-xs font-bold uppercase tracking-widest mb-3"
+                style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}
+              >
                 Focusing on
               </p>
               <TaskPicker
@@ -480,12 +499,16 @@ export default function TimerPage() {
             </div>
 
             {/* Duration settings */}
-            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl overflow-hidden">
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+            >
               <button
                 onClick={() => setShowSettings(s => !s)}
                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                <p className="text-xs font-bold uppercase tracking-widest"
+                  style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}
+                >
                   Duration Settings
                 </p>
                 <svg
@@ -528,9 +551,13 @@ export default function TimerPage() {
             </div>
 
             {/* Session log */}
-            <div className="bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 rounded-2xl flex-1 overflow-hidden flex flex-col">
+            <div className="rounded-2xl flex-1 overflow-hidden flex flex-col"
+              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+            >
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-                <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                <p className="text-xs font-bold uppercase tracking-widest"
+                  style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}
+                >
                   Today&apos;s Sessions
                 </p>
               </div>
