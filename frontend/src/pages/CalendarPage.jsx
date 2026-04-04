@@ -944,6 +944,13 @@ export default function CalendarPage() {
     return m
   }, [tasks])
 
+  // Task IDs that already have at least one calendar block linked to them
+  const scheduledTaskIds = useMemo(() => {
+    const s = new Set()
+    blocks.forEach(b => { if (b.task_id) s.add(b.task_id) })
+    return s
+  }, [blocks])
+
   // Build all events
   const allEvents = useMemo(() => {
     const blockEvts = blocks.map(b => {
@@ -1206,6 +1213,8 @@ export default function CalendarPage() {
       for (const taskId of importSelected) {
         const task = tasks.find(t => t.id === taskId)
         if (!task) continue
+        // Skip if already on the calendar
+        if (scheduledTaskIds.has(taskId)) continue
         const dateStr = task.deadline || today
         const durationMins = task.estimated_minutes || pageFocusMins
 
@@ -1373,21 +1382,34 @@ export default function CalendarPage() {
               ) : (
                 tasks.filter(t => t.status !== 'DONE').map(task => {
                   const checked = importSelected.has(task.id)
+                  const alreadyScheduled = scheduledTaskIds.has(task.id)
                   const dotColor = task.priority === 'HIGH' ? 'bg-red-400' : task.priority === 'LOW' ? 'bg-emerald-400' : 'bg-amber-400'
                   return (
-                    <label key={task.id} className="flex items-start gap-2 cursor-pointer group p-1.5 rounded-xl transition-colors hover:bg-[#f3f4ee]">
+                    <label
+                      key={task.id}
+                      className={`flex items-start gap-2 p-1.5 rounded-xl transition-colors ${alreadyScheduled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-[#f3f4ee]'}`}
+                    >
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={() => setImportSelected(prev => {
-                          const next = new Set(prev)
-                          checked ? next.delete(task.id) : next.add(task.id)
-                          return next
-                        })}
-                        className="mt-0.5 w-3.5 h-3.5 rounded accent-[#3a6758] cursor-pointer shrink-0"
+                        disabled={alreadyScheduled}
+                        onChange={() => {
+                          if (alreadyScheduled) return
+                          setImportSelected(prev => {
+                            const next = new Set(prev)
+                            checked ? next.delete(task.id) : next.add(task.id)
+                            return next
+                          })
+                        }}
+                        className="mt-0.5 w-3.5 h-3.5 rounded accent-[#3a6758] shrink-0"
                       />
                       <span className={`w-2 h-2 rounded-full shrink-0 mt-1 ${dotColor}`} />
-                      <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight line-clamp-2">{task.title}</span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight line-clamp-2 flex-1">{task.title}</span>
+                      {alreadyScheduled && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: '#ecefe7', color: '#3a6758' }}>
+                          Scheduled
+                        </span>
+                      )}
                     </label>
                   )
                 })

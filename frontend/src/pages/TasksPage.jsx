@@ -389,8 +389,13 @@ export default function TasksPage() {
     try {
       const existingBlocks = await fetchBlocks()
 
+      // Task IDs that already have a calendar block — skip them to prevent duplicates
+      const scheduledTaskIds = new Set(existingBlocks.map(b => b.task_id).filter(Boolean))
+
       // Only match TODO / IN_PROGRESS tasks — skip AI placeholders like "Lunch Break"
-      const eligible = tasks.filter(t => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+      const eligible = tasks.filter(
+        t => (t.status === 'TODO' || t.status === 'IN_PROGRESS') && !scheduledTaskIds.has(t.id)
+      )
       const titleToTask = {}
       eligible.forEach(t => { titleToTask[t.title.toLowerCase().trim()] = t })
 
