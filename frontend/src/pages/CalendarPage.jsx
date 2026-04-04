@@ -22,7 +22,7 @@ import React, {
 } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import dayGridPlugin  from '@fullcalendar/daygrid'
+import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { fetchBlocks, createBlock, createBlocksBulk, updateBlock, deleteBlock } from '../services/otherServices'
 import { fetchTasks, markTaskComplete } from '../services/taskService'
@@ -32,17 +32,17 @@ import { smartScheduleTask, generateRecurringSlots, findFreeSlot } from '../util
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
-  HIGH:   { dot: '#f87171', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', label: 'High',   badge: 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800'    },
+  HIGH: { dot: '#f87171', bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', label: 'High', badge: 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800' },
   MEDIUM: { dot: '#fbbf24', bg: '#fffbeb', border: '#fde68a', text: '#78350f', label: 'Medium', badge: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800' },
-  LOW:    { dot: '#a3e635', bg: '#f7fee7', border: '#bef264', text: '#365314', label: 'Low',    badge: 'bg-lime-50 dark:bg-lime-950/50 text-lime-700 dark:text-lime-400 ring-1 ring-lime-200 dark:ring-lime-800'   },
+  LOW: { dot: '#a3e635', bg: '#f7fee7', border: '#bef264', text: '#365314', label: 'Low', badge: 'bg-lime-50 dark:bg-lime-950/50 text-lime-700 dark:text-lime-400 ring-1 ring-lime-200 dark:ring-lime-800' },
 }
 const S_BADGE = {
-  TODO:        'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
+  TODO: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400',
   IN_PROGRESS: 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400',
-  DONE:        'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400',
+  DONE: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400',
 }
 const S_LABEL = { TODO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
-const BLOCK_PALETTE = ['#6366f1','#3b82f6','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#1e293b']
+const BLOCK_PALETTE = ['#6366f1', '#3b82f6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#1e293b']
 
 // ── FullCalendar CSS overrides — Google Calendar aesthetic ───────────────────
 const FC_CSS = `
@@ -204,12 +204,12 @@ const duration = (s, e) => {
 }
 
 // ── Mini month calendar with month/year picker ───────────────────────────────
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
-  const [month,     setMonth]     = useState(() => new Date())
-  const [picker,    setPicker]    = useState(null) // null | 'month' | 'year'
-  const [yearPage,  setYearPage]  = useState(() => new Date().getFullYear())
+  const [month, setMonth] = useState(() => new Date())
+  const [picker, setPicker] = useState(null) // null | 'month' | 'year'
+  const [yearPage, setYearPage] = useState(() => new Date().getFullYear())
 
   useEffect(() => {
     if (syncMonth) setMonth(new Date(syncMonth))
@@ -218,13 +218,13 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
   const { days } = useMemo(() => {
     const y = month.getFullYear(), m = month.getMonth()
     const first = new Date(y, m, 1)
-    const last  = new Date(y, m + 1, 0)
-    const pad   = first.getDay()
-    const arr   = []
+    const last = new Date(y, m + 1, 0)
+    const pad = first.getDay()
+    const arr = []
     for (let i = pad - 1; i >= 0; i--)
-      arr.push({ d: new Date(y, m, -i),   cur: false })
+      arr.push({ d: new Date(y, m, -i), cur: false })
     for (let i = 1; i <= last.getDate(); i++)
-      arr.push({ d: new Date(y, m, i),    cur: true  })
+      arr.push({ d: new Date(y, m, i), cur: true })
     while (arr.length < 42)
       arr.push({ d: new Date(y, m + 1, arr.length - last.getDate() - pad + 1), cur: false })
     return { days: arr }
@@ -235,7 +235,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
   }, [])
 
   const monthLabel = month.toLocaleDateString('en-US', { month: 'long' })
-  const yearLabel  = month.getFullYear()
+  const yearLabel = month.getFullYear()
 
   // Year grid: show 12 years centered around yearPage
   const yearStart = yearPage - 4
@@ -253,7 +253,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
           className="w-6 h-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7"/>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
@@ -261,18 +261,16 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setPicker(p => p === 'month' ? null : 'month')}
-            className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'month' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
+            className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${picker === 'month' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
             style={picker === 'month' ? { background: '#ecefe7' } : {}}
           >
             {monthLabel}
           </button>
           <button
             onClick={() => { setPicker(p => p === 'year' ? null : 'year'); setYearPage(month.getFullYear()) }}
-            className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${
-              picker === 'year' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
+            className={`text-xs font-semibold px-1.5 py-0.5 rounded transition-colors ${picker === 'year' ? 'text-[#3a6758]' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
             style={picker === 'year' ? { background: '#ecefe7' } : {}}
           >
             {yearLabel}
@@ -287,7 +285,7 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
           className="w-6 h-6 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>
@@ -299,11 +297,10 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
             <button
               key={m}
               onClick={() => { setMonth(d => new Date(d.getFullYear(), i, 1)); setPicker(null) }}
-              className={`text-[10px] font-semibold py-1 rounded transition-colors ${
-                i === month.getMonth()
+              className={`text-[10px] font-semibold py-1 rounded transition-colors ${i === month.getMonth()
                   ? 'bg-slate-800 text-white'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
-              }`}
+                }`}
             >
               {m}
             </button>
@@ -318,11 +315,10 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
             <button
               key={y}
               onClick={() => { setMonth(d => new Date(y, d.getMonth(), 1)); setPicker(null) }}
-              className={`text-[10px] font-semibold py-1 rounded transition-colors ${
-                y === month.getFullYear()
+              className={`text-[10px] font-semibold py-1 rounded transition-colors ${y === month.getFullYear()
                   ? 'bg-slate-800 text-white'
                   : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
-              }`}
+                }`}
             >
               {y}
             </button>
@@ -334,13 +330,13 @@ function MiniCalendar({ onDateSelect, eventDates, syncMonth }) {
       {!picker && (
         <>
           <div className="grid grid-cols-7 mb-0.5">
-            {['S','M','T','W','T','F','S'].map((d, i) => (
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
               <span key={i} className="text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 py-0.5">{d}</span>
             ))}
           </div>
           <div className="grid grid-cols-7">
             {days.map(({ d, cur }, i) => {
-              const isToday   = d.getTime() === today.getTime()
+              const isToday = d.getTime() === today.getTime()
               const hasEvents = eventDates.has(d.toDateString())
               return (
                 <button
@@ -384,13 +380,13 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 
   // Smart positioning: keep within viewport
   const W = 308, H = 320
-  const left = Math.min(x + 14, window.innerWidth  - W - 16)
-  const top  = Math.min(y,      window.innerHeight - H - 16)
+  const left = Math.min(x + 14, window.innerWidth - W - 16)
+  const top = Math.min(y, window.innerHeight - H - 16)
 
   const renderContent = () => {
     if (type === 'task') {
-      const task    = event.extendedProps.task
-      const ps      = P[task.priority] || P.LOW
+      const task = event.extendedProps.task
+      const ps = P[task.priority] || P.LOW
       const overdue = task.deadline && task.status !== 'DONE' && new Date(task.deadline) < new Date()
       return (
         <>
@@ -403,12 +399,12 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: ps.dot }} />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                {event.extendedProps.isProjected ? 'Projected Occurrence' : 'Task Deadline'}
-              </span>
+                  {event.extendedProps.isProjected ? 'Projected Occurrence' : 'Task Deadline'}
+                </span>
               </div>
               <button onClick={onClose} className="text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors shrink-0 ml-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -423,17 +419,17 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
             <div className="space-y-2 mb-4">
               <div className="flex items-center gap-2">
                 <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth={2}/>
-                  <line x1="16" y1="2" x2="16" y2="6" strokeWidth={2}/>
-                  <line x1="8" y1="2" x2="8" y2="6" strokeWidth={2}/>
-                  <line x1="3" y1="10" x2="21" y2="10" strokeWidth={2}/>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth={2} />
+                  <line x1="16" y1="2" x2="16" y2="6" strokeWidth={2} />
+                  <line x1="8" y1="2" x2="8" y2="6" strokeWidth={2} />
+                  <line x1="3" y1="10" x2="21" y2="10" strokeWidth={2} />
                 </svg>
                 <span className={`text-xs font-semibold ${overdue ? 'text-red-600' : 'text-gray-700 dark:text-gray-300'}`}>
                   {fmt(task.deadline, { weekday: 'short', month: 'short', day: 'numeric' })}
                   {task.due_time && (() => {
                     const [h, m] = task.due_time.split(':').map(Number)
                     const ampm = h >= 12 ? 'PM' : 'AM'
-                    return ` · ${h % 12 || 12}:${String(m).padStart(2,'0')} ${ampm}`
+                    return ` · ${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`
                   })()}
                   {overdue && ' · Overdue'}
                 </span>
@@ -468,8 +464,8 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
                            text-xs font-bold py-2 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 {completing
-                  ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                  : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                  ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                 }
                 {completing ? 'Completing…' : task.recurrence && task.recurrence !== 'NONE' ? 'Complete (↻ next)' : 'Mark Complete'}
               </button>
@@ -486,9 +482,9 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 
     // Time block
     const linked = event.extendedProps.linkedTask
-    const color  = event.extendedProps.color || '#1e293b'
-    const start  = event.extendedProps.start_time || event.startStr
-    const end    = event.extendedProps.end_time   || event.endStr
+    const color = event.extendedProps.color || '#1e293b'
+    const start = event.extendedProps.start_time || event.startStr
+    const end = event.extendedProps.end_time || event.endStr
 
     return (
       <>
@@ -507,7 +503,7 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
                 title="Edit"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               <button
@@ -516,12 +512,12 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
                 title="Delete"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
               <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -533,8 +529,8 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
           <div className="space-y-2 mb-4">
             <div className="flex items-center gap-2">
               <svg className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" strokeWidth={2}/>
-                <path strokeLinecap="round" strokeWidth={2} d="M12 6v6l4 2"/>
+                <circle cx="12" cy="12" r="10" strokeWidth={2} />
+                <path strokeLinecap="round" strokeWidth={2} d="M12 6v6l4 2" />
               </svg>
               <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 {fmt(start, { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -586,28 +582,28 @@ function EventPopover({ popover, onEdit, onDelete, onComplete, onClose, completi
 
 // ── Block create / edit modal ─────────────────────────────────────────────────
 function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
-  const isNew        = !block.id
-  const isRecurring  = !isNew && block.recurrence && block.recurrence !== 'NONE'
+  const isNew = !block.id
+  const isRecurring = !isNew && block.recurrence && block.recurrence !== 'NONE'
   const { focusMins } = useTimer()
 
   const [form, setForm] = useState({
-    title:               block.title               || '',
-    start_time:          block.start_time          || '',
-    end_time:            block.end_time            || '',
-    task_id:             block.task_id             || '',
-    color:               block.color               || '#6366f1',
-    recurrence:          block.recurrence          || 'NONE',
+    title: block.title || '',
+    start_time: block.start_time || '',
+    end_time: block.end_time || '',
+    task_id: block.task_id || '',
+    color: block.color || '#6366f1',
+    recurrence: block.recurrence || 'NONE',
     recurrence_group_id: block.recurrence_group_id || null,
   })
-  const [saving,    setSaving]    = useState(false)
-  const [overlap,   setOverlap]   = useState(null)  // warning message or null
+  const [saving, setSaving] = useState(false)
+  const [overlap, setOverlap] = useState(null)  // warning message or null
   const [timeError, setTimeError] = useState('')
   // Edit scope: only relevant when editing an existing recurring block
   const [editScope, setEditScope] = useState('this') // 'this' | 'this_and_future'
 
   // Pomodoro presets: pure focus time only (no breaks counted)
   const pomodoroDurations = [
-    { label: '1 🍅', mins: focusMins,     desc: `${focusMins}m` },
+    { label: '1 🍅', mins: focusMins, desc: `${focusMins}m` },
     { label: '2 🍅', mins: focusMins * 2, desc: `${focusMins * 2}m` },
     { label: '4 🍅', mins: focusMins * 4, desc: `${focusMins * 4}m` },
   ]
@@ -621,7 +617,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
     const endMs = new Date(y, mo - 1, d, h, mi).getTime() + mins * 60000
     const end = new Date(endMs)
     const pad = n => String(n).padStart(2, '0')
-    const endStr = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
+    const endStr = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}`
     setForm(f => ({ ...f, end_time: endStr }))
     checkOverlap(form.start_time, endStr)
   }
@@ -646,21 +642,24 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleStartChange(val) {
-    setTimeError('')
-    setForm(f => {
-      const DEFAULT_DURATION_MS = 25 * 60 * 1000
-      let newEnd = f.end_time
-      if (val) {
-        const startMs = new Date(val).getTime()
-        const durMs = (f.start_time && f.end_time && f.end_time > f.start_time)
-          ? new Date(f.end_time).getTime() - new Date(f.start_time).getTime()
-          : DEFAULT_DURATION_MS
-        newEnd = new Date(startMs + durMs).toISOString().slice(0, 16)
-      }
-      return { ...f, start_time: val, end_time: newEnd }
-    })
-    checkOverlap(val, form.end_time)
-  }
+  setTimeError('')
+  setForm(f => {
+    const DEFAULT_DURATION_MS = focusMins * 4 * 60 * 1000
+    let newEnd = f.end_time
+    if (val) {
+      const startMs = new Date(val).getTime()
+      const durMs = (f.start_time && f.end_time && f.end_time > f.start_time)
+        ? new Date(f.end_time).getTime() - new Date(f.start_time).getTime()
+        : DEFAULT_DURATION_MS
+      // Format as LOCAL time (not UTC) so datetime-local input shows correct value
+      const endDate = new Date(startMs + durMs)
+      const pad = n => String(n).padStart(2, '0')
+      newEnd = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}T${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`
+    }
+    checkOverlap(val, newEnd)
+    return { ...f, start_time: val, end_time: newEnd }
+  })
+}
 
   function handleEndChange(val) {
     if (val && form.start_time && val <= form.start_time) {
@@ -673,7 +672,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
   }
 
   function handleTaskChange(id) {
-    const task     = tasks.find(t => t.id === id)
+    const task = tasks.find(t => t.id === id)
     const prevTask = tasks.find(t => t.id === form.task_id)
 
     // Use smartScheduleTask to find the best free slot for this task.
@@ -681,9 +680,9 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
     // – If task has deadline only: finds first free 100-min slot in the active
     //   window (6 AM–11 PM), avoiding existing blocks. No work-hours assumption —
     //   gym at 6 AM and therapy at 7 PM are handled equally.
-    const scheduled  = smartScheduleTask(task, focusMins, existingBlocks, block.id)
-    const autoStart  = scheduled?.start_time ?? null
-    const autoEnd    = scheduled?.end_time   ?? null
+    const scheduled = smartScheduleTask(task, focusMins, existingBlocks, block.id)
+    const autoStart = scheduled?.start_time ?? null
+    const autoEnd = scheduled?.end_time ?? null
 
     setForm(f => {
       // Auto-fill title if blank or it was previously set from a task
@@ -698,10 +697,10 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
 
       return {
         ...f,
-        task_id:    id,
-        title:      newTitle,
+        task_id: id,
+        title: newTitle,
         start_time: (shouldFillTime && autoStart) ? autoStart : f.start_time,
-        end_time:   (shouldFillTime && autoEnd)   ? autoEnd   : f.end_time,
+        end_time: (shouldFillTime && autoEnd) ? autoEnd : f.end_time,
       }
     })
 
@@ -842,9 +841,8 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
                     key={c} type="button"
                     onClick={() => setForm(f => ({ ...f, color: c }))}
                     style={{ background: c }}
-                    className={`w-7 h-7 rounded-full transition-transform ${
-                      form.color === c ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 scale-110' : 'hover:scale-105'
-                    }`}
+                    className={`w-7 h-7 rounded-full transition-transform ${form.color === c ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 scale-110' : 'hover:scale-105'
+                      }`}
                   />
                 ))}
               </div>
@@ -855,7 +853,7 @@ function BlockModal({ block, tasks, existingBlocks, onSave, onClose }) {
               <div className="rounded-xl p-3 space-y-1.5" style={{ border: '1px solid #dee4da', background: '#ecefe7' }}>
                 <p className="text-xs font-semibold mb-1" style={{ color: '#3a6758' }}>Edit recurring event</p>
                 {[
-                  { v: 'this',            label: 'Just this event' },
+                  { v: 'this', label: 'Just this event' },
                   { v: 'this_and_future', label: 'This and all following events' },
                 ].map(({ v, label }) => (
                   <label key={v} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
@@ -895,9 +893,9 @@ function defaultBlockTimes(focusMins) {
   const now = new Date()
   const rounded = new Date(Math.ceil(now.getTime() / (15 * 60000)) * (15 * 60000))
   const pad = n => String(n).padStart(2, '0')
-  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   const start = fmt(rounded)
-  const end   = fmt(new Date(rounded.getTime() + focusMins * 4 * 60000))
+  const end = fmt(new Date(rounded.getTime() + focusMins * 4 * 60000))
   return { start, end }
 }
 
@@ -906,27 +904,27 @@ export default function CalendarPage() {
   const calRef = useRef(null)
   const { focusMins: pageFocusMins } = useTimer()
 
-  const [blocks,    setBlocks]    = useState([])
-  const [tasks,     setTasks]     = useState([])
-  const [importOpen,    setImportOpen]    = useState(false)
+  const [blocks, setBlocks] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [importOpen, setImportOpen] = useState(false)
   const [importSelected, setImportSelected] = useState(new Set())
-  const [importAdding,  setImportAdding]  = useState(false)
-  const [importDone,    setImportDone]    = useState(false)
-  const [importError,   setImportError]   = useState('')
-  const [loading,   setLoading]   = useState(true)
-  const [view,      setView]      = useState('timeGridWeek')
-  const [calTitle,  setCalTitle]  = useState('')
+  const [importAdding, setImportAdding] = useState(false)
+  const [importDone, setImportDone] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('timeGridWeek')
+  const [calTitle, setCalTitle] = useState('')
   const [syncMonth, setSyncMonth] = useState(null)
-  const [popover,   setPopover]   = useState(null)
-  const [modal,     setModal]     = useState(null)
+  const [popover, setPopover] = useState(null)
+  const [modal, setModal] = useState(null)
   const [completing, setCompleting] = useState(false)
 
   // Filter checkboxes (Google Calendar sidebar style)
   const [showBlocks, setShowBlocks] = useState(true)
-  const [showTasks,  setShowTasks]  = useState(true)
-  const [showHigh,   setShowHigh]   = useState(true)
-  const [showMed,    setShowMed]    = useState(true)
-  const [showLow,    setShowLow]    = useState(true)
+  const [showTasks, setShowTasks] = useState(true)
+  const [showHigh, setShowHigh] = useState(true)
+  const [showMed, setShowMed] = useState(true)
+  const [showLow, setShowLow] = useState(true)
 
   useEffect(() => {
     Promise.all([fetchBlocks(), fetchTasks()])
@@ -955,16 +953,16 @@ export default function CalendarPage() {
   const allEvents = useMemo(() => {
     const blockEvts = blocks.map(b => {
       const linked = b.task_id ? taskMap[b.task_id] : null
-      const color  = b.color || '#6366f1'
+      const color = b.color || '#6366f1'
       return {
-        id:    `block-${b.id}`,
+        id: `block-${b.id}`,
         title: b.title,
         start: b.start_time,
-        end:   b.end_time,
+        end: b.end_time,
         allDay: false,
         backgroundColor: color,
-        borderColor:     color,
-        textColor:       '#ffffff',
+        borderColor: color,
+        textColor: '#ffffff',
         editable: true,
         extendedProps: {
           type: 'block', blockId: b.id,
@@ -992,8 +990,8 @@ export default function CalendarPage() {
 
       dates.forEach((dateStr, idx) => {
         const isProjected = idx > 0
-        const hasTimed    = !!(t.due_time)
-        const startDT     = hasTimed ? `${dateStr}T${t.due_time}:00` : dateStr
+        const hasTimed = !!(t.due_time)
+        const startDT = hasTimed ? `${dateStr}T${t.due_time}:00` : dateStr
         const recurrencePrefix = isRecurring ? '↻ ' : ''
 
         let endDT
@@ -1008,14 +1006,14 @@ export default function CalendarPage() {
         }
 
         taskEvts.push({
-          id:    isProjected ? `task-${t.id}-proj-${dateStr}` : `task-${t.id}`,
+          id: isProjected ? `task-${t.id}-proj-${dateStr}` : `task-${t.id}`,
           title: `${recurrencePrefix}${t.title}`,
           start: startDT,
           ...(endDT ? { end: endDT } : {}),
           allDay: !hasTimed,
           backgroundColor: isProjected ? ps.bg + 'cc' : ps.bg,
-          borderColor:     isProjected ? ps.border + '99' : ps.border,
-          textColor:       ps.text,
+          borderColor: isProjected ? ps.border + '99' : ps.border,
+          textColor: ps.text,
           editable: false,
           classNames: isProjected ? ['fc-projected'] : [],
           extendedProps: { type: 'task', task: t, isProjected, projectedDate: dateStr },
@@ -1032,16 +1030,16 @@ export default function CalendarPage() {
     if (type === 'block') {
       if (!showBlocks) return false
       const p = linkedTask?.priority
-      if (p === 'HIGH'   && !showHigh) return false
-      if (p === 'MEDIUM' && !showMed)  return false
-      if (p === 'LOW'    && !showLow)  return false
+      if (p === 'HIGH' && !showHigh) return false
+      if (p === 'MEDIUM' && !showMed) return false
+      if (p === 'LOW' && !showLow) return false
       return true
     }
     if (type === 'task') {
       if (!showTasks) return false
-      if (task.priority === 'HIGH'   && !showHigh) return false
-      if (task.priority === 'MEDIUM' && !showMed)  return false
-      if (task.priority === 'LOW'    && !showLow)  return false
+      if (task.priority === 'HIGH' && !showHigh) return false
+      if (task.priority === 'MEDIUM' && !showMed) return false
+      if (task.priority === 'LOW' && !showLow) return false
       return true
     }
     return true
@@ -1073,8 +1071,8 @@ export default function CalendarPage() {
     maxH = Math.min(24, maxH)
     const pad = n => String(n).padStart(2, '0')
     return {
-      min:    `${pad(minH)}:00:00`,
-      max:    maxH === 24 ? '24:00:00' : `${pad(maxH)}:00:00`,
+      min: `${pad(minH)}:00:00`,
+      max: maxH === 24 ? '24:00:00' : `${pad(maxH)}:00:00`,
       scroll: `${pad(Math.max(minH, Math.min(8, minH + 1)))}:00:00`,
     }
   }, [filteredEvents])
@@ -1095,9 +1093,9 @@ export default function CalendarPage() {
         </span>
       )
     }
-    const isToday  = args.isToday
-    const dayName  = args.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
-    const dayNum   = args.date.getDate()
+    const isToday = args.isToday
+    const dayName = args.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()
+    const dayNum = args.date.getDate()
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
         <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.08em', color: isToday ? '#6366f1' : '#94a3b8' }}>
@@ -1163,7 +1161,7 @@ export default function CalendarPage() {
   async function handleEventDrop({ event, revert }) {
     if (event.extendedProps.type !== 'block') { revert(); return }
     const blockId = event.extendedProps.blockId
-    const block   = blocks.find(b => b.id === blockId)
+    const block = blocks.find(b => b.id === blockId)
     if (!block) { revert(); return }
     try {
       const updated = await updateBlock(blockId, { ...block, start_time: fmtLocal(event.startStr), end_time: fmtLocal(event.endStr || '') })
@@ -1173,7 +1171,7 @@ export default function CalendarPage() {
 
   async function handleEventResize({ event, revert }) {
     const blockId = event.extendedProps.blockId
-    const block   = blocks.find(b => b.id === blockId)
+    const block = blocks.find(b => b.id === blockId)
     if (!block) { revert(); return }
     try {
       const updated = await updateBlock(blockId, { ...block, start_time: fmtLocal(event.startStr), end_time: fmtLocal(event.endStr || '') })
@@ -1226,11 +1224,11 @@ export default function CalendarPage() {
 
         if (!slot) continue
         newBlocks.push({
-          title:      task.title,
+          title: task.title,
           start_time: slot.start_time,
-          end_time:   slot.end_time,
-          task_id:    task.id,
-          color:      task.priority === 'HIGH' ? '#ef4444' : task.priority === 'LOW' ? '#10b981' : '#6366f1',
+          end_time: slot.end_time,
+          task_id: task.id,
+          color: task.priority === 'HIGH' ? '#ef4444' : task.priority === 'LOW' ? '#10b981' : '#6366f1',
         })
       }
 
@@ -1259,7 +1257,7 @@ export default function CalendarPage() {
       await deleteBlock(blockId, scope)
       if (scope === 'this_and_future') {
         // Remove all blocks in the same series from this point forward
-        const groupId   = block.recurrence_group_id
+        const groupId = block.recurrence_group_id
         const startTime = block.start_time
         setBlocks(prev => prev.filter(b =>
           !(b.recurrence_group_id === groupId && b.start_time >= startTime)
@@ -1278,13 +1276,13 @@ export default function CalendarPage() {
   function handleEditFromPopover(event) {
     const ep = event.extendedProps
     setModal({
-      id:                  ep.blockId,
-      title:               event.title,
-      start_time:          ep.start_time || fmtLocal(event.startStr),
-      end_time:            ep.end_time   || fmtLocal(event.endStr),
-      task_id:             ep.task_id    || '',
-      color:               ep.color      || '#6366f1',
-      recurrence:          ep.recurrence || 'NONE',
+      id: ep.blockId,
+      title: event.title,
+      start_time: ep.start_time || fmtLocal(event.startStr),
+      end_time: ep.end_time || fmtLocal(event.endStr),
+      task_id: ep.task_id || '',
+      color: ep.color || '#6366f1',
+      recurrence: ep.recurrence || 'NONE',
       recurrence_group_id: ep.recurrence_group_id || null,
     })
     setPopover(null)
@@ -1349,7 +1347,7 @@ export default function CalendarPage() {
             style={{ background: '#3a6758', color: '#ffffff' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             New Task Block
           </button>
@@ -1359,7 +1357,7 @@ export default function CalendarPage() {
             style={{ background: '#ecefe7', color: '#5b6159' }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             Import Tasks
           </button>
@@ -1372,7 +1370,7 @@ export default function CalendarPage() {
               <span className="text-xs font-bold" style={{ color: '#3a6758', fontFamily: 'Epilogue, sans-serif', fontWeight: 700 }}>Import Tasks</span>
               <button onClick={() => setImportOpen(false)} className="hover:opacity-70 transition-opacity" style={{ color: '#3a6758' }}>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -1420,7 +1418,7 @@ export default function CalendarPage() {
               {importDone ? (
                 <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                   Added with no conflicts!
                 </p>
@@ -1474,9 +1472,9 @@ export default function CalendarPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3 mt-4">Priority</p>
           <div className="space-y-1.5">
             {[
-              { key: 'high',   label: 'High',   state: showHigh, setter: setShowHigh, color: P.HIGH.dot   },
-              { key: 'med',    label: 'Medium', state: showMed,  setter: setShowMed,  color: P.MEDIUM.dot },
-              { key: 'low',    label: 'Low',    state: showLow,  setter: setShowLow,  color: P.LOW.dot    },
+              { key: 'high', label: 'High', state: showHigh, setter: setShowHigh, color: P.HIGH.dot },
+              { key: 'med', label: 'Medium', state: showMed, setter: setShowMed, color: P.MEDIUM.dot },
+              { key: 'low', label: 'Low', state: showLow, setter: setShowLow, color: P.LOW.dot },
             ].map(({ key, label, state, setter, color }) => (
               <label key={key} className="flex items-center gap-2.5 cursor-pointer group">
                 <input type="checkbox" checked={state} onChange={e => setter(e.target.checked)}
@@ -1521,7 +1519,7 @@ export default function CalendarPage() {
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <button
@@ -1529,7 +1527,7 @@ export default function CalendarPage() {
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
@@ -1547,19 +1545,18 @@ export default function CalendarPage() {
           {/* View switcher */}
           <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5">
             {[
-              { v: 'timeGridDay',   label: 'Day'   },
-              { v: 'timeGridWeek',  label: 'Week'  },
-              { v: 'timeGrid4Day',  label: '4 Day' },
-              { v: 'dayGridMonth',  label: 'Month' },
+              { v: 'timeGridDay', label: 'Day' },
+              { v: 'timeGridWeek', label: 'Week' },
+              { v: 'timeGrid4Day', label: '4 Day' },
+              { v: 'dayGridMonth', label: 'Month' },
             ].map(({ v, label }) => (
               <button
                 key={v}
                 onClick={() => changeView(v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  view === v
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${view === v
                     ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                  }`}
               >
                 {label}
               </button>
@@ -1576,38 +1573,38 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
-            <FullCalendar
-              ref={calRef}
-              plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-              initialView="timeGridWeek"
-              views={{
-                timeGrid4Day: { type: 'timeGrid', duration: { days: 4 }, buttonText: '4 day' },
-              }}
-              headerToolbar={false}
-              selectable
-              selectMirror
-              editable
-              eventResizableFromStart
-              nowIndicator
-              allDaySlot
-              allDayText="Due"
-              slotMinTime={slotRange.min}
-              slotMaxTime={slotRange.max}
-              scrollTime={slotRange.scroll}
-              slotLabelFormat={{ hour: 'numeric', hour12: true }}
-              height="auto"
-              events={filteredEvents}
-              select={handleDateSelect}
-              eventClick={handleEventClick}
-              eventDrop={handleEventDrop}
-              eventResize={handleEventResize}
-              dayHeaderContent={dayHeaderContent}
-              eventContent={eventContent}
-              datesSet={({ view, start }) => {
-                setCalTitle(view.title)
-                setSyncMonth(start)
-              }}
-            />
+              <FullCalendar
+                ref={calRef}
+                plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                views={{
+                  timeGrid4Day: { type: 'timeGrid', duration: { days: 4 }, buttonText: '4 day' },
+                }}
+                headerToolbar={false}
+                selectable
+                selectMirror
+                editable
+                eventResizableFromStart
+                nowIndicator
+                allDaySlot
+                allDayText="Due"
+                slotMinTime={slotRange.min}
+                slotMaxTime={slotRange.max}
+                scrollTime={slotRange.scroll}
+                slotLabelFormat={{ hour: 'numeric', hour12: true }}
+                height="auto"
+                events={filteredEvents}
+                select={handleDateSelect}
+                eventClick={handleEventClick}
+                eventDrop={handleEventDrop}
+                eventResize={handleEventResize}
+                dayHeaderContent={dayHeaderContent}
+                eventContent={eventContent}
+                datesSet={({ view, start }) => {
+                  setCalTitle(view.title)
+                  setSyncMonth(start)
+                }}
+              />
             </div>
           )}
         </div>
