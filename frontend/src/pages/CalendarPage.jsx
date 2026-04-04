@@ -28,7 +28,7 @@ import { fetchBlocks, createBlock, createBlocksBulk, updateBlock, deleteBlock } 
 import { fetchTasks, markTaskComplete } from '../services/taskService'
 import { useTimer } from '../context/TimerContext'
 import { detectOverlap } from '../utils/detectOverlap'
-import { smartScheduleTask, generateRecurringSlots } from '../utils/smartSchedule'
+import { smartScheduleTask, generateRecurringSlots, findFreeSlot } from '../utils/smartSchedule'
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const P = {
@@ -890,6 +890,11 @@ export default function CalendarPage() {
 
   const [blocks,    setBlocks]    = useState([])
   const [tasks,     setTasks]     = useState([])
+  const [importOpen,    setImportOpen]    = useState(false)
+  const [importSelected, setImportSelected] = useState(new Set())
+  const [importAdding,  setImportAdding]  = useState(false)
+  const [importDone,    setImportDone]    = useState(false)
+  const [importError,   setImportError]   = useState('')
   const [loading,   setLoading]   = useState(true)
   const [view,      setView]      = useState('timeGridWeek')
   const [calTitle,  setCalTitle]  = useState('')
@@ -1171,6 +1176,49 @@ export default function CalendarPage() {
     setModal(null)
   }
 
+  async function handleImportTasks() {
+    if (!importSelected.size) return
+    setImportAdding(true)
+    setImportError('')
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const existingBlocks = [...blocks]
+      const newBlocks = []
+
+      for (const taskId of importSelected) {
+        const task = tasks.find(t => t.id === taskId)
+        if (!task) continue
+        const dateStr = task.deadline || today
+        const durationMins = task.estimated_minutes || pageFocusMins
+
+        // Find a free slot — no double booking
+        const slot = findFreeSlot(dateStr, durationMins, [
+          ...existingBlocks,
+          ...newBlocks.map(b => ({ start_time: b.start_time, end_time: b.end_time })),
+        ])
+
+        if (!slot) continue
+        newBlocks.push({
+          title:      task.title,
+          start_time: slot.start_time,
+          end_time:   slot.end_time,
+          task_id:    task.id,
+          color:      task.priority === 'HIGH' ? '#ef4444' : task.priority === 'LOW' ? '#10b981' : '#6366f1',
+        })
+      }
+
+      if (newBlocks.length) {
+        const created = await createBlocksBulk(newBlocks)
+        setBlocks(prev => [...prev, ...created])
+      }
+      setImportDone(true)
+      setImportSelected(new Set())
+    } catch (err) {
+      setImportError(err.response?.data?.detail || 'Failed to import tasks.')
+    }
+    setImportAdding(false)
+  }
+
   async function handleDelete(blockId) {
     const block = blocks.find(b => b.id === blockId)
     const isRecurring = block?.recurrence && block.recurrence !== 'NONE'
@@ -1264,7 +1312,7 @@ export default function CalendarPage() {
       <aside className="w-56 shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900 overflow-y-auto">
 
         {/* Create button */}
-        <div className="p-4">
+        <div className="p-4 space-y-2">
           <button
             onClick={() => {
               const { start, end } = defaultBlockTimes(pageFocusMins)
@@ -1279,7 +1327,77 @@ export default function CalendarPage() {
             </svg>
             New Task Block
           </button>
+          <button
+            onClick={() => { setImportOpen(o => !o); setImportDone(false); setImportError(''); setImportSelected(new Set()) }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-2xl
+                       border border-indigo-200 dark:border-indigo-800 hover:shadow-md text-sm font-semibold
+                       text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 transition-all hover:border-indigo-400 group"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            Import Tasks
+          </button>
         </div>
+
+        {/* Import Tasks panel */}
+        {importOpen && (
+          <div className="mx-4 mb-3 border border-indigo-200 dark:border-indigo-800 rounded-xl overflow-hidden">
+            <div className="bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Import Tasks</span>
+              <button onClick={() => setImportOpen(false)} className="text-indigo-400 hover:text-indigo-700">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            <div className="bg-white dark:bg-gray-900 p-3 space-y-1.5 max-h-60 overflow-y-auto">
+              {tasks.filter(t => t.status !== 'DONE').length === 0 ? (
+                <p className="text-xs text-gray-400 py-2 text-center">No tasks to import</p>
+              ) : (
+                tasks.filter(t => t.status !== 'DONE').map(task => {
+                  const checked = importSelected.has(task.id)
+                  const dotColor = task.priority === 'HIGH' ? 'bg-red-400' : task.priority === 'LOW' ? 'bg-emerald-400' : 'bg-amber-400'
+                  return (
+                    <label key={task.id} className="flex items-start gap-2 cursor-pointer group p-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setImportSelected(prev => {
+                          const next = new Set(prev)
+                          checked ? next.delete(task.id) : next.add(task.id)
+                          return next
+                        })}
+                        className="mt-0.5 w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer shrink-0"
+                      />
+                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1 ${dotColor}`} />
+                      <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight line-clamp-2">{task.title}</span>
+                    </label>
+                  )
+                })
+              )}
+            </div>
+            {importError && <p className="text-xs text-red-500 px-3 pb-2">{importError}</p>}
+            <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 px-3 py-2.5">
+              {importDone ? (
+                <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Added with no conflicts!
+                </p>
+              ) : (
+                <button
+                  onClick={handleImportTasks}
+                  disabled={importAdding || importSelected.size === 0}
+                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg disabled:opacity-40 transition-colors"
+                >
+                  {importAdding ? 'Scheduling…' : `Schedule ${importSelected.size || ''} Task${importSelected.size !== 1 ? 's' : ''}`}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Mini calendar */}
         <MiniCalendar

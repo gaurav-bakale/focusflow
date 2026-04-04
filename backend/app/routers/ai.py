@@ -417,7 +417,7 @@ async def prioritize_tasks(
 # ── Gemini-powered Task Generation ──────────────────────────────────────
 
 GENERATE_PROMPT = """You are a productivity assistant. The user wants to accomplish a goal.
-Break it down into 3-6 actionable tasks.
+Break it down into EXACTLY 5 actionable tasks — no more, no less.
 
 For each task, provide:
 - title: A clear, actionable task title
@@ -447,7 +447,7 @@ Current tasks:
 
 User's feedback: {feedback}
 
-Update the tasks based on the feedback. You may add, remove, or modify tasks.
+Update the tasks based on the feedback. Always return EXACTLY 5 tasks — no more, no less.
 
 Respond ONLY with valid JSON in this exact format (no markdown, no code fences):
 {{

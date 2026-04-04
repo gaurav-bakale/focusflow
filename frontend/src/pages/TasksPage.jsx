@@ -11,6 +11,7 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import {
   fetchTasks,
@@ -19,9 +20,10 @@ import {
   deleteTask,
   markTaskComplete,
 } from '../services/taskService'
-import { fetchBlocks, createBlock, createBlocksBulk } from '../services/otherServices'
+import { fetchBlocks, createBlock, createBlocksBulk, aiSchedule } from '../services/otherServices'
 import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
 import { prioritizeTasks, breakdownTask } from '../services/otherServices'
+import { findFreeSlot } from '../utils/smartSchedule'
 import CommentThread from '../components/CommentThread'
 import { useTimer } from '../context/TimerContext'
 import { generateRecurringSlots } from '../utils/smartSchedule'
@@ -123,7 +125,16 @@ function fmt12h(t) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const { focusMins } = useTimer()
+  const { focusMins, startFocus } = useTimer()
+  const navigate = useNavigate()
+
+  // ── AI Schedule panel ────────────────────────────────────────────────────
+  const [scheduleOpen,   setScheduleOpen]   = useState(false)
+  const [scheduleData,   setScheduleData]   = useState(null)
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleAdding, setScheduleAdding] = useState(false)
+  const [scheduleAdded,  setScheduleAdded]  = useState(false)
+  const [scheduleError,  setScheduleError]  = useState('')
 
   const [tasks, setTasks]             = useState([])
   const [loading, setLoading]         = useState(true)
@@ -360,6 +371,128 @@ export default function TasksPage() {
     } catch (err) {
       console.error('Failed to save task:', err)
     }
+  }
+
+  async function handleAISchedule() {
+    const todoTasks = tasks.filter(t => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+    if (!todoTasks.length) return
+    setScheduleLoading(true)
+    setScheduleError('')
+    setScheduleData(null)
+    setScheduleAdded(false)
+    try {
+      const payload = todoTasks.map(t => ({
+        id: t.id, title: t.title, priority: t.priority,
+        deadline: t.deadline || null, status: t.status,
+        estimated_minutes: t.estimated_minutes || focusMins,
+      }))
+      const res = await aiSchedule(payload)
+      setScheduleData(res)
+    } catch (err) {
+      setScheduleError(err.response?.data?.detail || 'AI schedule failed. Make sure your Gemini API key is set in Settings.')
+    }
+    setScheduleLoading(false)
+  }
+
+  async function handleAddScheduleToCalendar() {
+    if (!scheduleData?.schedule?.length) return
+    setScheduleAdding(true)
+    setScheduleError('')
+    try {
+      const existingBlocks = await fetchBlocks()
+
+      // Only match TODO / IN_PROGRESS tasks — skip AI placeholders like "Lunch Break"
+      const eligible = tasks.filter(t => t.status === 'TODO' || t.status === 'IN_PROGRESS')
+      const titleToTask = {}
+      eligible.forEach(t => { titleToTask[t.title.toLowerCase().trim()] = t })
+
+      const orderedTasks = scheduleData.schedule
+        .map(b => titleToTask[b.task_title?.toLowerCase().trim()])
+        .filter(Boolean)
+
+      if (!orderedTasks.length) {
+        setScheduleError('No matching TODO / In Progress tasks found in the schedule.')
+        setScheduleAdding(false)
+        return
+      }
+
+      const GAP_MINS = 30
+      const newBlocks  = []
+      const allBlocks  = [...existingBlocks] // grows so each slot-search sees prior placements
+
+      // Parse a local datetime string ("YYYY-MM-DDTHH:MM") safely as local time
+      const parseLocal = (str) => {
+        const [datePart, timePart = '00:00'] = str.split('T')
+        const [y, mo, d] = datePart.split('-').map(Number)
+        const [h = 0, mi = 0] = timePart.split(':').map(Number)
+        return new Date(y, mo - 1, d, h, mi)
+      }
+      const toLocalStr = (dt) => {
+        const p = n => String(n).padStart(2, '0')
+        return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}T${p(dt.getHours())}:${p(dt.getMinutes())}`
+      }
+      const dateStr = (dt) => {
+        const p = n => String(n).padStart(2, '0')
+        return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`
+      }
+
+      // Start cursor at next 30-min boundary from now
+      const now = new Date()
+      let cursor = new Date(Math.ceil(now.getTime() / (GAP_MINS * 60000)) * (GAP_MINS * 60000))
+
+      const priorityColor = { HIGH: '#ef4444', MEDIUM: '#6366f1', LOW: '#10b981' }
+
+      for (let i = 0; i < orderedTasks.length; i++) {
+        const task = orderedTasks[i]
+        const durationMins = task.estimated_minutes || (2 * focusMins)
+
+        // Try today first, then up to 6 more days
+        let slot = null
+        let tryDate = new Date(cursor)
+
+        for (let day = 0; day < 7; day++) {
+          slot = findFreeSlot(dateStr(tryDate), durationMins, allBlocks, null, tryDate)
+          if (slot) break
+          // Day is full — try next day at 6 AM
+          tryDate = new Date(tryDate.getFullYear(), tryDate.getMonth(), tryDate.getDate() + 1, 6, 0)
+        }
+
+        if (!slot) continue
+
+        // Task block
+        const taskBlock = {
+          title:      task.title,
+          start_time: slot.start_time,
+          end_time:   slot.end_time,
+          task_id:    task.id,
+          color:      priorityColor[task.priority] || '#6366f1',
+        }
+        newBlocks.push(taskBlock)
+        allBlocks.push({ start_time: slot.start_time, end_time: slot.end_time })
+
+        // 30-min Rest / Free block after each task (except the last)
+        if (i < orderedTasks.length - 1) {
+          const restStart = parseLocal(slot.end_time)
+          const restEnd   = new Date(restStart.getTime() + GAP_MINS * 60000)
+          const restBlock = {
+            title:      'Rest / Free',
+            start_time: toLocalStr(restStart),
+            end_time:   toLocalStr(restEnd),
+            task_id:    null,
+            color:      '#94a3b8',
+          }
+          newBlocks.push(restBlock)
+          allBlocks.push({ start_time: restBlock.start_time, end_time: restBlock.end_time })
+          cursor = restEnd
+        }
+      }
+
+      if (newBlocks.length) await createBlocksBulk(newBlocks)
+      setScheduleAdded(true)
+    } catch (err) {
+      setScheduleError(err.response?.data?.detail || 'Failed to add to calendar.')
+    }
+    setScheduleAdding(false)
   }
 
   async function handleDelete(taskId) {
@@ -776,6 +909,84 @@ export default function TasksPage() {
         )}
       </div>
 
+      {/* ── AI Schedule bar ──────────────────────────────────────────────── */}
+      <div className="mb-4 border-2 border-indigo-200 dark:border-indigo-800 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 dark:bg-indigo-950/40">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-extrabold text-indigo-700 dark:text-indigo-300">📅 AI Schedule</span>
+            <span className="text-xs text-indigo-500 dark:text-indigo-400">Auto-plan your tasks for today</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setScheduleOpen(o => !o); if (!scheduleOpen && !scheduleData) handleAISchedule() }}
+              disabled={scheduleLoading || tasks.filter(t => t.status !== 'DONE').length === 0}
+              className="px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-40 transition-colors"
+            >
+              {scheduleLoading ? 'Planning…' : scheduleOpen ? 'Hide' : 'Plan My Day'}
+            </button>
+          </div>
+        </div>
+
+        {scheduleOpen && (
+          <div className="px-4 py-4 bg-white dark:bg-gray-900 border-t border-indigo-100 dark:border-indigo-900">
+            {scheduleError && (
+              <p className="text-xs text-red-500 font-medium mb-3">{scheduleError}</p>
+            )}
+            {scheduleLoading && (
+              <div className="flex items-center gap-2 py-2">
+                <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-gray-400">AI is building your schedule…</span>
+              </div>
+            )}
+            {scheduleData && !scheduleLoading && (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{scheduleData.summary}</p>
+                <div className="grid grid-cols-2 gap-2 mb-4 sm:grid-cols-3 lg:grid-cols-4">
+                  {(scheduleData.schedule || []).map((block, i) => (
+                    <div key={i} className="flex items-start gap-2 border border-indigo-100 dark:border-indigo-900 rounded-lg p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20">
+                      <span className="text-xs font-mono font-bold text-indigo-500 shrink-0 mt-0.5">{block.time}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{block.task_title}</p>
+                        <p className="text-xs text-gray-400">{block.duration_minutes}min</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {scheduleAdded ? (
+                  <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Added to calendar — no conflicts!</span>
+                    </div>
+                    <button onClick={() => navigate('/calendar')} className="text-xs font-bold text-emerald-600 hover:text-emerald-800 underline">
+                      View Calendar →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAddScheduleToCalendar}
+                      disabled={scheduleAdding}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg disabled:opacity-50 transition-colors"
+                    >
+                      {scheduleAdding ? 'Adding…' : '📅 Add to Calendar'}
+                    </button>
+                    <button
+                      onClick={() => { setScheduleData(null); setScheduleAdded(false); handleAISchedule() }}
+                      className="px-4 py-2 border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* ── Kanban columns ────────────────────────────────────────────────── */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-3 gap-6">
@@ -950,8 +1161,21 @@ export default function TasksPage() {
                                   </div>
                                 )}
 
+                                {/* Pomodoro CTA — always visible on IN_PROGRESS cards */}
+                                {task.status === 'IN_PROGRESS' && (
+                                  <div className="mt-3">
+                                    <button
+                                      onClick={() => { startFocus(task.id); navigate('/timer') }}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-2 border-orange-400 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 font-bold text-xs hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:border-orange-500 hover:scale-105 active:scale-95 transition-all duration-150 shadow-sm"
+                                    >
+                                      <span className="animate-pulse">🍅</span>
+                                      Start Pomodoro
+                                    </button>
+                                  </div>
+                                )}
+
                                 {/* Hover actions */}
-                                <div className="flex gap-3 mt-3 pt-3 border-t border-gray-200/60 dark:border-gray-700/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex gap-3 mt-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
                                   <button onClick={() => openModal(task)}
                                     className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Edit</button>
                                   {task.status !== 'DONE' && (

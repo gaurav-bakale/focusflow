@@ -15,8 +15,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
-import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiSchedule, aiFrog, aiTips } from '../services/otherServices'
-import { fetchTasks, markTaskComplete, createTask, fetchTaskAnalytics } from '../services/taskService'
+import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiFrog, aiTips } from '../services/otherServices'
+import { fetchTasks, markTaskComplete, createTask, updateTask, fetchTaskAnalytics } from '../services/taskService'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
@@ -89,10 +89,9 @@ export default function DashboardPage() {
   const [scheduleMsg, setScheduleMsg]     = useState('')
 
   // AI widgets
-  const [aiScheduleData, setAiScheduleData] = useState(null)
-  const [aiScheduleLoading, setAiScheduleLoading] = useState(false)
   const [aiFrogData, setAiFrogData]         = useState(null)
   const [aiFrogLoading, setAiFrogLoading]   = useState(false)
+  const [frogStarting, setFrogStarting]     = useState(false)
   const [aiTipsData, setAiTipsData]         = useState(null)
   const [aiTipsLoading, setAiTipsLoading]   = useState(false)
   const [aiWidgetError, setAiWidgetError]   = useState('')
@@ -201,25 +200,6 @@ export default function DashboardPage() {
     setAdding(false)
   }
 
-  // ── AI handlers ──────────────────────────────────────────────────────
-  async function handleAISchedule() {
-    if (tasks.length === 0) return
-    setAiScheduleLoading(true)
-    setAiWidgetError('')
-    try {
-      const payload = tasks.map(t => ({
-        id: t.id, title: t.title, priority: t.priority,
-        deadline: t.deadline || null, status: t.status,
-      }))
-      const res = await aiSchedule(payload)
-      setAiScheduleData(res)
-    } catch (err) {
-      setAiWidgetError(err.response?.data?.detail || 'AI schedule failed.')
-    } finally {
-      setAiScheduleLoading(false)
-    }
-  }
-
   async function handleAIFrog() {
     if (tasks.length === 0) return
     setAiFrogLoading(true)
@@ -236,6 +216,19 @@ export default function DashboardPage() {
     } finally {
       setAiFrogLoading(false)
     }
+  }
+
+  async function handleFrogStart() {
+    if (!aiFrogData?.task_id) return
+    setFrogStarting(true)
+    try {
+      await updateTask(aiFrogData.task_id, { status: 'IN_PROGRESS' })
+      setTasks(prev => prev.map(t => t.id === aiFrogData.task_id ? { ...t, status: 'IN_PROGRESS' } : t))
+      setAiFrogData(prev => ({ ...prev, started: true }))
+    } catch {
+      // silently ignore
+    }
+    setFrogStarting(false)
   }
 
   async function handleAITips() {
@@ -560,6 +553,11 @@ export default function DashboardPage() {
               </ul>
             )}
           </div>
+
+          {/* AI Task Planner */}
+          <AITaskGenerator onTasksCreated={() => {
+            fetchTasks().then(t => setTasks(t.filter(tk => !tk.is_complete).slice(0, 8))).catch(() => {})
+          }} />
         </div>
 
         {/* ── Right: analytics ──────────────────────────────────────────────── */}
@@ -608,6 +606,104 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* AI Widget Error */}
+          {aiWidgetError && (
+            <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3 flex items-center justify-between">
+              <p className="text-xs font-semibold text-red-700 dark:text-red-400">{aiWidgetError}</p>
+              <button onClick={() => setAiWidgetError('')} className="text-red-400 hover:text-red-700">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* Eat That Frog */}
+          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+                Eat That Frog 🐸
+              </h2>
+              <button
+                onClick={handleAIFrog}
+                disabled={aiFrogLoading || tasks.length === 0}
+                className="text-xs font-bold text-green-600 hover:text-green-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {aiFrogLoading ? 'Thinking…' : aiFrogData ? 'Refresh' : 'Find My Frog'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Tackle your most important task first.</p>
+
+            {aiFrogLoading && (
+              <div className="flex items-center gap-2 py-2">
+                <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-gray-400">AI is finding your frog...</span>
+              </div>
+            )}
+
+            {!aiFrogLoading && !aiFrogData && (
+              <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
+                <p className="text-2xl mb-2">🐸</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+                  Brian Tracy&apos;s method: start your day by doing the hardest, most important task.
+                </p>
+                <button
+                  onClick={handleAIFrog}
+                  disabled={tasks.length === 0}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg disabled:opacity-40 transition-colors"
+                >
+                  {tasks.length === 0 ? 'Add tasks first' : 'Find My Frog'}
+                </button>
+              </div>
+            )}
+
+            {!aiFrogLoading && aiFrogData && (() => {
+              const frogTask = tasks.find(t => t.id === aiFrogData.task_id)
+              const PRIORITY_BADGE = { HIGH: 'bg-red-100 text-red-700 border-red-200', MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200', LOW: 'bg-green-100 text-green-700 border-green-200' }
+              const priority = frogTask?.priority || 'HIGH'
+              return (
+                <div>
+                  <div className="border-2 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 rounded-lg p-4 mb-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl shrink-0 mt-0.5">🐸</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-sm font-extrabold text-gray-900 dark:text-gray-100">{aiFrogData.task_title}</p>
+                          <span className={`text-xs px-1.5 py-0.5 rounded border font-bold shrink-0 ${PRIORITY_BADGE[priority] || PRIORITY_BADGE.HIGH}`}>
+                            {priority}
+                          </span>
+                        </div>
+                        {frogTask?.deadline && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                            Due {new Date(frogTask.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-600 dark:text-gray-400 italic">{aiFrogData.reason}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {aiFrogData.started ? (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-xs font-bold">Marked as In Progress!</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleFrogStart}
+                      disabled={frogStarting}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-lg disabled:opacity-60 transition-colors"
+                    >
+                      {frogStarting ? 'Starting…' : 'Start Now →'}
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
+
           {/* Priority breakdown */}
           <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
             <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-4">
@@ -642,85 +738,6 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : null}
-          </div>
-
-          {/* AI Task Planner */}
-          <AITaskGenerator onTasksCreated={() => {
-            fetchTasks().then(t => setTasks(t.filter(tk => !tk.is_complete).slice(0, 8))).catch(() => {})
-          }} />
-
-          {/* AI Widget Error */}
-          {aiWidgetError && (
-            <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3 flex items-center justify-between">
-              <p className="text-xs font-semibold text-red-700 dark:text-red-400">{aiWidgetError}</p>
-              <button onClick={() => setAiWidgetError('')} className="text-red-400 hover:text-red-700">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* AI Frog of the Day */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                Eat That Frog
-              </h2>
-              <button
-                onClick={handleAIFrog}
-                disabled={aiFrogLoading || tasks.length === 0}
-                className="text-xs font-bold text-green-600 hover:text-green-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {aiFrogLoading ? 'Thinking…' : 'Find My Frog'}
-              </button>
-            </div>
-            {aiFrogData ? (
-              <div>
-                <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">{aiFrogData.task_title}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{aiFrogData.reason}</p>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-300 dark:text-gray-600">
-                AI will identify your most important task of the day.
-              </p>
-            )}
-          </div>
-
-          {/* AI Daily Schedule */}
-          <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                AI Schedule
-              </h2>
-              <button
-                onClick={handleAISchedule}
-                disabled={aiScheduleLoading || tasks.length === 0}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {aiScheduleLoading ? 'Planning…' : 'Plan My Day'}
-              </button>
-            </div>
-            {aiScheduleData ? (
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{aiScheduleData.summary}</p>
-                <ul className="space-y-2">
-                  {(aiScheduleData.schedule || []).map((block, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-xs font-mono font-bold text-indigo-500 shrink-0 w-16">{block.time}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{block.task_title}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{block.duration_minutes}min{block.reason ? ` — ${block.reason}` : ''}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-300 dark:text-gray-600">
-                AI will create an optimized daily schedule from your tasks.
-              </p>
-            )}
           </div>
 
           {/* AI Productivity Tips */}
