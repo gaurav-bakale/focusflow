@@ -148,3 +148,122 @@ async def test_create_task_success():
     data = response.json()
     assert data["title"] == "Write unit tests"
     assert data["priority"] == "HIGH"
+
+
+# ── Sprint 3 Tests — added by Sheshu Vrathan Tadaka (Testing/Integration) ─────
+
+@pytest.mark.asyncio
+async def test_update_task_success():
+    """
+    TC-B05: Update an existing task's title and priority.
+    Input:  JWT token + task_id + updated fields
+    Oracle: 200 response with updated fields reflected
+    Success: status_code == 200 and fields match update payload
+    Failure: non-200 or fields unchanged
+    """
+    async def _override_get_current_user():
+        return MOCK_USER
+
+    updated_task = {**MOCK_TASK, "title": "Updated title", "priority": "LOW"}
+
+    mock_db_inst = MagicMock()
+    mock_db_inst["tasks"].find_one = AsyncMock(return_value=updated_task)
+    mock_db_inst["tasks"].find_one_and_update = AsyncMock(return_value=updated_task)
+    mock_db_inst["tasks"].update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.put(
+            f"/api/tasks/{FAKE_TASK_ID}",
+            json={"title": "Updated title", "priority": "LOW"},
+            headers=get_auth_header()
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == "Updated title"
+    assert data["priority"] == "LOW"
+
+
+@pytest.mark.asyncio
+async def test_complete_task_success():
+    """
+    TC-B06: Mark an existing task as DONE.
+    Input:  JWT token + task_id
+    Oracle: 200 response with completed task returned
+    Success: status_code == 200
+    Failure: non-200 or task not marked done
+    """
+    async def _override_get_current_user():
+        return MOCK_USER
+
+    completed_task = {**MOCK_TASK, "status": "DONE", "is_complete": True}
+
+    mock_db_inst = MagicMock()
+    mock_db_inst["tasks"].find_one = AsyncMock(return_value=completed_task)
+    mock_db_inst["tasks"].find_one_and_update = AsyncMock(return_value=completed_task)
+    mock_db_inst["tasks"].update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.patch(
+            f"/api/tasks/{FAKE_TASK_ID}/complete",
+            headers=get_auth_header()
+        )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_task_success():
+    """
+    TC-B07: Delete an existing task.
+    Input:  JWT token + task_id
+    Oracle: 204 No Content
+    Success: status_code == 204
+    Failure: non-204 or task still exists
+    """
+    async def _override_get_current_user():
+        return MOCK_USER
+
+    mock_db_inst = MagicMock()
+    mock_db_inst["tasks"].find_one = AsyncMock(return_value=MOCK_TASK)
+    mock_db_inst["tasks"].delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
+    app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete(
+            f"/api/tasks/{FAKE_TASK_ID}",
+            headers=get_auth_header()
+        )
+
+    assert response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_delete_task_not_found():
+    """
+    TC-B08: Attempt to delete a task that does not exist.
+    Input:  JWT token + non-existent task_id
+    Oracle: 404 Not Found
+    Success: status_code == 404
+    Failure: non-404 returned
+    """
+    async def _override_get_current_user():
+        return MOCK_USER
+
+    mock_db_inst = MagicMock()
+    mock_db_inst["tasks"].find_one = AsyncMock(return_value=None)
+    app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
+    app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.delete(
+            f"/api/tasks/{FAKE_TASK_ID}",
+            headers=get_auth_header()
+        )
+
+    assert response.status_code == 404
