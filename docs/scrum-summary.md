@@ -104,6 +104,35 @@ The following sprints cover all development from Part B through Part C.
 
 ---
 
+## Sprint 6 — Workspace Tasks (Pre-Part-D polish)
+**Dates:** ~Apr 17, 2026
+**Theme:** Make Workspaces a first-class collaboration feature, not just a team directory
+
+### What Was Improved
+- Tasks can now belong to a workspace (`Task.workspace_id`) — every workspace member
+  sees and can edit the same pool of tasks
+- Workspace selector added to the task create/edit modal
+- Workspace filter tabs added at the top of the Tasks page (All · Personal · each workspace)
+- Workspace badge rendered on every task card (Kanban + list view)
+- `GET /api/workspaces/{id}/tasks` endpoint — drives the in-page task list on the
+  Workspaces detail modal
+- Task delete rules refined: task creator or workspace owner can delete; regular
+  members cannot destroy each other's workspace tasks
+- Workspace deletion cascades safely — tasks revert to personal ownership rather
+  than being destroyed, so no team member loses work
+
+### Stories / Epics Finished
+| Story | PR | Description |
+|---|---|---|
+| Workspace-Scoped Tasks | *this PR* | Integrate tasks with workspaces end-to-end: backend scoping, cascade, frontend selector, badge, filter, per-workspace task view, 7 new tests |
+
+### Team Contributions
+| Member | Contribution |
+|---|---|
+| Vishwesh Gopikrishnan | Full feature — backend scoping + cascade, frontend selector/filter/badge, WorkspacesPage tasks view, workspace-task test suite |
+
+---
+
 ## What Was Not Done (For Lack of Time)
 
 | Item | Reason |

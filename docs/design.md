@@ -23,6 +23,11 @@ Since Part B, the following features were designed and implemented:
 - `app/notifications/` package added — APScheduler background job + push router
 - Frontend `AITaskGenerator.jsx` rewritten as a conversational multi-step component
 - `frontend/src/utils/smartSchedule.js` — `findFreeSlot()` utility added for conflict-free scheduling
+- **Workspace-scoped tasks** — `Task.workspace_id` links tasks to a workspace;
+  all workspace members have view/edit access, enforced in
+  `TaskService._can_access` via a `workspace_members` lookup. Deleting a
+  workspace cascades `workspace_id → null` on every task so individual work
+  is preserved as personal tasks.
 
 ---
 
@@ -74,6 +79,7 @@ classDiagram
         <<MongoDB Document>>
         +id: str
         +user_id: str
+        +workspace_id: str~null~
         +title: str
         +description: str
         +priority: Priority

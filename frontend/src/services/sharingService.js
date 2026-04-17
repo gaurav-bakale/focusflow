@@ -144,6 +144,16 @@ export async function addWorkspaceMember(workspaceId, data) {
   return res.data
 }
 
+/**
+ * Fetch every task that belongs to a workspace.
+ * @param {string} workspaceId - MongoDB workspace id.
+ * @returns {Promise<Array>} Array of task objects.
+ */
+export async function fetchWorkspaceTasks(workspaceId) {
+  const res = await api.get(`/workspaces/${workspaceId}/tasks`)
+  return res.data
+}
+
 // ── Activity Feed ───────────────────────────────────────────────────────────
 
 /**

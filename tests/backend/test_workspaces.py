@@ -150,13 +150,23 @@ def _mock_db(
     # ── users collection ──
     users_col.find_one = AsyncMock(return_value=user_find_one)
 
+    # Tasks collection — needed for the cascade that clears workspace_id on
+    # workspace deletion. No-op for the create/list/member tests.
+    tasks_col = MagicMock()
+    tasks_col.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+
     collections = {
         "workspaces": workspaces_col,
         "workspace_members": members_col,
         "users": users_col,
+        "tasks": tasks_col,
     }
     db = MagicMock()
-    db.__getitem__ = MagicMock(side_effect=lambda key: collections[key])
+    db.__getitem__ = MagicMock(
+        # Auto-create any unseen collection so future callers don't crash
+        # the whole fixture just because they touch a new collection.
+        side_effect=lambda key: collections.setdefault(key, MagicMock()),
+    )
     return db
 
 

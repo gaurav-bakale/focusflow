@@ -258,6 +258,9 @@ async def test_delete_task_not_found():
     delete_result = MagicMock()
     delete_result.deleted_count = 0
     mock_db_inst = MagicMock()
+    # delete_task now loads the task first to verify ownership / workspace
+    # rights — a missing task short-circuits to 404 via the find_one check.
+    mock_db_inst["tasks"].find_one = AsyncMock(return_value=None)
     mock_db_inst["tasks"].delete_one = AsyncMock(return_value=delete_result)
     app.dependency_overrides[get_current_user_dependency] = _override_get_current_user
     app.dependency_overrides[get_db_dependency] = lambda: mock_db_inst

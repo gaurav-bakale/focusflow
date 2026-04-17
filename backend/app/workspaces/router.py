@@ -30,6 +30,7 @@ from fastapi import APIRouter, Depends, status
 
 from app.auth import get_current_user
 from app.db import get_db
+from app.tasks.models import TaskResponse
 from app.workspaces.models import (
     MemberAdd,
     MemberResponse,
@@ -182,3 +183,24 @@ async def remove_member(
 ):
     """Remove a member — owner can remove anyone, members can leave."""
     await svc.remove_member(user, workspace_id, member_user_id)
+
+
+# ── List workspace tasks ────────────────────────────────────────────────────
+
+@router.get(
+    "/{workspace_id}/tasks",
+    response_model=List[TaskResponse],
+    summary="List tasks in a workspace",
+)
+async def list_workspace_tasks(
+    workspace_id: str,
+    user=Depends(get_current_user),
+    svc: WorkspaceService = Depends(_svc),
+):
+    """
+    List every task assigned to this workspace.
+
+    Requires the caller to be a member (or owner) of the workspace.
+    All workspace members can see and edit every task in the workspace.
+    """
+    return await svc.list_workspace_tasks(user, workspace_id)

@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import {
   fetchTasks,
@@ -21,7 +21,7 @@ import {
   markTaskComplete,
 } from '../services/taskService'
 import { fetchBlocks, createBlock, createBlocksBulk, aiSchedule } from '../services/otherServices'
-import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
+import { shareTask, fetchTaskShares, revokeShare, fetchWorkspaces } from '../services/sharingService'
 import { prioritizeTasks, breakdownTask } from '../services/otherServices'
 import { findFreeSlot } from '../utils/smartSchedule'
 import CommentThread from '../components/CommentThread'
@@ -115,6 +115,7 @@ function fmt12h(t) {
 export default function TasksPage() {
   const { focusMins, startFocus } = useTimer()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // ── AI Schedule panel ────────────────────────────────────────────────────
   const [scheduleOpen,   setScheduleOpen]   = useState(false)
@@ -133,7 +134,14 @@ export default function TasksPage() {
     title: '', description: '', priority: 'MEDIUM',
     deadline: '', due_time: '', recurrence: 'NONE',
     estimated_minutes: '', status: 'TODO', categories: [],
+    workspace_id: '',
   })
+
+  // ── Workspaces ────────────────────────────────────────────────────────────
+  // List of workspaces the user belongs to, used for the in-modal selector
+  // and the top-of-page filter tabs.
+  const [workspaces, setWorkspaces]               = useState([])
+  const [workspaceFilter, setWorkspaceFilter]     = useState('ALL')
 
   const [overlapError, setOverlapError] = useState('')
 
@@ -164,7 +172,14 @@ export default function TasksPage() {
   const [breakdownLoading, setBreakdownLoading]   = useState(false)
   const [subtaskInput, setSubtaskInput]           = useState('')
 
-  useEffect(() => { loadTasks() }, [])
+  useEffect(() => { loadTasks(); loadWorkspaces() }, [])
+
+  // Honour ?workspace=<id> deep-link from WorkspacesPage — pre-select the
+  // workspace filter on mount.
+  useEffect(() => {
+    const ws = searchParams.get('workspace')
+    if (ws) setWorkspaceFilter(ws)
+  }, [searchParams])
 
   async function loadTasks() {
     try {
@@ -175,6 +190,17 @@ export default function TasksPage() {
       setTasks([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadWorkspaces() {
+    try {
+      const data = await fetchWorkspaces()
+      setWorkspaces(Array.isArray(data) ? data : [])
+    } catch (e) {
+      // Non-critical — workspaces are optional. Swallow to keep personal tasks working.
+      console.error('Failed to load workspaces:', e)
+      setWorkspaces([])
     }
   }
 
@@ -218,6 +244,9 @@ export default function TasksPage() {
       }
       if (filterPriority   !== 'ALL' && t.priority  !== filterPriority)   return false
       if (filterStatus     !== 'ALL' && t.status    !== filterStatus)     return false
+      if (workspaceFilter  === 'PERSONAL' && t.workspace_id)              return false
+      if (workspaceFilter !== 'ALL' && workspaceFilter !== 'PERSONAL'
+          && t.workspace_id !== workspaceFilter)                           return false
       if (filterRecurrence !== 'ALL') {
         const r = t.recurrence || 'NONE'
         if (filterRecurrence === 'RECURRING' && r === 'NONE') return false
@@ -232,9 +261,9 @@ export default function TasksPage() {
       }
       return true
     })
-  }, [tasks, searchText, filterPriority, filterStatus, filterDeadline, filterRecurrence])
+  }, [tasks, searchText, filterPriority, filterStatus, filterDeadline, filterRecurrence, workspaceFilter])
 
-  const hasFilters = !!searchText || filterPriority !== 'ALL' || filterStatus !== 'ALL' || filterDeadline !== 'ALL' || filterRecurrence !== 'ALL'
+  const hasFilters = !!searchText || filterPriority !== 'ALL' || filterStatus !== 'ALL' || filterDeadline !== 'ALL' || filterRecurrence !== 'ALL' || workspaceFilter !== 'ALL'
 
   const tasksByStatus = {
     TODO:        filteredTasks.filter(t => t.status === 'TODO'),
@@ -257,14 +286,21 @@ export default function TasksPage() {
         status:            task.status,
         categories:        task.categories || [],
         subtasks:          (task.subtasks || []).map(s => ({ title: s.title, status: s.status })),
+        workspace_id:      task.workspace_id || '',
       })
     } else {
+      // Default new tasks to the currently selected workspace filter, so
+      // creating a task while "CSYE 7230" is the active filter lands it there.
+      const defaultWs = (workspaceFilter !== 'ALL' && workspaceFilter !== 'PERSONAL')
+        ? workspaceFilter
+        : ''
       setEditingTask(null)
       setFormData({
         title: '', description: '', priority: 'MEDIUM',
         deadline: '', due_time: '', recurrence: 'NONE',
         estimated_minutes: '', status: defaultStatus, categories: [],
         subtasks: [],
+        workspace_id: defaultWs,
       })
     }
     setShowModal(true)
@@ -818,6 +854,32 @@ export default function TasksPage() {
           )}
         </div>
 
+        {/* Workspace scope — shown only when the user has at least one workspace. */}
+        {workspaces.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Workspace</span>
+            <div className="flex gap-1 flex-wrap">
+              {[
+                { v: 'ALL',      l: 'All' },
+                { v: 'PERSONAL', l: 'Personal' },
+                ...workspaces.map(w => ({ v: w.id, l: w.name })),
+              ].map(({ v, l }) => (
+                <button
+                  key={v}
+                  onClick={() => setWorkspaceFilter(v)}
+                  className={`px-3 py-1 rounded text-xs font-bold border transition-colors ${
+                    workspaceFilter === v
+                      ? 'border-gray-900 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
+                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">Priority</span>
@@ -888,7 +950,7 @@ export default function TasksPage() {
           {hasFilters && (
             <button
               aria-label="Clear all filters"
-              onClick={() => { setSearchText(''); setFilterPriority('ALL'); setFilterDeadline('ALL'); setFilterStatus('ALL'); setFilterRecurrence('ALL') }}
+              onClick={() => { setSearchText(''); setFilterPriority('ALL'); setFilterDeadline('ALL'); setFilterStatus('ALL'); setFilterRecurrence('ALL'); setWorkspaceFilter('ALL') }}
               className="ml-auto text-xs font-bold text-red-500 hover:text-red-700 border-2 border-red-200 hover:border-red-400 px-3 py-1 rounded transition-colors">
               Clear All
             </button>
@@ -1116,6 +1178,16 @@ export default function TasksPage() {
 
                                 {/* Scheduling metadata row */}
                                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                  {/* Workspace badge — shown when task belongs to a workspace */}
+                                  {task.workspace_id && (
+                                    <span
+                                      title={`Workspace · ${task.workspace_name || 'Team'}`}
+                                      className="text-xs font-bold px-1.5 py-0.5 rounded border"
+                                      style={{ color: '#1e40af', background: '#dbeafe', border: '1px solid #bfdbfe' }}
+                                    >
+                                      👥 {task.workspace_name || 'Team'}
+                                    </span>
+                                  )}
                                   {/* Task type badge — always shown */}
                                   {isRecurring ? (
                                     <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color: '#3a6758', background: '#ecefe7', border: '1px solid #dee4da' }}>
@@ -1289,6 +1361,32 @@ export default function TasksPage() {
                   className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors resize-none"
                   style={{ background: '#f3f4ee', border: '1px solid #dee4da' }} />
               </div>
+
+              {/* Workspace — select Personal or any workspace the user belongs to */}
+              {workspaces.length > 0 && (
+                <div>
+                  <label htmlFor="task-workspace" className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                    Workspace
+                    <span className="normal-case font-medium text-gray-400 dark:text-gray-500 ml-2">
+                      — who can see this task
+                    </span>
+                  </label>
+                  <select
+                    id="task-workspace"
+                    value={formData.workspace_id || ''}
+                    onChange={e => setFormData(p => ({ ...p, workspace_id: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl text-gray-900 dark:text-gray-100 focus:ring-0 outline-none transition-colors"
+                    style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}
+                  >
+                    <option value="">Personal — only you can see this</option>
+                    {workspaces.map(w => (
+                      <option key={w.id} value={w.id}>
+                        👥 {w.name} — shared with all members
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Priority + Status */}
               <div className="grid grid-cols-2 gap-3">

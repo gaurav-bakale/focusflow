@@ -269,10 +269,21 @@ class WorkspaceService:
         """
         Delete a workspace and all its memberships. Owner only.
 
+        Cascade behaviour — tasks in this workspace are **preserved**. Their
+        ``workspace_id`` is cleared (set to None), which makes them personal
+        tasks owned by whichever user created each one. This is the safest
+        default: no user loses their own work when a workspace is deleted.
+
         Raises 404 if workspace not found.
         Raises 403 if the caller is not the owner.
         """
         await self._verify_workspace_owner(user, workspace_id)
+
+        # Cascade — reset workspace_id on tasks before deleting the workspace.
+        await self.db["tasks"].update_many(
+            {"workspace_id": workspace_id},
+            {"$set": {"workspace_id": None, "updated_at": datetime.utcnow()}},
+        )
 
         await self.db["workspace_members"].delete_many(
             {"workspace_id": workspace_id}
@@ -280,6 +291,23 @@ class WorkspaceService:
         await self.db["workspaces"].delete_one(
             {"_id": self._object_id(workspace_id)}
         )
+
+    # ── List tasks in a workspace ────────────────────────────────────────────
+
+    async def list_workspace_tasks(
+        self, user: dict, workspace_id: str
+    ) -> list:
+        """
+        Return every task scoped to this workspace, newest first.
+
+        Requires the caller to be a workspace member (owner or member).
+        Delegates to TaskService to keep task serialization consistent.
+        """
+        from app.tasks.service import TaskService
+
+        await self._verify_workspace_access(user, workspace_id)
+        task_svc = TaskService(self.db)
+        return await task_svc.list_tasks(user, workspace_id=workspace_id)
 
     # ── Add member ───────────────────────────────────────────────────────────
 

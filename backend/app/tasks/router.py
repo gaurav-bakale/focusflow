@@ -32,9 +32,9 @@ Endpoints:
 #                   creation centralised and makes the service swappable.
 # ─────────────────────────────────────────────────────────────────────────────
 
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.auth import get_current_user
 from app.db import get_db
@@ -59,11 +59,20 @@ def _svc(db=Depends(get_db)) -> TaskService:
 
 @router.get("", response_model=List[TaskResponse], summary="List all tasks")
 async def list_tasks(
+    workspace_id: Optional[str] = Query(
+        None,
+        description=(
+            "Scoping filter. Omit for all accessible tasks (personal + any "
+            "workspace the user belongs to). Pass 'personal' for personal "
+            "tasks only. Pass a workspace id to list only that workspace's "
+            "tasks (requires membership)."
+        ),
+    ),
     user=Depends(get_current_user),
     svc: TaskService = Depends(_svc),
 ):
-    """Return all tasks for the authenticated user, sorted newest first."""
-    return await svc.list_tasks(user)
+    """Return tasks for the authenticated user, sorted newest first."""
+    return await svc.list_tasks(user, workspace_id=workspace_id)
 
 
 # ── Create ────────────────────────────────────────────────────────────────────

@@ -22,18 +22,50 @@ The recipient can view and edit the shared task. Shared tasks appear in their **
 
 ## Workspaces
 
-Workspaces are collaborative spaces where team members can work together.
+Workspaces are shared containers for team projects. Every workspace member sees
+the same pool of tasks and can edit any of them — it's the same task list,
+live, across everyone on the team.
 
 **Creating a Workspace:**
 1. Click **Workspaces** in the left sidebar
 2. Click **+ New Workspace**
 3. Give it a name
-4. Invite members by email
+4. Invite members by email with a role — Owner, Admin, or Member
 
-**Inside a Workspace:**
-- View all workspace members
-- See tasks and activity associated with the workspace
-- All members receive real-time updates
+**Adding tasks to a workspace:**
+1. Open the **Tasks** page
+2. Click **+ New Task** (or edit an existing one)
+3. In the modal, use the **Workspace** dropdown to pick a workspace —
+   the default "Personal" keeps the task private to you
+4. Save — the task is now visible to every member of that workspace
+
+**Filtering tasks by workspace:**
+On the Tasks page a row of tabs appears above the filters — *All · Personal ·
+&lt;each of your workspaces&gt;*. Click a tab to narrow the view.
+
+**Inside a Workspace (from the Workspaces page):**
+- See every member and their role
+- See every task in the workspace, with status at a glance
+- **Open on Tasks page →** deep-links into the Tasks board filtered to this workspace
+- Remove members, change membership, or delete the workspace
+
+**Who can do what to a workspace task:**
+
+| Action              | Owner | Admin | Member |
+| ------------------- | ----- | ----- | ------ |
+| View workspace tasks | ✅    | ✅    | ✅     |
+| Create workspace tasks | ✅  | ✅    | ✅     |
+| Edit any workspace task | ✅ | ✅    | ✅     |
+| Complete workspace tasks | ✅ | ✅    | ✅     |
+| Delete workspace tasks | ✅ own tasks + any in your workspace | ✅ own only | ✅ own only |
+| Add/remove members  | ✅    | —     | —      |
+| Delete the workspace | ✅    | —     | —      |
+
+**What happens when a workspace is deleted:**
+Nobody loses any work. Tasks in the deleted workspace automatically move back
+into each member's personal task list (whoever created each task keeps it).
+The workspace container itself is removed, and members stop seeing each
+other's tasks.
 
 ![alt text](image-8.png)
 
