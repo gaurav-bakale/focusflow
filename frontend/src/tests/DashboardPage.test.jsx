@@ -242,12 +242,13 @@ describe('data display', () => {
     // Arrange / Act
     await renderDashboard()
 
-    // Assert
+    // Assert — use exact-case match so random rotating quotes (which use
+    // lowercase words like "deep work") don't collide with the stat labels.
     await waitFor(() => {
-      expect(screen.getByText(/tasks done/i)).toBeInTheDocument()
-      expect(screen.getByText(/deep work/i)).toBeInTheDocument()
-      expect(screen.getByText(/streak/i)).toBeInTheDocument()
-      expect(screen.getByText(/completion/i)).toBeInTheDocument()
+      expect(screen.getByText('Tasks Done')).toBeInTheDocument()
+      expect(screen.getByText('Deep Work')).toBeInTheDocument()
+      expect(screen.getByText('Streak')).toBeInTheDocument()
+      expect(screen.getByText('Completion')).toBeInTheDocument()
     })
   })
 
