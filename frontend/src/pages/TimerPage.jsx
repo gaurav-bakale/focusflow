@@ -238,7 +238,13 @@ export default function TimerPage() {
   const cyclesComplete  = Math.floor(cycleCount / 4)
 
   return (
-    <div style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div
+      style={{
+        background: isFocus ? 'rgba(58,103,88,0.04)' : '#fafaf5',
+        minHeight: '100%',
+        transition: 'background 0.6s ease',
+      }}
+    >
       <div className="max-w-5xl mx-auto px-8 py-8">
 
         {/* ── Stats strip ──────────────────────────────────────────────────── */}

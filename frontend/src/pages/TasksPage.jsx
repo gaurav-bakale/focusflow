@@ -12,6 +12,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import {
   fetchTasks,
@@ -504,6 +505,12 @@ export default function TasksPage() {
       // result = { completed, next_task }
       const completed = result?.completed ?? result
       setTasks(prev => prev.map(t => t.id === completed.id ? completed : t))
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+      })
 
       // If recurring, add the new next-occurrence task to the board and
       // auto-schedule a calendar block for it silently.
@@ -603,6 +610,14 @@ export default function TasksPage() {
     if (source.droppableId === destination.droppableId && source.index === destination.index) return
     const newStatus = destination.droppableId
     setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t))
+    if (newStatus === 'DONE' && source.droppableId !== 'DONE') {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+      })
+    }
     try {
       await updateTask(draggableId, { status: newStatus })
     } catch {
@@ -1046,9 +1061,36 @@ export default function TasksPage() {
                                     : '#3a6758'
                                   }`,
                                 }}
-                                onMouseEnter={e => { if (!snapshot.isDragging) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(46,52,45,0.12)' } }}
-                                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)' }}
+                                onMouseMove={e => {
+                                  if (snapshot.isDragging) return
+                                  const el = e.currentTarget
+                                  const rect = el.getBoundingClientRect()
+                                  const px = (e.clientX - rect.left) / rect.width
+                                  const py = (e.clientY - rect.top) / rect.height
+                                  const ry = (px - 0.5) * 8
+                                  const rx = (0.5 - py) * 8
+                                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-2px)`
+                                  el.style.boxShadow = '0 10px 28px rgba(46,52,45,0.14)'
+                                  const spot = el.querySelector('[data-tilt-spotlight]')
+                                  if (spot) {
+                                    spot.style.opacity = '1'
+                                    spot.style.background = `radial-gradient(circle at ${px*100}% ${py*100}%, rgba(58,103,88,0.18), transparent 60%)`
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  const el = e.currentTarget
+                                  el.style.transform = 'perspective(600px) rotateX(0) rotateY(0) translateY(0)'
+                                  el.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)'
+                                  const spot = el.querySelector('[data-tilt-spotlight]')
+                                  if (spot) spot.style.opacity = '0'
+                                }}
                               >
+                                {/* Spotlight overlay */}
+                                <div
+                                  data-tilt-spotlight
+                                  className="absolute inset-0 pointer-events-none rounded-2xl"
+                                  style={{ opacity: 0, transition: 'opacity 0.25s ease' }}
+                                />
                                 {/* Title + priority */}
                                 <div className="flex justify-between items-start mb-2 gap-2">
                                   <div className="flex items-start gap-1.5 flex-1 min-w-0">
@@ -1317,9 +1359,26 @@ export default function TasksPage() {
           <div className="rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
             style={{ background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-5">
-              {editingTask ? 'Edit Task' : 'New Task'}
-            </h2>
+            <div className="flex items-center justify-between mb-5">
+              <h2
+                className="text-xl font-extrabold tracking-tight"
+                style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}
+              >
+                {editingTask ? 'Edit Task' : 'New Task'}
+                <span style={{ color: '#3a6758' }}>.</span>
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label="Close"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: '#ecefe7', color: '#5b6159' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Title */}

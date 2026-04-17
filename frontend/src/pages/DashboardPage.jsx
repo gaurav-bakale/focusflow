@@ -10,8 +10,9 @@
  *   • "This Week" summary
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
@@ -20,6 +21,53 @@ import { fetchTasks, markTaskComplete, createTask, updateTask, fetchTaskAnalytic
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
+
+// ── Count-up animation hook ───────────────────────────────────────────────────
+function useCountUp(target, duration = 800) {
+  const [value, setValue] = useState(0)
+  const rafRef = useRef(null)
+  useEffect(() => {
+    const numericTarget = Number(target) || 0
+    if (numericTarget === 0) { setValue(0); return }
+    const start = performance.now()
+    const from = 0
+    const step = (t) => {
+      const elapsed = t - start
+      const progress = Math.min(1, elapsed / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(from + (numericTarget - from) * eased)
+      if (progress < 1) rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => rafRef.current && cancelAnimationFrame(rafRef.current)
+  }, [target, duration])
+  return value
+}
+
+// ── Motivational quotes ───────────────────────────────────────────────────────
+const QUOTES = [
+  { q: 'Focus is the new IQ.', a: 'Cal Newport' },
+  { q: 'Deep work is like a superpower.', a: 'Cal Newport' },
+  { q: 'The secret of getting ahead is getting started.', a: 'Mark Twain' },
+  { q: 'Done is better than perfect.', a: 'Sheryl Sandberg' },
+  { q: 'Small daily improvements are the key to staggering long-term results.', a: 'Robin Sharma' },
+  { q: 'What gets measured gets managed.', a: 'Peter Drucker' },
+  { q: 'You will never find time for anything. You must make it.', a: 'Charles Buxton' },
+  { q: 'Either you run the day or the day runs you.', a: 'Jim Rohn' },
+  { q: 'Action is the foundational key to all success.', a: 'Pablo Picasso' },
+  { q: 'Discipline equals freedom.', a: 'Jocko Willink' },
+  { q: 'The best way to predict the future is to create it.', a: 'Peter Drucker' },
+  { q: 'Slow is smooth. Smooth is fast.', a: 'Navy SEALs' },
+]
+
+function fireConfetti() {
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    origin: { y: 0.7 },
+    colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+  })
+}
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const PRIORITY_DOT = {
@@ -59,15 +107,18 @@ const STAT_ICONS = {
 }
 
 // ── Small inline stat card (matches Layout's daily-goal card style) ───────────
-function StatCard({ label, value, color }) {
+function StatCard({ label, value, color, flame }) {
   const icon = STAT_ICONS[label]
   return (
-    <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden" style={{ background: '#f3f4ee' }}>
+    <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden shimmer" style={{ background: '#f3f4ee' }}>
       <div className="flex items-start justify-between mb-2">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
         {icon && <span className="shrink-0 -mt-0.5">{icon(color)}</span>}
       </div>
-      <p className="text-3xl font-extrabold font-mono" style={{ color }}>{value}</p>
+      <p className="text-3xl font-extrabold font-mono flex items-center gap-1.5" style={{ color }}>
+        {value}
+        {flame && <span className="flame-animate text-2xl leading-none">🔥</span>}
+      </p>
       <SketchLine color={color} thickness={4} />
     </div>
   )
@@ -152,6 +203,7 @@ export default function DashboardPage() {
       // result = { completed, next_task }
       setTasks(prev => prev.filter(t => t.id !== taskId))
       setStats(s => ({ ...s, tasks_done: s.tasks_done + 1 }))
+      fireConfetti()
 
       // If the completed task was recurring, the backend created the next
       // occurrence task. Auto-schedule a calendar block for it silently.
@@ -283,6 +335,35 @@ export default function DashboardPage() {
   const donePct    = analytics ? Math.round(analytics.completion_rate) : 0
   const streakDays = stats.streak_days ?? 0
 
+  // ── Count-up animations for stats ──────────────────────────────────────────
+  const tasksDoneAnim = useCountUp(stats.tasks_done ?? 0)
+  const deepWorkAnim  = useCountUp(stats.deep_work_hours ?? 0)
+  const streakAnim    = useCountUp(streakDays)
+  const donePctAnim   = useCountUp(donePct)
+
+  // ── Typing effect on the name ──────────────────────────────────────────────
+  const [typed, setTyped] = useState('')
+  useEffect(() => {
+    setTyped('')
+    let i = 0
+    const id = setInterval(() => {
+      i += 1
+      setTyped(firstName.slice(0, i))
+      if (i >= firstName.length) clearInterval(id)
+    }, 90)
+    return () => clearInterval(id)
+  }, [firstName])
+
+  // ── Rotating quotes ────────────────────────────────────────────────────────
+  const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length))
+  useEffect(() => {
+    const id = setInterval(() => {
+      setQuoteIdx(i => (i + 1) % QUOTES.length)
+    }, 15000)
+    return () => clearInterval(id)
+  }, [])
+  const currentQuote = QUOTES[quoteIdx]
+
   // Sort: HIGH → MEDIUM → LOW, then by deadline asc
   const sortedTasks = [...tasks].sort((a, b) => {
     const o = { HIGH: 0, MEDIUM: 1, LOW: 2 }
@@ -318,7 +399,10 @@ export default function DashboardPage() {
             {timeEmoji} {timeGreeting}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
-            {firstName}<span style={{ color:'#3a6758' }}>.</span>
+            {typed}
+            {typed.length < firstName.length
+              ? <span className="typing-cursor" />
+              : <span style={{ color:'#3a6758' }}>.</span>}
           </h1>
           <p className="text-sm mt-1" style={{ color:'#5b6159' }}>
             {loading
@@ -339,6 +423,21 @@ export default function DashboardPage() {
         </svg>
       </div>
 
+      {/* ── Rotating quote card ───────────────────────────────────────────── */}
+      <div
+        className="rounded-2xl px-5 py-3 mb-6 flex items-center gap-3 transition-opacity duration-500"
+        style={{ background: '#ffffff', border: '1px solid #dee4da', boxShadow: '0 2px 8px rgba(46,52,45,0.04)' }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: '#3a6758' }}>
+          <path d="M7 7h3v3H7V7zm0 5h3v3H7v-3zm7-5h3v3h-3V7zm0 5h3v3h-3v-3z" fill="currentColor" opacity="0.25"/>
+          <path d="M6 6h4v4H6V6zm0 5h4v4H6v-4zm7-5h4v4h-4V6zm0 5h4v4h-4v-4z" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+        <p key={quoteIdx} className="text-sm italic flex-1 page-enter" style={{ color: '#5b6159' }}>
+          "{currentQuote.q}"
+          <span className="not-italic font-bold ml-2" style={{ color: '#aeb4aa' }}>— {currentQuote.a}</span>
+        </p>
+      </div>
+
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -348,10 +447,10 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" style={{ opacity:1 }}>
-          <div className="card-enter-1"><StatCard label="Tasks Done"    value={stats.tasks_done}          color="#34D399" /></div>
-          <div className="card-enter-2"><StatCard label="Deep Work"     value={`${stats.deep_work_hours}h`} color="#FB7185" /></div>
-          <div className="card-enter-3"><StatCard label="Streak"        value={`${streakDays}d`}           color="#FBBF24" /></div>
-          <div className="card-enter-4"><StatCard label="Completion"    value={`${donePct}%`}              color="#A78BFA" /></div>
+          <div className="card-enter-1"><StatCard label="Tasks Done" value={Math.round(tasksDoneAnim)}                    color="#34D399" /></div>
+          <div className="card-enter-2"><StatCard label="Deep Work"  value={`${deepWorkAnim.toFixed(1)}h`}                 color="#FB7185" /></div>
+          <div className="card-enter-3"><StatCard label="Streak"     value={`${Math.round(streakAnim)}d`} flame={streakDays > 0} color="#FBBF24" /></div>
+          <div className="card-enter-4"><StatCard label="Completion" value={`${Math.round(donePctAnim)}%`}                 color="#A78BFA" /></div>
         </div>
       )}
 
@@ -515,6 +614,35 @@ export default function DashboardPage() {
                     <div className="w-12 h-3 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
                   </div>
                 ))}
+              </div>
+            ) : sortedTasks.length === 0 && stats.tasks_done > 0 ? (
+              <div className="py-10 px-6 flex flex-col items-center gap-3 text-center relative overflow-hidden">
+                {/* Decorative burst */}
+                <div className="absolute inset-0 pointer-events-none opacity-60" style={{
+                  background: 'radial-gradient(circle at 50% 40%, rgba(58,103,88,0.10), transparent 60%)'
+                }} />
+                <svg width="120" height="100" viewBox="0 0 120 100" fill="none" className="relative">
+                  {/* Trophy */}
+                  <path d="M45 22h30v18a15 15 0 01-30 0V22z" fill="#fbbf24" stroke="#b45309" strokeWidth="2"/>
+                  <path d="M45 28c-6 0-10 4-10 10s4 10 10 10M75 28c6 0 10 4 10 10s-4 10-10 10" stroke="#b45309" strokeWidth="2" fill="none"/>
+                  <rect x="50" y="58" width="20" height="8" fill="#fbbf24" stroke="#b45309" strokeWidth="2"/>
+                  <rect x="40" y="66" width="40" height="6" rx="1" fill="#3a6758" stroke="#2e342d" strokeWidth="1.5"/>
+                  {/* Star sparkles */}
+                  <text x="18" y="30" fontSize="18">✨</text>
+                  <text x="92" y="24" fontSize="16">⭐</text>
+                  <text x="10" y="78" fontSize="14">🎉</text>
+                  <text x="96" y="82" fontSize="14">🎊</text>
+                </svg>
+                <h3 className="text-2xl font-extrabold relative" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
+                  You crushed it!
+                </h3>
+                <p className="text-sm relative" style={{ color:'#5b6159' }}>
+                  {stats.tasks_done} task{stats.tasks_done !== 1 ? 's' : ''} done today
+                  {streakDays > 0 && <> · {streakDays}-day streak <span className="flame-animate inline-block">🔥</span></>}
+                </p>
+                <p className="text-xs relative" style={{ color:'#aeb4aa' }}>
+                  Add another below, or take a well-earned break.
+                </p>
               </div>
             ) : sortedTasks.length === 0 ? (
               <div className="py-10 flex flex-col items-center gap-3">

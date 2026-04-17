@@ -61,6 +61,12 @@ export default function Layout() {
   const { phase, display } = useTimer()
   const navigate = useNavigate()
   const [goalPct, setGoalPct] = useState(0)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     async function loadGoal() {
@@ -87,7 +93,7 @@ export default function Layout() {
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className="h-screen w-64 fixed left-0 top-0 flex flex-col py-8 z-30 rounded-r-3xl"
+        className={`h-screen w-64 fixed left-0 top-0 flex flex-col py-8 z-30 rounded-r-3xl ${phase === PHASES.FOCUS ? 'focus-mode-sidebar' : ''}`}
         style={{
           background: '#f3f4ee',
           boxShadow: '10px 0 30px rgba(46,52,45,0.04)',
@@ -211,7 +217,7 @@ export default function Layout() {
       </aside>
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col overflow-hidden ml-64" style={{ background: '#fafaf5' }}>
+      <main className="flex-1 flex flex-col overflow-hidden ml-64 dot-grid" style={{ background: '#fafaf5' }}>
 
         {/* Header */}
         <header
@@ -227,6 +233,24 @@ export default function Layout() {
 
           {/* Right: user + notifications + theme */}
           <div className="flex items-center gap-3">
+            {/* Live clock */}
+            <div className="hidden sm:flex flex-col items-end leading-tight mr-1">
+              <span
+                className="text-sm font-extrabold font-mono tabular-nums tracking-tight"
+                style={{ color: '#2e342d' }}
+              >
+                {now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </span>
+              <span
+                className="text-[10px] uppercase tracking-widest font-bold"
+                style={{ color: '#aeb4aa' }}
+              >
+                {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+
+            <div className="w-px h-5" style={{ background: '#dee4da' }} />
+
             <NotificationBell />
 
             <div className="w-px h-5" style={{ background: '#dee4da' }} />
