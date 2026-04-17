@@ -90,8 +90,20 @@ export async function refineTasks(goal, tasks, feedback) {
   return res.data
 }
 
-export async function aiSchedule(tasks, availableHours = 8) {
-  const res = await api.post('/ai/schedule', { tasks, available_hours: availableHours })
+export async function aiSchedule(tasks, opts = {}) {
+  const {
+    availableHours = 8,
+    currentTime    = null,
+    existingBlocks = [],
+    focusMinutes   = 25,
+  } = opts
+  const res = await api.post('/ai/schedule', {
+    tasks,
+    available_hours: availableHours,
+    current_time:    currentTime,
+    existing_blocks: existingBlocks,
+    focus_minutes:   focusMinutes,
+  })
   return res.data
 }
 

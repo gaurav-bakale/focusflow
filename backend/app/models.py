@@ -137,6 +137,10 @@ class AIPrioritizeRequest(BaseModel):
 class AIPrioritizeResponse(BaseModel):
     """Response model with tasks sorted by AI-assigned priority score."""
     prioritized_tasks: List[dict]
+    # Per-task change records for the UX to render a diff panel.
+    # Each item: {id, title, old_priority, new_priority, rank, reason}
+    changes: List[dict] = []
+    summary: str = ""
 
 
 # ── Gemini AI Task Generation Models ─────────────────────────────────────
@@ -183,6 +187,10 @@ class AIScheduleRequest(BaseModel):
     """Request model for AI daily schedule suggestion."""
     tasks: List[dict]
     available_hours: float = Field(8.0, ge=1, le=16)
+    # Context the planner reasons over:
+    current_time: Optional[str] = None     # ISO local, e.g. "2026-04-17T10:15"
+    existing_blocks: List[dict] = []       # pre-scheduled windows to avoid
+    focus_minutes: int = 25                # user's pomodoro unit
 
 
 class AIScheduleBlock(BaseModel):
@@ -191,6 +199,11 @@ class AIScheduleBlock(BaseModel):
     task_title: str
     duration_minutes: int
     reason: str = ""
+    # Optional fields emitted by the upgraded planner.
+    start_time: Optional[str] = None       # "YYYY-MM-DDTHH:MM" local
+    end_time:   Optional[str] = None
+    block_type: str = "TASK"               # TASK | BREAK | LUNCH | BUFFER
+    energy:     str = "MEDIUM"             # DEEP | MEDIUM | SHALLOW | REST
 
 
 class AIScheduleResponse(BaseModel):

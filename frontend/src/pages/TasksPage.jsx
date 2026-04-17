@@ -23,7 +23,7 @@ import {
   deleteTask,
   markTaskComplete,
 } from '../services/taskService'
-import { fetchBlocks, createBlock, createBlocksBulk, aiSchedule } from '../services/otherServices'
+import { fetchBlocks, createBlock, createBlocksBulk, deleteBlock, aiSchedule } from '../services/otherServices'
 import { shareTask, fetchTaskShares, revokeShare } from '../services/sharingService'
 import { prioritizeTasks, breakdownTask } from '../services/otherServices'
 import { findFreeSlot } from '../utils/smartSchedule'
@@ -160,8 +160,10 @@ export default function TasksPage() {
   const [filterRecurrence, setFilterRecurrence] = useState('ALL')
 
   // ── AI state ────────────────────────────────────────────────────────────
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError]     = useState('')
+  const [aiLoading, setAiLoading]   = useState(false)
+  const [aiError, setAiError]       = useState('')
+  const [prioritizeResult, setPrioritizeResult] = useState(null)   // {changes, summary, at}
+  const [flashTaskIds, setFlashTaskIds] = useState(new Set())      // ids to briefly highlight
   const [breakdownTaskId, setBreakdownTaskId]     = useState(null)
   const [breakdownResult, setBreakdownResult]     = useState([])
   const [breakdownLoading, setBreakdownLoading]   = useState(false)
@@ -377,7 +379,31 @@ export default function TasksPage() {
         deadline: t.deadline || null, status: t.status,
         estimated_minutes: t.estimated_minutes || focusMins,
       }))
-      const res = await aiSchedule(payload)
+
+      // Context for the planner: current local time, already-busy windows,
+      // remaining hours in the workday, and the user's pomodoro unit.
+      const now   = new Date()
+      const pad   = n => String(n).padStart(2, '0')
+      const currentTime =
+        `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 18, 0)
+      const availableHours = Math.max(1, Math.min(16, (endOfDay - now) / 3600000))
+
+      let existingBlocks = []
+      try {
+        const blocks = await fetchBlocks()
+        const todayStr = currentTime.split('T')[0]
+        existingBlocks = blocks
+          .filter(b => (b.start_time || '').startsWith(todayStr))
+          .map(b => ({ start_time: b.start_time, end_time: b.end_time, title: b.title }))
+      } catch (_) { /* non-critical */ }
+
+      const res = await aiSchedule(payload, {
+        availableHours,
+        currentTime,
+        existingBlocks,
+        focusMinutes: focusMins,
+      })
       setScheduleData(res)
     } catch (err) {
       setScheduleError(err.response?.data?.detail || 'AI schedule failed. Make sure your Gemini API key is set in Settings.')
@@ -390,100 +416,139 @@ export default function TasksPage() {
     setScheduleAdding(true)
     setScheduleError('')
     try {
-      const existingBlocks = await fetchBlocks()
+      let existingBlocks = await fetchBlocks()
 
-      // Task IDs that already have a calendar block — skip them to prevent duplicates
+      // ── Cleanup: remove today's stale auxiliary blocks from prior plans ─
+      // (Rest / Free / Break / Lunch / Buffer — blocks with no task_id.)
+      // This makes Plan My Day idempotent: re-running it replaces the plan
+      // rather than piling new blocks on top of old ones.
+      const today = new Date()
+      const pad = n => String(n).padStart(2, '0')
+      const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`
+      const AUX_TITLE_RE = /^(rest|break|lunch|buffer)\b/i
+      const stale = existingBlocks.filter(b =>
+        !b.task_id
+        && (b.start_time || '').startsWith(todayStr)
+        && AUX_TITLE_RE.test(b.title || '')
+      )
+      if (stale.length) {
+        await Promise.all(stale.map(b => deleteBlock(b.id).catch(() => {})))
+        existingBlocks = existingBlocks.filter(b => !stale.some(s => s.id === b.id))
+      }
+
       const scheduledTaskIds = new Set(existingBlocks.map(b => b.task_id).filter(Boolean))
-
-      // Only match TODO / IN_PROGRESS tasks — skip AI placeholders like "Lunch Break"
       const eligible = tasks.filter(
         t => (t.status === 'TODO' || t.status === 'IN_PROGRESS') && !scheduledTaskIds.has(t.id)
       )
       const titleToTask = {}
       eligible.forEach(t => { titleToTask[t.title.toLowerCase().trim()] = t })
 
-      const orderedTasks = scheduleData.schedule
-        .map(b => titleToTask[b.task_title?.toLowerCase().trim()])
-        .filter(Boolean)
-
-      if (!orderedTasks.length) {
-        setScheduleError('No matching TODO / In Progress tasks found in the schedule.')
-        setScheduleAdding(false)
-        return
-      }
-
-      const GAP_MINS = 30
-      const newBlocks  = []
-      const allBlocks  = [...existingBlocks] // grows so each slot-search sees prior placements
-
-      // Parse a local datetime string ("YYYY-MM-DDTHH:MM") safely as local time
+      // Helpers ────────────────────────────────────────────────────────────
       const parseLocal = (str) => {
+        if (!str) return null
         const [datePart, timePart = '00:00'] = str.split('T')
         const [y, mo, d] = datePart.split('-').map(Number)
         const [h = 0, mi = 0] = timePart.split(':').map(Number)
         return new Date(y, mo - 1, d, h, mi)
-      }
-      const toLocalStr = (dt) => {
-        const p = n => String(n).padStart(2, '0')
-        return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}T${p(dt.getHours())}:${p(dt.getMinutes())}`
       }
       const dateStr = (dt) => {
         const p = n => String(n).padStart(2, '0')
         return `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())}`
       }
 
-      // Start cursor at next 30-min boundary from now
-      const now = new Date()
-      let cursor = new Date(Math.ceil(now.getTime() / (GAP_MINS * 60000)) * (GAP_MINS * 60000))
-
       const priorityColor = { HIGH: '#ef4444', MEDIUM: '#6366f1', LOW: '#10b981' }
+      const typeColor = {
+        BREAK:  '#94a3b8',
+        LUNCH:  '#f59e0b',
+        BUFFER: '#cbd5e1',
+      }
+      const energyLabel = {
+        DEEP:    '🧠 Deep',
+        MEDIUM:  '◐ Medium',
+        SHALLOW: '◔ Shallow',
+        REST:    '☕ Rest',
+      }
 
-      for (let i = 0; i < orderedTasks.length; i++) {
-        const task = orderedTasks[i]
-        const durationMins = task.estimated_minutes || (2 * focusMins)
+      // ── Pass 1: honor AI-provided timestamps when valid ────────────────
+      const newBlocks = []
+      const allBlocks = [...existingBlocks]
+      const unplacedTaskTitles = []
 
-        // Try today first, then up to 6 more days
-        let slot = null
-        let tryDate = new Date(cursor)
+      const overlapsAny = (start, end) => {
+        const s = parseLocal(start).getTime()
+        const e = parseLocal(end).getTime()
+        return allBlocks.some(b => {
+          const bs = parseLocal(b.start_time)?.getTime()
+          const be = parseLocal(b.end_time)?.getTime()
+          return bs !== undefined && be !== undefined && s < be && e > bs
+        })
+      }
 
-        for (let day = 0; day < 7; day++) {
-          slot = findFreeSlot(dateStr(tryDate), durationMins, allBlocks, null, tryDate)
-          if (slot) break
-          // Day is full — try next day at 6 AM
-          tryDate = new Date(tryDate.getFullYear(), tryDate.getMonth(), tryDate.getDate() + 1, 6, 0)
-        }
+      for (const entry of scheduleData.schedule) {
+        const blockType = (entry.block_type || 'TASK').toUpperCase()
+        const title     = entry.task_title || 'Block'
+        const matched   = blockType === 'TASK'
+          ? titleToTask[title.toLowerCase().trim()]
+          : null
 
-        if (!slot) continue
+        // AI's intended time window
+        const aiStart = entry.start_time
+        const aiEnd   = entry.end_time
+        const aiValid = aiStart && aiEnd && parseLocal(aiStart) && parseLocal(aiEnd)
+        const aiClear = aiValid && !overlapsAny(aiStart, aiEnd)
 
-        // Task block
-        const taskBlock = {
-          title:      task.title,
-          start_time: slot.start_time,
-          end_time:   slot.end_time,
-          task_id:    task.id,
-          color:      priorityColor[task.priority] || '#6366f1',
-        }
-        newBlocks.push(taskBlock)
-        allBlocks.push({ start_time: slot.start_time, end_time: slot.end_time })
-
-        // 30-min Rest / Free block after each task (except the last)
-        if (i < orderedTasks.length - 1) {
-          const restStart = parseLocal(slot.end_time)
-          const restEnd   = new Date(restStart.getTime() + GAP_MINS * 60000)
-          const restBlock = {
-            title:      'Rest / Free',
-            start_time: toLocalStr(restStart),
-            end_time:   toLocalStr(restEnd),
-            task_id:    null,
-            color:      '#94a3b8',
-          }
-          newBlocks.push(restBlock)
-          allBlocks.push({ start_time: restBlock.start_time, end_time: restBlock.end_time })
-          cursor = restEnd
+        if (aiClear) {
+          const reason  = entry.reason ? ` — ${entry.reason}` : ''
+          const eLabel  = entry.energy ? `${energyLabel[entry.energy] || entry.energy}` : ''
+          const noteBits = [eLabel, reason].filter(Boolean).join('')
+          newBlocks.push({
+            title: blockType === 'TASK' ? title : `${title}${noteBits ? ' ' + noteBits : ''}`,
+            start_time: aiStart,
+            end_time:   aiEnd,
+            task_id:    matched?.id || null,
+            color:      blockType === 'TASK'
+              ? (priorityColor[matched?.priority] || '#6366f1')
+              : (typeColor[blockType] || '#94a3b8'),
+          })
+          allBlocks.push({ start_time: aiStart, end_time: aiEnd })
+        } else if (blockType === 'TASK' && matched) {
+          unplacedTaskTitles.push(matched)
         }
       }
 
-      if (newBlocks.length) await createBlocksBulk(newBlocks)
+      // ── Pass 2: fallback — sequentially slot any task the AI couldn't place
+      if (unplacedTaskTitles.length) {
+        const now = new Date()
+        let cursor = new Date(Math.ceil(now.getTime() / (15 * 60000)) * (15 * 60000))
+        for (const task of unplacedTaskTitles) {
+          const durationMins = task.estimated_minutes || (2 * focusMins)
+          let slot = null
+          let tryDate = new Date(cursor)
+          for (let day = 0; day < 7; day++) {
+            slot = findFreeSlot(dateStr(tryDate), durationMins, allBlocks, null, tryDate)
+            if (slot) break
+            tryDate = new Date(tryDate.getFullYear(), tryDate.getMonth(), tryDate.getDate() + 1, 6, 0)
+          }
+          if (!slot) continue
+          newBlocks.push({
+            title: task.title,
+            start_time: slot.start_time,
+            end_time:   slot.end_time,
+            task_id:    task.id,
+            color:      priorityColor[task.priority] || '#6366f1',
+          })
+          allBlocks.push({ start_time: slot.start_time, end_time: slot.end_time })
+          cursor = parseLocal(slot.end_time)
+        }
+      }
+
+      if (!newBlocks.length) {
+        setScheduleError('No matching tasks could be placed on the calendar.')
+        setScheduleAdding(false)
+        return
+      }
+
+      await createBlocksBulk(newBlocks)
       setScheduleAdded(true)
     } catch (err) {
       setScheduleError(err.response?.data?.detail || 'Failed to add to calendar.')
@@ -633,19 +698,34 @@ export default function TasksPage() {
     if (incomplete.length === 0) { setAiError('No incomplete tasks to prioritize.'); return }
     setAiLoading(true)
     setAiError('')
+    setPrioritizeResult(null)
     try {
       const payload = incomplete.map(t => ({
         id: t.id, title: t.title, description: t.description || '',
         priority: t.priority, deadline: t.deadline || null, status: t.status,
       }))
       const res = await prioritizeTasks(payload)
-      const ordered = res.prioritized_tasks || []
-      // Map AI-returned priorities back onto local tasks
-      const updates = {}
-      ordered.forEach(item => {
-        if (item.id && item.priority) updates[item.id] = item.priority
+
+      // Apply the AI's priorities and ranks to local tasks
+      const byId = {}
+      ;(res.changes || []).forEach(c => { byId[c.id] = c })
+      setTasks(prev => prev.map(t => {
+        const c = byId[t.id]
+        return c ? { ...t, priority: c.new_priority, _aiRank: c.rank } : t
+      }))
+
+      // Visual: flash cards that actually changed
+      const changedIds = new Set((res.changes || []).filter(c => c.changed).map(c => c.id))
+      if (changedIds.size) {
+        setFlashTaskIds(changedIds)
+        setTimeout(() => setFlashTaskIds(new Set()), 2400)
+      }
+
+      setPrioritizeResult({
+        changes: res.changes || [],
+        summary: res.summary || '',
+        at: Date.now(),
       })
-      setTasks(prev => prev.map(t => updates[t.id] ? { ...t, priority: updates[t.id] } : t))
     } catch (err) {
       const msg = err.response?.data?.detail || 'AI prioritization failed. Check your Gemini API key in settings.'
       setAiError(msg)
@@ -744,7 +824,7 @@ export default function TasksPage() {
             </span>
             <span style={{ color: '#dee4da' }}>·</span>
             <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#7a9a7d' }} />
               <span className="font-bold">{analytics.completion_rate}%</span>
               <span>completion</span>
             </span>
@@ -797,20 +877,20 @@ export default function TasksPage() {
           { label: 'Total',       value: analytics.total,                     color: '#3a6758', icon: (c) => (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/></svg>
           )},
-          { label: 'To Do',       value: analytics.by_status.TODO,            color: '#f59e0b', icon: (c) => (
+          { label: 'To Do',       value: analytics.by_status.TODO,            color: '#c49a3e', icon: (c) => (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><circle cx="12" cy="12" r="3.5" fill={c} fillOpacity="0.25"/></svg>
           )},
-          { label: 'In Progress', value: analytics.by_status.IN_PROGRESS,     color: '#0ea5e9', icon: (c) => (
+          { label: 'In Progress', value: analytics.by_status.IN_PROGRESS,     color: '#6a8699', icon: (c) => (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5l3 2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/></svg>
           )},
-          { label: 'Done',        value: analytics.by_status.DONE,            color: '#10b981', icon: (c) => (
+          { label: 'Done',        value: analytics.by_status.DONE,            color: '#7a9a7d', icon: (c) => (
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={c} fillOpacity="0.15"/><path d="M8 12.5l3 3 5-6" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           )},
           analytics.overdue > 0
-            ? { label: 'Overdue',   value: analytics.overdue,                 color: '#ef4444', icon: (c) => (
+            ? { label: 'Overdue',   value: analytics.overdue,                 color: '#a8533d', icon: (c) => (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5" stroke={c} strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="16" r="1" fill={c}/></svg>
               )}
-            : { label: 'Done Rate', value: analytics.completion_rate, suffix: '%', color: '#A78BFA', icon: (c) => (
+            : { label: 'Done Rate', value: analytics.completion_rate, suffix: '%', color: '#7a6a89', icon: (c) => (
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5" strokeOpacity="0.35"/><path d="M12 3a9 9 0 019 9" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>
               )},
         ].map(({ label, value, color, icon, suffix }, i) => (
@@ -847,6 +927,118 @@ export default function TasksPage() {
           </button>
         </div>
       )}
+
+      {/* ── AI Prioritize result panel ──────────────────────────────────── */}
+      {prioritizeResult && (() => {
+        const { changes, summary } = prioritizeResult
+        const changed = changes.filter(c => c.changed)
+        const unchanged = changes.length - changed.length
+        const PILL = {
+          HIGH:   { bg: '#fee2e2', fg: '#9f403d' },
+          MEDIUM: { bg: '#fef3c7', fg: '#92400e' },
+          LOW:    { bg: '#ecefe7', fg: '#5b6159' },
+        }
+        return (
+          <div
+            key={prioritizeResult.at}
+            className="mb-6 rounded-2xl overflow-hidden page-enter"
+            style={{
+              background: 'rgba(255,255,255,0.78)',
+              backdropFilter: 'blur(14px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+              border: '1px solid #dee4da',
+              boxShadow: '0 4px 20px rgba(46,52,45,0.06)',
+            }}
+          >
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #dee4da' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#6d28d9' }}>AI Prioritize</p>
+                  <p className="text-sm font-extrabold" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
+                    {changed.length > 0
+                      ? `${changed.length} task${changed.length !== 1 ? 's' : ''} re-prioritized`
+                      : 'Everything checks out — no changes needed'}
+                    {unchanged > 0 && changed.length > 0 && (
+                      <span className="font-medium" style={{ color: '#aeb4aa' }}> · {unchanged} unchanged</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPrioritizeResult(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: '#ecefe7', color: '#5b6159' }}
+                aria-label="Dismiss"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {summary && (
+              <p className="px-5 pt-3 text-sm italic" style={{ color: '#5b6159' }}>
+                {summary}
+              </p>
+            )}
+
+            {changes.length > 0 && (
+              <ol className="px-5 py-4 space-y-2">
+                {changes.slice(0, 10).map(c => {
+                  const oldP = PILL[c.old_priority] || PILL.MEDIUM
+                  const newP = PILL[c.new_priority] || PILL.MEDIUM
+                  return (
+                    <li key={c.id} className="flex items-start gap-3 text-sm">
+                      <span
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black font-mono"
+                        style={{ background: c.changed ? '#6d28d9' : '#ecefe7', color: c.changed ? '#ffffff' : '#5b6159' }}
+                      >
+                        {c.rank ?? '·'}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-bold truncate ${c.changed ? '' : 'opacity-70'}`} style={{ color: '#2e342d' }}>
+                            {c.title}
+                          </p>
+                          {c.changed ? (
+                            <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                              <span className="px-1.5 py-0.5 rounded" style={{ background: oldP.bg, color: oldP.fg, textDecoration: 'line-through' }}>
+                                {c.old_priority}
+                              </span>
+                              <span style={{ color: '#aeb4aa' }}>→</span>
+                              <span className="px-1.5 py-0.5 rounded" style={{ background: newP.bg, color: newP.fg }}>
+                                {c.new_priority}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" style={{ background: newP.bg, color: newP.fg }}>
+                              {c.new_priority}
+                            </span>
+                          )}
+                        </div>
+                        {c.reason && (
+                          <p className="text-xs mt-0.5" style={{ color: '#5b6159' }}>{c.reason}</p>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+                {changes.length > 10 && (
+                  <li className="text-xs pt-1" style={{ color: '#aeb4aa' }}>
+                    + {changes.length - 10} more…
+                  </li>
+                )}
+              </ol>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Search + Filters ──────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-gray-900 rounded-lg p-4 mb-6" style={{ border: '1px solid #dee4da' }}>
@@ -989,17 +1181,54 @@ export default function TasksPage() {
             )}
             {scheduleData && !scheduleLoading && (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{scheduleData.summary}</p>
-                <div className="grid grid-cols-2 gap-2 mb-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {(scheduleData.schedule || []).map((block, i) => (
-                    <div key={i} className="flex items-start gap-2 rounded-lg p-2.5" style={{ background: '#ecefe7', border: '1px solid #dee4da' }}>
-                      <span className="text-xs font-mono font-bold shrink-0 mt-0.5" style={{ color: '#3a6758' }}>{block.time}</span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{block.task_title}</p>
-                        <p className="text-xs text-gray-400">{block.duration_minutes}min</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">{scheduleData.summary}</p>
+                <div className="space-y-2 mb-4">
+                  {(scheduleData.schedule || []).map((block, i) => {
+                    const type  = (block.block_type || 'TASK').toUpperCase()
+                    const energy = (block.energy || 'MEDIUM').toUpperCase()
+                    const typeColor = {
+                      TASK:   '#3a6758',
+                      BREAK:  '#94a3b8',
+                      LUNCH:  '#f59e0b',
+                      BUFFER: '#a78bfa',
+                    }[type] || '#3a6758'
+                    const energyChip = {
+                      DEEP:    { label: 'Deep',    bg: '#ede9fe', fg: '#6d28d9' },
+                      MEDIUM:  { label: 'Medium',  bg: '#ecefe7', fg: '#5b6159' },
+                      SHALLOW: { label: 'Shallow', bg: '#fef3c7', fg: '#92400e' },
+                      REST:    { label: 'Rest',    bg: '#dbeafe', fg: '#1e40af' },
+                    }[energy] || { label: energy, bg: '#ecefe7', fg: '#5b6159' }
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-3 rounded-xl p-3"
+                        style={{ background: '#ffffff', border: '1px solid #dee4da', borderLeft: `3px solid ${typeColor}` }}
+                      >
+                        <span className="text-xs font-mono font-black shrink-0 mt-0.5 w-20" style={{ color: typeColor }}>
+                          {block.time || (block.start_time ? block.start_time.split('T')[1] : '')}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <p className="text-xs font-extrabold truncate" style={{ color: '#2e342d' }}>{block.task_title}</p>
+                            <span
+                              className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded"
+                              style={{ background: energyChip.bg, color: energyChip.fg }}
+                            >
+                              {energyChip.label}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold" style={{ color: '#aeb4aa' }}>
+                              {block.duration_minutes}m
+                            </span>
+                          </div>
+                          {block.reason && (
+                            <p className="text-[11px] italic" style={{ color: '#5b6159' }}>
+                              {block.reason}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 {scheduleAdded ? (
                   <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
@@ -1044,7 +1273,7 @@ export default function TasksPage() {
           {COLUMNS.map(colStatus => {
             const config   = COLUMN_CONFIG[colStatus]
             const colTasks = tasksByStatus[colStatus]
-            const colStripColor = colStatus === 'TODO' ? '#aeb4aa' : colStatus === 'IN_PROGRESS' ? '#3a6758' : '#10b981'
+            const colStripColor = colStatus === 'TODO' ? '#c49a3e' : colStatus === 'IN_PROGRESS' ? '#6a8699' : '#7a9a7d'
             return (
               <div key={colStatus} className="rounded-2xl p-4 min-h-[300px]" style={{ background: '#f3f4ee', boxShadow: '0 4px 12px rgba(46,52,45,0.04)' }}>
                 <div className="flex items-center justify-between mb-5">
@@ -1104,7 +1333,8 @@ export default function TasksPage() {
                                 {...provided.dragHandleProps}
                                 className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing overflow-hidden relative
                                   ${hasOverlap ? 'ring-2 ring-amber-400' : ''}
-                                  ${snapshot.isDragging ? 'rotate-1' : ''}`}
+                                  ${snapshot.isDragging ? 'rotate-1' : ''}
+                                  ${flashTaskIds.has(task.id) ? 'ai-flash' : ''}`}
                                 style={{
                                   background: 'rgba(255,255,255,0.78)',
                                   backdropFilter: 'blur(14px) saturate(150%)',
@@ -1120,36 +1350,14 @@ export default function TasksPage() {
                                     : '#3a6758'
                                   }`,
                                 }}
-                                onMouseMove={e => {
+                                onMouseEnter={e => {
                                   if (snapshot.isDragging) return
-                                  const el = e.currentTarget
-                                  const rect = el.getBoundingClientRect()
-                                  const px = (e.clientX - rect.left) / rect.width
-                                  const py = (e.clientY - rect.top) / rect.height
-                                  const ry = (px - 0.5) * 8
-                                  const rx = (0.5 - py) * 8
-                                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-2px)`
-                                  el.style.boxShadow = '0 10px 28px rgba(46,52,45,0.14)'
-                                  const spot = el.querySelector('[data-tilt-spotlight]')
-                                  if (spot) {
-                                    spot.style.opacity = '1'
-                                    spot.style.background = `radial-gradient(circle at ${px*100}% ${py*100}%, rgba(58,103,88,0.18), transparent 60%)`
-                                  }
+                                  e.currentTarget.style.boxShadow = '0 10px 28px rgba(46,52,45,0.12)'
                                 }}
                                 onMouseLeave={e => {
-                                  const el = e.currentTarget
-                                  el.style.transform = 'perspective(600px) rotateX(0) rotateY(0) translateY(0)'
-                                  el.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)'
-                                  const spot = el.querySelector('[data-tilt-spotlight]')
-                                  if (spot) spot.style.opacity = '0'
+                                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)'
                                 }}
                               >
-                                {/* Spotlight overlay */}
-                                <div
-                                  data-tilt-spotlight
-                                  className="absolute inset-0 pointer-events-none rounded-2xl"
-                                  style={{ opacity: 0, transition: 'opacity 0.25s ease' }}
-                                />
                                 {/* Title + priority */}
                                 <div className="flex justify-between items-start mb-2 gap-2">
                                   <div className="flex items-start gap-1.5 flex-1 min-w-0">

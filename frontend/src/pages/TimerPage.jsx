@@ -266,13 +266,13 @@ export default function TimerPage() {
             </span>
             <span style={{ color: '#dee4da' }}>·</span>
             <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#6a8699' }} />
               <span className="font-bold">{sessionsToday}</span>
               <span>session{sessionsToday !== 1 ? 's' : ''} today</span>
             </span>
             <span style={{ color: '#dee4da' }}>·</span>
             <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#c49a3e' }} />
               <span className="font-bold">{totalFocusMins}</span>
               <span>min focused</span>
             </span>
@@ -291,13 +291,13 @@ export default function TimerPage() {
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: 'Sessions Today', value: sessionsToday,  suffix: '',    color: '#6366f1', icon: (c) => (
+            { label: 'Sessions Today', value: sessionsToday,  suffix: '',    color: '#6a8699', icon: (c) => (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={c} fillOpacity="0.15"/><path d="M8 12.5l3 3 5-6" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             )},
-            { label: 'Focus Time',     value: totalFocusMins, suffix: 'min', color: '#10b981', icon: (c) => (
+            { label: 'Focus Time',     value: totalFocusMins, suffix: 'min', color: '#3a6758', icon: (c) => (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5l3.5 2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/></svg>
             )},
-            { label: 'Full Cycles',    value: cyclesComplete, suffix: '',    color: '#f59e0b', icon: (c) => (
+            { label: 'Full Cycles',    value: cyclesComplete, suffix: '',    color: '#c49a3e', icon: (c) => (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3l2 4 4.5 0.6-3.3 3.2 0.8 4.5-4-2.1-4 2.1 0.8-4.5-3.3-3.2 4.5-0.6z" fill={c} fillOpacity="0.18" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/></svg>
             )},
           ].map(({ label, value, suffix, color, icon }, i) => (
@@ -525,9 +525,11 @@ export default function TimerPage() {
           {/* ── Right: task + settings + sessions ─────────────────────────── */}
           <div className="col-span-2 flex flex-col gap-5">
 
-            {/* Task picker */}
-            <div className="rounded-2xl p-5"
-              style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}
+            {/* Task picker — higher z-index so its open dropdown lays over
+                 Duration Settings / Today's Sessions (each a sibling stacking
+                 context because of backdrop-filter). */}
+            <div className="rounded-2xl p-5 relative"
+              style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)', zIndex: 30 }}
             >
               <p className="text-xs font-bold uppercase tracking-widest mb-3"
                 style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}
