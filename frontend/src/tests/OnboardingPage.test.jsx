@@ -51,7 +51,7 @@ test('ON-02: clicking Continue advances to step 2', () => {
   wrap()
   fireEvent.click(screen.getByRole('button', { name: /continue/i }))
   expect(screen.getByText(/set your timezone/i)).toBeInTheDocument()
-  expect(screen.getByText(/timezone/i)).toBeInTheDocument()
+  expect(screen.getByRole('combobox')).toBeInTheDocument()
 })
 
 /**
