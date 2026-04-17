@@ -50,8 +50,8 @@ test('ON-01: renders Step 1 with Pomodoro duration controls', () => {
 test('ON-02: clicking Continue advances to step 2', () => {
   wrap()
   fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-  expect(screen.getByText(/customize your workspace/i)).toBeInTheDocument()
-  expect(screen.getByText(/appearance/i)).toBeInTheDocument()
+  expect(screen.getByText(/set your timezone/i)).toBeInTheDocument()
+  expect(screen.getByRole('combobox')).toBeInTheDocument()
 })
 
 /**
@@ -133,13 +133,12 @@ test('ON-07: shows error message when onboarding API call fails', async () => {
 })
 
 /**
- * ON-08: Theme toggle works — selecting dark shows it as selected
+ * ON-08: Step 2 timezone dropdown is present and defaults to UTC
  */
-test('ON-08: selecting dark theme marks it as selected', () => {
+test('ON-08: step 2 shows timezone selector defaulting to UTC', () => {
   wrap()
-  // Advance to step 2
   fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-  const darkButton = screen.getByRole('button', { name: /dark/i })
-  fireEvent.click(darkButton)
-  expect(screen.getByText(/✓ selected/i)).toBeInTheDocument()
+  const select = screen.getByRole('combobox')
+  expect(select).toBeInTheDocument()
+  expect(select.value).toBe('UTC')
 })
