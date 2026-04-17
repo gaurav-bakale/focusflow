@@ -13,13 +13,17 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
 import { fetchStats } from '../services/otherServices'
 import { fetchTasks } from '../services/taskService'
 import NotificationBell from './NotificationBell'
+import CustomCursor from './CustomCursor'
+import CommandPalette from './CommandPalette'
+import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay'
+import WebGLBackground from './WebGLBackground'
 
 // ── Nav items ──────────────────────────────────────────────────────────────────
 const NAV = [
@@ -60,7 +64,14 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const { phase, display } = useTimer()
   const navigate = useNavigate()
+  const location = useLocation()
   const [goalPct, setGoalPct] = useState(0)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     async function loadGoal() {
@@ -83,14 +94,20 @@ export default function Layout() {
   const timerConfig = PHASE_CONFIG[phase]
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#fafaf5' }}>
+    <div className="flex h-screen overflow-hidden relative" style={{ background: 'transparent' }}>
+
+      {/* ── WebGL gradient mesh background (behind everything) ───────────────── */}
+      <WebGLBackground />
 
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
-        className="h-screen w-64 fixed left-0 top-0 flex flex-col py-8 z-30 rounded-r-3xl"
+        className={`h-screen w-64 fixed left-0 top-0 flex flex-col py-8 z-30 rounded-r-3xl ${phase === PHASES.FOCUS ? 'focus-mode-sidebar' : ''}`}
         style={{
-          background: '#f3f4ee',
+          background: 'rgba(243,244,238,0.72)',
+          backdropFilter: 'blur(18px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(140%)',
           boxShadow: '10px 0 30px rgba(46,52,45,0.04)',
+          border: '1px solid rgba(255,255,255,0.4)',
         }}
       >
         {/* Logo */}
@@ -115,7 +132,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto" style={{ scrollbarWidth:'none', msOverflowStyle:'none' }}>
           {NAV.map(({ to, label, end }) => (
             <NavLink
               key={to}
@@ -168,16 +185,27 @@ export default function Layout() {
         {/* Daily goal */}
         <div className="mx-4 mb-4">
           <div
-            className="p-4 rounded-2xl"
+            className="p-4 rounded-2xl flex items-center gap-3"
             style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(46,52,45,0.05)' }}
           >
-            <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: '#5b6159' }}>Daily Goal</p>
-            <p className="text-2xl font-black" style={{ fontFamily: 'Epilogue, sans-serif', color: '#3a6758' }}>{goalPct}%</p>
-            <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: '#dee4da' }}>
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${goalPct}%`, background: '#3a6758' }}
-              />
+            {/* Circular progress ring */}
+            {(() => {
+              const r = 18, circ = 2 * Math.PI * r
+              const dash = circ * (Math.min(goalPct, 100) / 100)
+              return (
+                <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90 shrink-0">
+                  <circle cx="24" cy="24" r={r} fill="none" stroke="#dee4da" strokeWidth="4"/>
+                  <circle cx="24" cy="24" r={r} fill="none" stroke="#3a6758" strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${dash} ${circ}`}
+                    style={{ transition: 'stroke-dasharray 0.7s ease' }}
+                  />
+                </svg>
+              )
+            })()}
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#5b6159' }}>Daily Goal</p>
+              <p className="text-xl font-black leading-tight" style={{ fontFamily: 'Epilogue, sans-serif', color: '#3a6758' }}>{goalPct}%</p>
             </div>
           </div>
         </div>
@@ -200,7 +228,7 @@ export default function Layout() {
       </aside>
 
       {/* ── Main content ─────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col overflow-hidden ml-64" style={{ background: '#fafaf5' }}>
+      <main className="flex-1 flex flex-col overflow-hidden ml-64 dot-grid relative" style={{ background: 'transparent', zIndex: 1 }}>
 
         {/* Header */}
         <header
@@ -211,11 +239,48 @@ export default function Layout() {
             boxShadow: '0 4px 20px rgba(46,52,45,0.06)',
           }}
         >
-          {/* Left: page context (empty — pages handle their own headings) */}
-          <div />
+          {/* Left: command palette hint */}
+          <button
+            onClick={() => {
+              const evt = new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
+              window.dispatchEvent(evt)
+            }}
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs transition-colors hover:opacity-80"
+            style={{ background: '#ecefe7', color: '#5b6159', border: '1px solid #dee4da' }}
+            title="Open command palette"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+            </svg>
+            <span className="font-bold">Search or jump to...</span>
+            <kbd
+              className="text-[10px] font-black px-1.5 py-0.5 rounded"
+              style={{ background: '#ffffff', border: '1px solid #dee4da', color: '#3a6758' }}
+            >
+              ⌘K
+            </kbd>
+          </button>
 
           {/* Right: user + notifications + theme */}
           <div className="flex items-center gap-3">
+            {/* Live clock */}
+            <div className="hidden sm:flex flex-col items-end leading-tight mr-1">
+              <span
+                className="text-sm font-extrabold font-mono tabular-nums tracking-tight"
+                style={{ color: '#2e342d' }}
+              >
+                {now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </span>
+              <span
+                className="text-[10px] uppercase tracking-widest font-bold"
+                style={{ color: '#aeb4aa' }}
+              >
+                {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+            </div>
+
+            <div className="w-px h-5" style={{ background: '#dee4da' }} />
+
             <NotificationBell />
 
             <div className="w-px h-5" style={{ background: '#dee4da' }} />
@@ -236,11 +301,18 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Page content with route-level transition */}
         <div className="flex-1 overflow-y-auto">
-          <Outlet />
+          <div key={location.pathname} className="route-transition">
+            <Outlet />
+          </div>
         </div>
       </main>
+
+      {/* ── Global overlays ──────────────────────────────────────────────────── */}
+      <CustomCursor />
+      <CommandPalette />
+      <KeyboardShortcutsOverlay />
     </div>
   )
 }

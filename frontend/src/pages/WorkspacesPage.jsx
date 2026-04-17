@@ -190,37 +190,55 @@ export default function WorkspacesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor:'#ecefe7', borderTopColor:'#3a6758' }} />
       </div>
     )
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8 max-w-6xl mx-auto page-enter">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
+          <h1 className="text-3xl font-extrabold tracking-tight mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
             Workspaces
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm" style={{ color:'#767c74' }}>
             Collaborate with your team in shared workspaces
           </p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+          className="px-4 py-2.5 font-bold text-sm rounded-xl text-white transition-colors"
+          style={{ background:'#3a6758' }}
         >
-          New Workspace
+          + New Workspace
         </button>
       </div>
 
       {/* Workspace grid */}
       {workspaces.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-gray-400 dark:text-gray-500 text-sm font-bold">
-            No workspaces yet. Create one to start collaborating.
-          </p>
+        <div className="flex flex-col items-center py-16 gap-3">
+          <svg width="88" height="80" viewBox="0 0 88 80" fill="none">
+            {/* Three building blocks / workspace cards */}
+            <rect x="4" y="28" width="24" height="36" rx="5" fill="#ecefe7" stroke="#dee4da" strokeWidth="1.5"/>
+            <rect x="32" y="16" width="24" height="48" rx="5" fill="#f3f4ee" stroke="#dee4da" strokeWidth="1.5"/>
+            <rect x="60" y="24" width="24" height="40" rx="5" fill="#ecefe7" stroke="#dee4da" strokeWidth="1.5"/>
+            {/* Windows on buildings */}
+            <rect x="9" y="34" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="19" y="34" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="9" y="44" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="37" y="22" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="47" y="22" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="37" y="32" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="65" y="30" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            <rect x="75" y="30" width="6" height="5" rx="1.5" fill="#dee4da"/>
+            {/* Green plus badge */}
+            <circle cx="44" cy="70" r="10" fill="#3a6758"/>
+            <path d="M44 65v10M39 70h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <p className="text-sm font-semibold" style={{ color:'#5b6159' }}>No workspaces yet</p>
+          <p className="text-xs" style={{ color:'#aeb4aa' }}>Create one to start collaborating with your team.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -228,21 +246,29 @@ export default function WorkspacesPage() {
             <button
               key={ws.id}
               onClick={() => openDetail(ws)}
-              className="text-left border-2 border-gray-200 dark:border-gray-700 rounded-lg p-5 hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-white dark:bg-gray-900"
+              className="text-left rounded-2xl p-5 transition-all"
+              style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 2px 8px rgba(46,52,45,0.05)' }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 20px rgba(46,52,45,0.10)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(46,52,45,0.05)'}
             >
-              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1 truncate">
-                {ws.name}
-              </h3>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0" style={{ background:'#ecefe7' }}>
+                  🏢
+                </div>
+                <h3 className="text-sm font-bold truncate" style={{ color:'#2e342d' }}>
+                  {ws.name}
+                </h3>
+              </div>
               {ws.description && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
+                <p className="text-xs mb-3 line-clamp-2" style={{ color:'#767c74' }}>
                   {ws.description}
                 </p>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  By <span className="font-bold text-gray-600 dark:text-gray-300">{ws.owner_name}</span>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs" style={{ color:'#aeb4aa' }}>
+                  By <span className="font-semibold" style={{ color:'#5b6159' }}>{ws.owner_name}</span>
                 </span>
-                <span className="text-xs font-bold text-gray-400 dark:text-gray-500">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background:'#ecefe7', color:'#3a6758' }}>
                   {ws.members?.length || 0} member{(ws.members?.length || 0) !== 1 ? 's' : ''}
                 </span>
               </div>
@@ -255,15 +281,16 @@ export default function WorkspacesPage() {
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowCreate(false)}>
           <div
-            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-md"
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 8px 40px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-4">
+            <h2 className="text-xl font-extrabold mb-4" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
               New Workspace
             </h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color:'#5b6159' }}>
                   Name
                 </label>
                 <input
@@ -272,11 +299,12 @@ export default function WorkspacesPage() {
                   onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="e.g. Sprint 1"
                   required
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-colors"
+                  style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color:'#5b6159' }}>
                   Description
                 </label>
                 <textarea
@@ -284,21 +312,24 @@ export default function WorkspacesPage() {
                   onChange={e => setCreateForm(p => ({ ...p, description: e.target.value }))}
                   placeholder="Optional description..."
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors resize-none"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-colors resize-none"
+                  style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
                 />
               </div>
 
               {createError && (
-                <p className="text-xs font-bold text-red-600 dark:text-red-400">{createError}</p>
+                <p className="text-xs font-semibold" style={{ color:'#b91c1c' }}>{createError}</p>
               )}
 
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 text-sm font-bold border-2 border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 transition-colors">
+                  className="px-4 py-2 text-sm font-semibold rounded-xl transition-colors"
+                  style={{ border:'1.5px solid #dee4da', color:'#5b6159', background:'transparent' }}>
                   Cancel
                 </button>
                 <button type="submit"
-                  className="px-5 py-2 text-sm font-bold border-2 border-gray-900 dark:border-gray-400 rounded-lg bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors">
+                  className="px-5 py-2 text-sm font-bold rounded-xl text-white transition-colors"
+                  style={{ background:'#3a6758' }}>
                   Create
                 </button>
               </div>
@@ -311,7 +342,8 @@ export default function WorkspacesPage() {
       {(detail || detailLoading) && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeDetail}>
           <div
-            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
+            style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 8px 40px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}
           >
             {detailLoading ? (

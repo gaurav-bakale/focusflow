@@ -88,13 +88,13 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-8 max-w-4xl mx-auto page-enter">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-tight mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
           Activity Feed
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm" style={{ color:'#767c74' }}>
           Your collaboration timeline
         </p>
       </div>
@@ -102,14 +102,17 @@ export default function ActivityPage() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total', value: stats.total, color: 'border-indigo-300 dark:border-indigo-700' },
-          { label: 'Tasks', value: stats.tasks, color: 'border-emerald-300 dark:border-emerald-700' },
-          { label: 'Comments', value: stats.comments, color: 'border-amber-300 dark:border-amber-700' },
-          { label: 'Workspaces', value: stats.workspaces, color: 'border-orange-300 dark:border-orange-700' },
+          { label: 'Total',      value: stats.total,      accent: '#6366f1', icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#6366f1" fillOpacity="0.15"/><path d="M5 9h8M9 5v8" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+          { label: 'Tasks',      value: stats.tasks,      accent: '#10b981', icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#10b981" fillOpacity="0.15"/><path d="M5 9l3 3 5-5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+          { label: 'Comments',   value: stats.comments,   accent: '#f59e0b', icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#f59e0b" fillOpacity="0.15"/><path d="M5 6h8v5H9l-2 2V11H5V6z" stroke="#f59e0b" strokeWidth="1.3" strokeLinejoin="round"/></svg> },
+          { label: 'Workspaces', value: stats.workspaces, accent: '#3a6758', icon: <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#3a6758" fillOpacity="0.15"/><rect x="4" y="7" width="4" height="5" rx="1" stroke="#3a6758" strokeWidth="1.3"/><rect x="10" y="5" width="4" height="7" rx="1" stroke="#3a6758" strokeWidth="1.3"/></svg> },
         ].map(s => (
-          <div key={s.label} className={`border-2 ${s.color} rounded-lg px-4 py-3`}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{s.label}</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{s.value}</p>
+          <div key={s.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background:'#f3f4ee', borderLeft:`3px solid ${s.accent}` }}>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color:'#aeb4aa' }}>{s.label}</p>
+              {s.icon}
+            </div>
+            <p className="text-2xl font-extrabold font-mono" style={{ color: s.accent }}>{s.value}</p>
           </div>
         ))}
       </div>
@@ -133,11 +136,30 @@ export default function ActivityPage() {
 
       {/* Timeline */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-gray-400 dark:text-gray-500 text-sm font-bold">
+        <div className="flex flex-col items-center py-16 gap-3">
+          <svg width="90" height="80" viewBox="0 0 90 80" fill="none">
+            {/* Timeline vertical bar */}
+            <line x1="20" y1="10" x2="20" y2="70" stroke="#dee4da" strokeWidth="2.5" strokeLinecap="round"/>
+            {/* Dots on timeline */}
+            <circle cx="20" cy="20" r="5" fill="#ecefe7" stroke="#dee4da" strokeWidth="2"/>
+            <circle cx="20" cy="40" r="5" fill="#ecefe7" stroke="#dee4da" strokeWidth="2"/>
+            <circle cx="20" cy="60" r="5" fill="#ecefe7" stroke="#dee4da" strokeWidth="2"/>
+            {/* Blank content lines */}
+            <rect x="33" y="17" width="40" height="6" rx="3" fill="#ecefe7"/>
+            <rect x="33" y="37" width="30" height="6" rx="3" fill="#ecefe7"/>
+            <rect x="33" y="57" width="35" height="6" rx="3" fill="#ecefe7"/>
+            {/* Magnifying glass */}
+            <circle cx="66" cy="22" r="10" stroke="#aeb4aa" strokeWidth="2" fill="white"/>
+            <line x1="73" y1="29" x2="80" y2="36" stroke="#aeb4aa" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="62" y1="19" x2="68" y2="25" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+          </svg>
+          <p className="text-sm font-semibold" style={{ color:'#5b6159' }}>
+            {activities.length === 0 ? 'No activity yet' : 'No matching activity'}
+          </p>
+          <p className="text-xs" style={{ color:'#aeb4aa' }}>
             {activities.length === 0
-              ? 'No activity yet. Start collaborating to see your timeline.'
-              : 'No activity matches this filter.'}
+              ? 'Start collaborating to see your timeline.'
+              : 'Try a different filter.'}
           </p>
         </div>
       ) : (
