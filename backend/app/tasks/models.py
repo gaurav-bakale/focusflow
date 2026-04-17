@@ -78,6 +78,9 @@ class TaskCreate(BaseModel):
     estimated_minutes: Optional[int] = None  # 15, 25, 30, 60, 90, 120 …
     status: TaskStatus = TaskStatus.TODO
     categories: Optional[List[str]] = []
+    # If set, the task belongs to a workspace and is visible/editable
+    # to all workspace members.
+    workspace_id: Optional[str] = None
 
 
 class TaskUpdate(BaseModel):
@@ -92,6 +95,10 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     subtasks: Optional[List[SubtaskCreate]] = None
     categories: Optional[List[str]] = None
+    # workspace_id: pass "" (empty string) or null to move task to Personal;
+    # pass a workspace id to move task to that workspace. Requires membership
+    # of the target workspace.
+    workspace_id: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -124,6 +131,8 @@ class TaskResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     categories: List[str] = []
+    workspace_id: Optional[str] = None
+    workspace_name: Optional[str] = None  # Denormalized for UI convenience.
 
 
 # ── Complete-task response ────────────────────────────────────────────────────

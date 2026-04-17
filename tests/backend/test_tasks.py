@@ -77,31 +77,56 @@ async def _async_iter(items):
 
 
 def _mock_db(task_doc=None):
-    """Return a pre-wired mock DB instance."""
-    db = MagicMock()
+    """
+    Return a pre-wired mock DB instance.
 
-    # find() returns an async iterable cursor — must support `async for`
+    Each collection (tasks / workspace_members / workspaces / task_shares)
+    gets its own MagicMock. MagicMock's default __getitem__ returns a single
+    shared child for every key, so configuring ``db["tasks"].find`` would
+    otherwise overwrite ``db["workspace_members"].find``. Using a routing
+    ``side_effect`` keeps each collection isolated.
+    """
     items = [task_doc] if task_doc else []
-    mock_cursor = _async_iter(items)
-    # Wrap in a MagicMock that chains .sort() back to a fresh async iterable
-    sortable = MagicMock()
-    sortable.__aiter__ = lambda self: _async_iter(items).__aiter__()
-    sortable.to_list = AsyncMock(return_value=items)
-    real_cursor = MagicMock()
-    real_cursor.sort = MagicMock(return_value=sortable)
-    real_cursor.to_list = AsyncMock(return_value=items)
-    real_cursor.__aiter__ = lambda self: _async_iter(items).__aiter__()
-    db["tasks"].find.return_value = real_cursor
 
-    # Individual document operations
-    db["tasks"].find_one      = AsyncMock(return_value=task_doc)
-    db["tasks"].insert_one    = AsyncMock(
+    def _make_cursor(docs):
+        sortable = MagicMock()
+        sortable.__aiter__ = lambda self: _async_iter(docs).__aiter__()
+        sortable.to_list = AsyncMock(return_value=docs)
+        real = MagicMock()
+        real.sort = MagicMock(return_value=sortable)
+        real.to_list = AsyncMock(return_value=docs)
+        real.__aiter__ = lambda self: _async_iter(docs).__aiter__()
+        return real
+
+    tasks_col = MagicMock()
+    tasks_col.find.return_value = _make_cursor(items)
+    tasks_col.find_one = AsyncMock(return_value=task_doc)
+    tasks_col.insert_one = AsyncMock(
         return_value=MagicMock(inserted_id=ObjectId(FAKE_TASK_ID))
     )
-    db["tasks"].find_one_and_update = AsyncMock(return_value=task_doc)
-    db["tasks"].delete_one    = AsyncMock(
-        return_value=MagicMock(deleted_count=1)
-    )
+    tasks_col.find_one_and_update = AsyncMock(return_value=task_doc)
+    tasks_col.delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
+
+    members_col = MagicMock()
+    members_col.find.return_value = _make_cursor([])
+    members_col.find_one = AsyncMock(return_value=None)
+
+    workspaces_col = MagicMock()
+    workspaces_col.find.return_value = _make_cursor([])
+    workspaces_col.find_one = AsyncMock(return_value=None)
+
+    shares_col = MagicMock()
+    shares_col.find_one = AsyncMock(return_value=None)
+
+    collections = {
+        "tasks": tasks_col,
+        "workspace_members": members_col,
+        "workspaces": workspaces_col,
+        "task_shares": shares_col,
+    }
+
+    db = MagicMock()
+    db.__getitem__.side_effect = lambda name: collections.setdefault(name, MagicMock())
     return db
 
 
@@ -252,7 +277,8 @@ async def test_complete_task_sets_status_done():
     Failure: status unchanged or error.
     """
     done_doc = {**MOCK_TASK_DOC, "status": "DONE"}
-    db = _mock_db()
+    # Seed find_one so _can_access passes; find_one_and_update drives the response.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[get_current_user_dependency] = _auth_override()
     app.dependency_overrides[get_db_dependency] = lambda: db

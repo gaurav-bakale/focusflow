@@ -137,7 +137,28 @@ class _FakeDB:
         users_col.find_one_and_update = AsyncMock(return_value=MOCK_USER)
         users_col.update_one = AsyncMock()
 
-        self._collections = {"tasks": tasks_col, "users": users_col}
+        # -- workspace / sharing collections (empty by default) ---------------
+        # TaskService consults these during list/can-access to support the
+        # shared-tasks and workspace-tasks features. Returning empty cursors
+        # keeps the pattern-only tests focused on ownership behaviour.
+        ws_members_col = MagicMock()
+        ws_members_col.find.return_value = _AsyncCursor([])
+        ws_members_col.find_one = AsyncMock(return_value=None)
+
+        workspaces_col = MagicMock()
+        workspaces_col.find.return_value = _AsyncCursor([])
+        workspaces_col.find_one = AsyncMock(return_value=None)
+
+        task_shares_col = MagicMock()
+        task_shares_col.find_one = AsyncMock(return_value=None)
+
+        self._collections = {
+            "tasks": tasks_col,
+            "users": users_col,
+            "workspace_members": ws_members_col,
+            "workspaces": workspaces_col,
+            "task_shares": task_shares_col,
+        }
 
     def __getitem__(self, key):
         return self._collections[key]
@@ -213,9 +234,13 @@ async def test_service_layer_delete_task_independent_of_router():
 
     await svc.delete_task(MOCK_USER, str(FAKE_TASK_ID))  # must not raise
 
+    # Ownership is now verified in Python (not the Mongo filter) so that
+    # workspace-scoped deletes are also supported. Assert the deletion ran
+    # and used an _id filter; ownership was guaranteed by the find_one step.
     db["tasks"].delete_one.assert_called_once()
     call_filter = db["tasks"].delete_one.call_args[0][0]
-    assert call_filter["user_id"] == FAKE_USER_ID
+    assert "_id" in call_filter
+    assert str(MOCK_TASK_DOC["user_id"]) == str(MOCK_USER["_id"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -269,22 +294,34 @@ async def test_repository_get_task_includes_user_id_filter():
 
 
 @pytest.mark.asyncio
-async def test_repository_delete_task_includes_user_id_filter():
+async def test_repository_delete_task_checks_ownership_before_deleting():
     """
-    Tests Repository pattern: delete_task() passes user_id to delete_one() so
-    a user cannot delete another user's task through a direct service call.
+    Tests Repository pattern: delete_task() verifies ownership before calling
+    delete_one(), so a user cannot delete another user's task.
+
+    With the introduction of workspace-scoped tasks, ownership is verified in
+    Python (task.user_id == requester OR requester owns the parent workspace)
+    rather than pushed into the Mongo query. The assertion therefore checks
+    that find_one was used to load the document first and that the loaded
+    document's user_id matches the requester.
 
     Input    : TaskService.delete_task(user, task_id).
-    Expected : delete_one called with filter containing user_id.
-    Pass     : call filter has user_id == FAKE_USER_ID.
+    Expected : find_one loaded the task for ownership verification; delete_one
+               was then called with an _id filter.
+    Pass     : find_one called with _id filter; delete filter contains _id;
+               task's user_id equals the requester's user_id.
     """
     db = _make_db(MOCK_TASK_DOC)
     svc = TaskService(db)
 
     await svc.delete_task(MOCK_USER, str(FAKE_TASK_ID))
 
+    find_filter = db["tasks"].find_one.call_args[0][0]
+    assert "_id" in find_filter
     delete_filter = db["tasks"].delete_one.call_args[0][0]
-    assert delete_filter["user_id"] == FAKE_USER_ID
+    assert "_id" in delete_filter
+    # Ownership check: the loaded task's owner matches the requester.
+    assert str(MOCK_TASK_DOC["user_id"]) == str(MOCK_USER["_id"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════

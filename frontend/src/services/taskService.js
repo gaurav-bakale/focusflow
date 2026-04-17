@@ -8,10 +8,22 @@
 import api from './api'
 
 /**
- * Fetch all tasks for the current user.
+ * Fetch tasks for the current user.
+ *
+ * @param {Object} [opts]
+ * @param {string} [opts.workspaceId]  'personal' for personal tasks only,
+ *                                     a workspace id for that workspace only,
+ *                                     or omitted for every task the user can see.
  * @returns {Promise<Array>} Array of task objects.
  */
-export async function fetchTasks() {
+export async function fetchTasks(opts = {}) {
+  // Only include the second argument when there's actually a query param to
+  // send — keeps the default call `api.get('/tasks')` which existing tests
+  // and callers assume.
+  if (opts.workspaceId) {
+    const res = await api.get('/tasks', { params: { workspace_id: opts.workspaceId } })
+    return res.data
+  }
   const res = await api.get('/tasks')
   return res.data
 }

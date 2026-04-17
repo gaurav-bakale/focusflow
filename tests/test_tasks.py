@@ -163,24 +163,47 @@ class _AsyncCursor:
         return list(self._items)
 
 
-def _mock_db(task_doc=None, tasks=None):
+def _mock_db(task_doc=None, tasks=None, workspace_members=None, workspaces=None):
     """
     Factory pattern helper — build a pre-wired mock MongoDB database.
 
+    The returned object routes each ``db[<collection>]`` to its own MagicMock.
+    Using a plain MagicMock won't work because `mock["tasks"]` and
+    `mock["workspace_members"]` would resolve to the same child mock (a
+    MagicMock quirk), so configuring one would clobber the other.
+
     The `tasks` param overrides the list returned by find().to_list().
     The `task_doc` param is used for single-document operations.
+    The `workspace_members` / `workspaces` params let individual tests seed
+    collaborative data — they default to empty so pure personal-task tests
+    keep working without modification.
     """
-    db = MagicMock()
     _tasks_list = tasks if tasks is not None else ([task_doc] if task_doc else [])
 
-    db["tasks"].find.return_value = _AsyncCursor(_tasks_list)
+    # Build one MagicMock per collection, then wire them into a dict-like db.
+    collections = {
+        "tasks": MagicMock(),
+        "workspace_members": MagicMock(),
+        "workspaces": MagicMock(),
+        "task_shares": MagicMock(),
+    }
 
-    db["tasks"].find_one = AsyncMock(return_value=task_doc)
-    db["tasks"].insert_one = AsyncMock(
+    collections["tasks"].find.return_value = _AsyncCursor(_tasks_list)
+    collections["tasks"].find_one = AsyncMock(return_value=task_doc)
+    collections["tasks"].insert_one = AsyncMock(
         return_value=MagicMock(inserted_id=ObjectId(FAKE_TASK_ID))
     )
-    db["tasks"].find_one_and_update = AsyncMock(return_value=task_doc)
-    db["tasks"].delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
+    collections["tasks"].find_one_and_update = AsyncMock(return_value=task_doc)
+    collections["tasks"].delete_one = AsyncMock(return_value=MagicMock(deleted_count=1))
+
+    collections["workspace_members"].find.return_value = _AsyncCursor(workspace_members or [])
+    collections["workspace_members"].find_one = AsyncMock(return_value=None)
+    collections["workspaces"].find.return_value = _AsyncCursor(workspaces or [])
+    collections["workspaces"].find_one = AsyncMock(return_value=None)
+    collections["task_shares"].find_one = AsyncMock(return_value=None)
+
+    db = MagicMock()
+    db.__getitem__.side_effect = lambda name: collections.setdefault(name, MagicMock())
     return db
 
 
@@ -522,7 +545,9 @@ async def test_complete_task_non_recurring():
                (or called once only for the original insert, not for recurrence).
     """
     done_doc = {**MOCK_TASK_DOC, "status": "DONE", "recurrence": "NONE"}
-    db = _mock_db()
+    # Seed find_one with MOCK_TASK_DOC so _can_access() (ownership check)
+    # passes; then override find_one_and_update to return done_doc.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
@@ -558,7 +583,9 @@ async def test_complete_task_recurring_daily():
         "recurrence": "DAILY",
         "deadline": "2025-06-10",
     }
-    db = _mock_db()
+    # Seed find_one with MOCK_TASK_DOC so _can_access() (ownership check)
+    # passes; then override find_one_and_update to return done_doc.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
@@ -591,7 +618,9 @@ async def test_complete_task_recurring_weekly():
         "recurrence": "WEEKLY",
         "deadline": "2025-06-10",
     }
-    db = _mock_db()
+    # Seed find_one with MOCK_TASK_DOC so _can_access() (ownership check)
+    # passes; then override find_one_and_update to return done_doc.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
@@ -620,7 +649,9 @@ async def test_complete_task_recurring_monthly():
         "recurrence": "MONTHLY",
         "deadline": "2025-01-31",
     }
-    db = _mock_db()
+    # Seed find_one with MOCK_TASK_DOC so _can_access() (ownership check)
+    # passes; then override find_one_and_update to return done_doc.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db
@@ -651,7 +682,9 @@ async def test_complete_task_recurring_weekdays_friday_to_monday():
         "recurrence": "WEEKDAYS",
         "deadline": "2025-06-06",  # Friday
     }
-    db = _mock_db()
+    # Seed find_one with MOCK_TASK_DOC so _can_access() (ownership check)
+    # passes; then override find_one_and_update to return done_doc.
+    db = _mock_db(MOCK_TASK_DOC)
     db["tasks"].find_one_and_update = AsyncMock(return_value=done_doc)
     app.dependency_overrides[_get_current_user] = _auth_override()
     app.dependency_overrides[_get_db] = lambda: db

@@ -11,11 +11,13 @@
  */
 
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   fetchWorkspaces,
   createWorkspace,
   fetchWorkspace,
   addWorkspaceMember,
+  fetchWorkspaceTasks,
 } from '../services/sharingService'
 import api from '../services/api'
 
@@ -26,6 +28,8 @@ const ROLE_BADGE = {
 }
 
 export default function WorkspacesPage() {
+  const navigate = useNavigate()
+
   const [workspaces, setWorkspaces]   = useState([])
   const [loading, setLoading]         = useState(true)
 
@@ -37,6 +41,10 @@ export default function WorkspacesPage() {
   // Detail modal
   const [detail, setDetail]           = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+
+  // Workspace tasks (loaded when a detail is opened)
+  const [detailTasks, setDetailTasks] = useState([])
+  const [tasksLoading, setTasksLoading] = useState(false)
 
   // Add member form (inside detail)
   const [memberEmail, setMemberEmail] = useState('')
@@ -82,6 +90,7 @@ export default function WorkspacesPage() {
   async function openDetail(ws) {
     setDetailLoading(true)
     setDetail(null)
+    setDetailTasks([])
     setMemberEmail('')
     setMemberRole('MEMBER')
     setMemberError('')
@@ -89,6 +98,8 @@ export default function WorkspacesPage() {
     try {
       const data = await fetchWorkspace(ws.id)
       setDetail(data)
+      // Load tasks in parallel — non-blocking for the rest of the modal.
+      loadWorkspaceTasks(ws.id)
     } catch (_) {
       setDetail(ws)
     } finally {
@@ -96,8 +107,21 @@ export default function WorkspacesPage() {
     }
   }
 
+  async function loadWorkspaceTasks(workspaceId) {
+    setTasksLoading(true)
+    try {
+      const data = await fetchWorkspaceTasks(workspaceId)
+      setDetailTasks(Array.isArray(data) ? data : [])
+    } catch (_) {
+      setDetailTasks([])
+    } finally {
+      setTasksLoading(false)
+    }
+  }
+
   function closeDetail() {
     setDetail(null)
+    setDetailTasks([])
     setMemberError('')
     setMemberSuccess('')
   }
@@ -144,7 +168,14 @@ export default function WorkspacesPage() {
 
   async function handleDeleteWorkspace() {
     if (!detail) return
-    if (!confirm(`Delete workspace "${detail.name}"? This cannot be undone.`)) return
+    // Explain the cascade clearly — tasks don't get deleted, they become
+    // personal tasks of their original creators. Prevents accidental panic.
+    const msg = (
+      `Delete workspace "${detail.name}"?\n\n` +
+      `Tasks in this workspace will NOT be deleted — they'll move to each ` +
+      `member's personal task list. Members will no longer see each other's tasks.`
+    )
+    if (!confirm(msg)) return
     try {
       await api.delete(`/workspaces/${detail.id}`)
       closeDetail()
@@ -371,6 +402,74 @@ export default function WorkspacesPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Workspace tasks */}
+                <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                      Tasks {detailTasks.length > 0 && (
+                        <span className="text-gray-400 dark:text-gray-500 font-mono">({detailTasks.length})</span>
+                      )}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/tasks?workspace=${detail.id}`)}
+                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+                    >
+                      Open on Tasks page →
+                    </button>
+                  </div>
+
+                  {tasksLoading ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 italic py-2">
+                      Loading tasks…
+                    </p>
+                  ) : detailTasks.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 py-3 px-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      No tasks in this workspace yet. Open the Tasks page and add one —
+                      pick this workspace in the task modal.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                      {detailTasks.map(t => {
+                        const statusStyle = {
+                          TODO:        { bg: '#fef3c7', fg: '#92400e', label: 'To Do' },
+                          IN_PROGRESS: { bg: '#dbeafe', fg: '#1e40af', label: 'In Progress' },
+                          DONE:        { bg: '#dcfce7', fg: '#166534', label: 'Done' },
+                        }[t.status] || { bg: '#eee', fg: '#555', label: t.status }
+                        return (
+                          <div
+                            key={t.id}
+                            className="flex items-center justify-between gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                                {t.title}
+                              </p>
+                              {t.deadline && (
+                                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                  Due {new Date(t.deadline + 'T00:00:00').toLocaleDateString(
+                                    'en-US', { month: 'short', day: 'numeric' }
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0"
+                              style={{
+                                background: statusStyle.bg,
+                                color: statusStyle.fg,
+                                borderColor: statusStyle.fg + '30',
+                              }}
+                            >
+                              {statusStyle.label}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Add member form */}
