@@ -260,11 +260,11 @@ class PrioritizeStrategy(AIStrategy):
         task_lines = []
         for t in tasks:
             task_lines.append(
-                f"- id: {t.get('id','')} | \"{t.get('title','Untitled')}\" "
-                f"| current: {t.get('priority','MEDIUM')} "
-                f"| deadline: {t.get('deadline','none')} "
-                f"| status: {t.get('status','TODO')} "
-                f"| desc: {t.get('description','') or '(none)'}"
+                f"- id: {t.get('id', '')} | \"{t.get('title', 'Untitled')}\" "
+                f"| current: {t.get('priority', 'MEDIUM')} "
+                f"| deadline: {t.get('deadline', 'none')} "
+                f"| status: {t.get('status', 'TODO')} "
+                f"| desc: {t.get('description', '') or '(none)'}"
             )
         task_list = "\n".join(task_lines) or "(none)"
         return (
@@ -309,11 +309,11 @@ class ScheduleStrategy(AIStrategy):
     """
 
     def build_prompt(self, data: dict) -> str:
-        tasks          = data["tasks"]
-        hours          = data.get("available_hours", 8)
-        current_time   = data.get("current_time") or ""
-        existing       = data.get("existing_blocks") or []
-        focus_mins     = data.get("focus_minutes", 25)
+        tasks = data["tasks"]
+        hours = data.get("available_hours", 8)
+        current_time = data.get("current_time") or ""
+        existing = data.get("existing_blocks") or []
+        focus_mins = data.get("focus_minutes", 25)
 
         task_lines = []
         for t in tasks:
@@ -328,7 +328,8 @@ class ScheduleStrategy(AIStrategy):
 
         if existing:
             busy_lines = "\n".join(
-                f"- {b.get('start_time','')} → {b.get('end_time','')} ({b.get('title','busy')})"
+                f"- {b.get('start_time', '')} → {b.get('end_time', '')} "
+                f"({b.get('title', 'busy')})"
                 for b in existing
             )
         else:
@@ -366,7 +367,7 @@ class ScheduleStrategy(AIStrategy):
             '  "summary": "1-2 sentence plan overview — lead with the strategic insight",\n'
             '  "schedule": [\n'
             '    {\n'
-            '      "task_title": "exact title from the list, or \'Break\' / \'Lunch\' / \'Buffer\'",\n'
+            '      "task_title": "exact title OR \'Break\' / \'Lunch\' / \'Buffer\'",\n'
             '      "start_time": "YYYY-MM-DDTHH:MM (local, 24h)",\n'
             '      "end_time":   "YYYY-MM-DDTHH:MM",\n'
             '      "time": "human label, e.g. \'10:30 AM\'",\n'
@@ -488,12 +489,12 @@ async def prioritize_tasks(
     strategy = PrioritizeStrategy()
     parsed = await strategy.execute(api_key, {"tasks": data.tasks})
 
-    ranked   = parsed.get("ranked", []) or []
-    summary  = parsed.get("summary", "") or ""
-    allowed  = {"HIGH", "MEDIUM", "LOW"}
+    ranked = parsed.get("ranked", []) or []
+    summary = parsed.get("summary", "") or ""
+    allowed = {"HIGH", "MEDIUM", "LOW"}
 
     id_to_input = {t.get("id"): t for t in data.tasks if t.get("id")}
-    tasks_col   = db["tasks"]
+    tasks_col = db["tasks"]
     user_id_str = str(user["_id"])
 
     # Sort by AI-returned rank (fallback to input order)
@@ -504,17 +505,17 @@ async def prioritize_tasks(
     seen_ids = set()
 
     for r in ranked:
-        tid        = r.get("id")
+        tid = r.get("id")
         if not tid or tid in seen_ids or tid not in id_to_input:
             continue
         seen_ids.add(tid)
-        original   = id_to_input[tid]
-        old_prio   = original.get("priority", "MEDIUM")
-        new_prio   = str(r.get("priority", old_prio)).upper()
+        original = id_to_input[tid]
+        old_prio = original.get("priority", "MEDIUM")
+        new_prio = str(r.get("priority", old_prio)).upper()
         if new_prio not in allowed:
             new_prio = old_prio
-        reason     = (r.get("reason") or "").strip()
-        rank       = r.get("rank")
+        reason = (r.get("reason") or "").strip()
+        rank = r.get("rank")
 
         # Persist priority change only when it actually changes.
         if new_prio != old_prio:
