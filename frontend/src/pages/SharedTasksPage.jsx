@@ -112,13 +112,13 @@ export default function SharedTasksPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-8 max-w-6xl mx-auto page-enter">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
+        <h1 className="text-3xl font-extrabold tracking-tight mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
           Shared with Me
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm" style={{ color:'#767c74' }}>
           Tasks that collaborators have shared with you
         </p>
       </div>
@@ -126,13 +126,13 @@ export default function SharedTasksPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'Total Shared', value: stats.total, color: 'border-indigo-300 dark:border-indigo-700' },
-          { label: 'View Only', value: stats.viewOnly, color: 'border-gray-300 dark:border-gray-700' },
-          { label: 'Can Edit', value: stats.editable, color: 'border-emerald-300 dark:border-emerald-700' },
+          { label: 'Total Shared', value: stats.total,    accent: '#6366f1' },
+          { label: 'View Only',    value: stats.viewOnly, accent: '#aeb4aa' },
+          { label: 'Can Edit',     value: stats.editable, accent: '#3a6758' },
         ].map(s => (
-          <div key={s.label} className={`border-2 ${s.color} rounded-lg px-4 py-3`}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{s.label}</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{s.value}</p>
+          <div key={s.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background:'#f3f4ee', borderLeft:`3px solid ${s.accent}` }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color:'#aeb4aa' }}>{s.label}</p>
+            <p className="text-2xl font-extrabold font-mono" style={{ color: s.accent }}>{s.value}</p>
           </div>
         ))}
       </div>
@@ -144,18 +144,18 @@ export default function SharedTasksPage() {
           placeholder="Search by title or owner..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+          className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none transition-colors"
+          style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
         />
         <div className="flex gap-1">
           {['ALL', 'VIEW', 'EDIT'].map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-lg border-2 transition-colors
-                ${filter === f
-                  ? 'border-gray-900 dark:border-gray-400 bg-gray-900 dark:bg-gray-700 text-white'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
-                }`}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors"
+              style={filter === f
+                ? { background:'#3a6758', color:'#ffffff', border:'1.5px solid #3a6758' }
+                : { background:'transparent', color:'#5b6159', border:'1.5px solid #dee4da' }}
             >
               {f === 'ALL' ? 'All' : f}
             </button>
@@ -165,11 +165,24 @@ export default function SharedTasksPage() {
 
       {/* Task list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-gray-400 dark:text-gray-500 text-sm font-bold">
+        <div className="flex flex-col items-center py-16 gap-3">
+          <svg width="80" height="72" viewBox="0 0 80 72" fill="none">
+            <rect x="10" y="8" width="60" height="54" rx="8" fill="#f3f4ee" stroke="#dee4da" strokeWidth="1.5"/>
+            <path d="M10 20h60" stroke="#dee4da" strokeWidth="1.5"/>
+            <circle cx="22" cy="14" r="3" fill="#dee4da"/>
+            <circle cx="32" cy="14" r="3" fill="#dee4da"/>
+            <rect x="20" y="30" width="40" height="6" rx="3" fill="#ecefe7"/>
+            <rect x="20" y="42" width="28" height="6" rx="3" fill="#ecefe7"/>
+            <circle cx="62" cy="56" r="10" fill="#ecefe7" stroke="#dee4da" strokeWidth="1.5"/>
+            <path d="M58 56h8M62 52v8" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <p className="text-sm font-semibold" style={{ color:'#5b6159' }}>
+            {sharedTasks.length === 0 ? 'Nothing shared yet' : 'No matches'}
+          </p>
+          <p className="text-xs" style={{ color:'#aeb4aa' }}>
             {sharedTasks.length === 0
-              ? 'No tasks have been shared with you yet.'
-              : 'No tasks match your filter.'}
+              ? 'Ask a teammate to share a task with you.'
+              : 'Try a different filter or search term.'}
           </p>
         </div>
       ) : (
@@ -177,13 +190,16 @@ export default function SharedTasksPage() {
           {filtered.map(task => (
             <div
               key={task.task_id || task.id}
-              className="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-400 dark:hover:border-gray-500 transition-colors bg-white dark:bg-gray-900"
+              className="rounded-2xl p-4 transition-all"
+              style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 2px 8px rgba(46,52,45,0.05)' }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow='0 6px 20px rgba(46,52,45,0.10)'; e.currentTarget.style.transform='translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow='0 2px 8px rgba(46,52,45,0.05)'; e.currentTarget.style.transform='translateY(0)' }}
             >
               <div className="flex items-start justify-between gap-4">
                 {/* Left: task info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                    <h3 className="text-sm font-bold truncate" style={{ color:'#2e342d' }}>
                       {task.title}
                     </h3>
                     {task.priority && (
@@ -198,22 +214,22 @@ export default function SharedTasksPage() {
                     )}
                   </div>
                   {task.description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                    <p className="text-xs mt-0.5 line-clamp-2" style={{ color:'#767c74' }}>
                       {task.description}
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      Shared by <span className="font-bold text-gray-600 dark:text-gray-300">{task.owner_name || 'Unknown'}</span>
+                    <span className="text-xs" style={{ color:'#aeb4aa' }}>
+                      Shared by <span className="font-semibold" style={{ color:'#5b6159' }}>{task.owner_name || 'Unknown'}</span>
                     </span>
                     {task.deadline && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                        Due: {task.deadline}
+                      <span className="text-xs font-mono" style={{ color:'#aeb4aa' }}>
+                        📅 {task.deadline}
                       </span>
                     )}
                     {task.shared_at && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        Shared: {new Date(task.shared_at).toLocaleDateString()}
+                      <span className="text-xs" style={{ color:'#aeb4aa' }}>
+                        {new Date(task.shared_at).toLocaleDateString()}
                       </span>
                     )}
                   </div>
@@ -226,14 +242,16 @@ export default function SharedTasksPage() {
                   </span>
                   <button
                     onClick={() => setExpandedComments(prev => prev === (task.task_id || task.id) ? null : (task.task_id || task.id))}
-                    className="px-2.5 py-1 text-xs font-bold border-2 border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                    className="px-2.5 py-1 text-xs font-bold rounded-lg transition-colors"
+                    style={{ border:'1.5px solid #dee4da', color:'#5b6159', background:'transparent' }}
                   >
                     Comments
                   </button>
                   {task.permission === 'EDIT' && (
                     <button
                       onClick={() => openEdit(task)}
-                      className="px-2.5 py-1 text-xs font-bold border-2 border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      className="px-2.5 py-1 text-xs font-bold rounded-lg text-white transition-colors"
+                      style={{ background:'#3a6758' }}
                     >
                       Edit
                     </button>
@@ -250,24 +268,26 @@ export default function SharedTasksPage() {
       {editingTask && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeEdit}>
           <div
-            className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-600 rounded-lg p-6 w-full max-w-md"
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 8px 40px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-4">
+            <h2 className="text-xl font-extrabold mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
               Edit Shared Task
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
+            <p className="text-sm mb-4 truncate" style={{ color:'#767c74' }}>
               {editingTask.title}
             </p>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color:'#5b6159' }}>
                   Status
                 </label>
                 <select
                   value={editForm.status}
                   onChange={e => setEditForm(p => ({ ...p, status: e.target.value }))}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
                 >
                   <option value="TODO">To Do</option>
                   <option value="IN_PROGRESS">In Progress</option>
@@ -275,13 +295,14 @@ export default function SharedTasksPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color:'#5b6159' }}>
                   Priority
                 </label>
                 <select
                   value={editForm.priority}
                   onChange={e => setEditForm(p => ({ ...p, priority: e.target.value }))}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
                 >
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
@@ -289,17 +310,14 @@ export default function SharedTasksPage() {
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeEdit}
-                  className="px-4 py-2 text-sm font-bold border-2 border-gray-200 dark:border-gray-700 rounded-lg text-gray-500 dark:text-gray-400 hover:border-gray-900 dark:hover:border-gray-400 transition-colors"
-                >
+                <button type="button" onClick={closeEdit}
+                  className="px-4 py-2 text-sm font-semibold rounded-xl transition-colors"
+                  style={{ border:'1.5px solid #dee4da', color:'#5b6159', background:'transparent' }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-bold border-2 border-gray-900 dark:border-gray-400 rounded-lg bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
-                >
+                <button type="submit"
+                  className="px-4 py-2 text-sm font-bold rounded-xl text-white transition-colors"
+                  style={{ background:'#3a6758' }}>
                   Save Changes
                 </button>
               </div>

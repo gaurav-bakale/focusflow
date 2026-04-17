@@ -1522,7 +1522,10 @@ export default function CalendarPage() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => calRef.current?.getApi().prev()}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+              style={{ color:'#5b6159' }}
+              onMouseEnter={e => e.currentTarget.style.background='#ecefe7'}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
@@ -1530,7 +1533,10 @@ export default function CalendarPage() {
             </button>
             <button
               onClick={() => calRef.current?.getApi().next()}
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400"
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+              style={{ color:'#5b6159' }}
+              onMouseEnter={e => e.currentTarget.style.background='#ecefe7'}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
@@ -1549,7 +1555,7 @@ export default function CalendarPage() {
           </button>
 
           {/* View switcher */}
-          <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-0.5">
+          <div className="flex rounded-xl p-0.5" style={{ background:'#ecefe7' }}>
             {[
               { v: 'timeGridDay',   label: 'Day'   },
               { v: 'timeGridWeek',  label: 'Week'  },
@@ -1559,11 +1565,10 @@ export default function CalendarPage() {
               <button
                 key={v}
                 onClick={() => changeView(v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  view === v
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                }`}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={view === v
+                  ? { background:'#ffffff', color:'#2e342d', boxShadow:'0 1px 4px rgba(46,52,45,0.10)' }
+                  : { background:'transparent', color:'#767c74' }}
               >
                 {label}
               </button>

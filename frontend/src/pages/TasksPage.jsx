@@ -708,7 +708,7 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div className="p-10 max-w-7xl mx-auto page-enter" style={{ background: '#fafaf5', minHeight: '100%' }}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex justify-between items-center mb-8">
@@ -1030,10 +1030,24 @@ export default function TasksPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing
+                                className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing overflow-hidden relative
                                   ${hasOverlap ? 'ring-2 ring-amber-400' : ''}
-                                  ${snapshot.isDragging ? 'shadow-lg rotate-1' : ''}`}
-                                style={{ background: '#ffffff', boxShadow: '0 2px 8px rgba(46,52,45,0.05)' }}
+                                  ${snapshot.isDragging ? 'rotate-1' : ''}`}
+                                style={{
+                                  background: '#ffffff',
+                                  boxShadow: snapshot.isDragging
+                                    ? '0 12px 32px rgba(46,52,45,0.18)'
+                                    : '0 2px 8px rgba(46,52,45,0.06)',
+                                  border: '1px solid #dee4da',
+                                  transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                                  borderLeft: `3px solid ${
+                                    task.priority === 'HIGH' ? '#ef4444'
+                                    : task.priority === 'MEDIUM' ? '#f59e0b'
+                                    : '#3a6758'
+                                  }`,
+                                }}
+                                onMouseEnter={e => { if (!snapshot.isDragging) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(46,52,45,0.12)' } }}
+                                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)' }}
                               >
                                 {/* Title + priority */}
                                 <div className="flex justify-between items-start mb-2 gap-2">
@@ -1063,7 +1077,7 @@ export default function TasksPage() {
                                 </div>
 
                                 {task.description && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
+                                  <p className="text-xs mb-2 line-clamp-2" style={{ color:'#767c74' }}>{task.description}</p>
                                 )}
 
                                 {/* Subtask progress + list */}
@@ -1074,21 +1088,20 @@ export default function TasksPage() {
                                   return (
                                     <div className="mb-2">
                                       <div className="flex items-center gap-2 mb-1.5">
-                                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                          <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                                        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background:'#dee4da' }}>
+                                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background:'#3a6758' }} />
                                         </div>
-                                        <span className="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">{done}/{total}</span>
+                                        <span className="text-xs font-mono font-bold shrink-0" style={{ color:'#aeb4aa' }}>{done}/{total}</span>
                                       </div>
                                       <ul className="space-y-0.5">
                                         {task.subtasks.map(sub => (
                                           <li key={sub.id} className="flex items-center gap-1.5 group/sub">
                                             <button
                                               onClick={(e) => { e.stopPropagation(); handleToggleSubtask(task, sub.id) }}
-                                              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                                                sub.status === 'DONE'
-                                                  ? 'bg-emerald-500 border-emerald-500'
-                                                  : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
-                                              }`}
+                                              className="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors"
+                                              style={sub.status === 'DONE'
+                                                ? { background:'#3a6758', borderColor:'#3a6758' }
+                                                : { borderColor:'#dee4da' }}
                                             >
                                               {sub.status === 'DONE' && (
                                                 <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1096,12 +1109,13 @@ export default function TasksPage() {
                                                 </svg>
                                               )}
                                             </button>
-                                            <span className={`text-xs flex-1 truncate ${sub.status === 'DONE' ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
+                                            <span className="text-xs flex-1 truncate" style={{ color: sub.status === 'DONE' ? '#aeb4aa' : '#5b6159', textDecoration: sub.status === 'DONE' ? 'line-through' : 'none' }}>
                                               {sub.title}
                                             </span>
                                             <button
                                               onClick={(e) => { e.stopPropagation(); handleDeleteSubtask(task, sub.id) }}
-                                              className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                              className="opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                              style={{ color:'#aeb4aa' }}
                                             >
                                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -1122,13 +1136,13 @@ export default function TasksPage() {
                                       ↻ {RECURRENCE_LABELS[task.recurrence]}
                                     </span>
                                   ) : (
-                                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color:'#aeb4aa', background:'#f3f4ee', border:'1px solid #dee4da' }}>
                                       One-time
                                     </span>
                                   )}
                                   {task.estimated_minutes && (
-                                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                                      {task.estimated_minutes}m
+                                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ color:'#aeb4aa', background:'#f3f4ee' }}>
+                                      ⏱ {task.estimated_minutes}m
                                     </span>
                                   )}
                                   {(() => {
@@ -1151,8 +1165,12 @@ export default function TasksPage() {
                                     ))
                                   })()}
                                   {task.deadline && (
-                                    <span className={`text-xs font-mono ml-auto shrink-0 ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-300'}`}>
-                                      {isOverdue && '⚠ '}
+                                    <span className="text-xs font-semibold ml-auto shrink-0 px-1.5 py-0.5 rounded-full"
+                                      style={isOverdue
+                                        ? { background:'rgba(239,68,68,0.08)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }
+                                        : { background:'#f3f4ee', color:'#aeb4aa', border:'1px solid #dee4da' }
+                                      }>
+                                      {isOverdue ? '⚠ ' : '📅 '}
                                       {new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                       {task.due_time && ` · ${fmt12h(task.due_time)}`}
                                     </span>
@@ -1190,24 +1208,24 @@ export default function TasksPage() {
                                 )}
 
                                 {/* Hover actions */}
-                                <div className="flex gap-3 mt-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
+                                <div className="flex gap-3 mt-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap" style={{ borderTop:'1px solid #dee4da' }}>
                                   <button onClick={() => openModal(task)}
-                                    className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Edit</button>
+                                    className="text-xs font-bold" style={{ color:'#5b6159' }}>Edit</button>
                                   {task.status !== 'DONE' && (
                                     <button onClick={() => handleComplete(task.id)}
-                                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                                      className="text-xs font-bold" style={{ color:'#3a6758' }}>
                                       {isRecurring ? 'Complete (↻ next)' : 'Complete'}
                                     </button>
                                   )}
                                   <button onClick={() => handleBreakdown(task)}
                                     disabled={breakdownLoading && breakdownTaskId === task.id}
-                                    className={`text-xs font-bold ${breakdownTaskId === task.id ? 'text-purple-600' : 'text-purple-500 hover:text-purple-700'}`}>
+                                    className="text-xs font-bold" style={{ color: breakdownTaskId === task.id ? '#7c3aed' : '#8b5cf6' }}>
                                     {breakdownLoading && breakdownTaskId === task.id ? 'Loading…' : breakdownTaskId === task.id ? 'Hide AI' : 'AI Breakdown'}
                                   </button>
                                   <button onClick={() => openShareModal(task)}
-                                    className="text-xs font-bold text-[#3a6758] hover:opacity-70">Share</button>
+                                    className="text-xs font-bold" style={{ color:'#3a6758' }}>Share</button>
                                   <button onClick={() => handleDelete(task.id)}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
+                                    className="text-xs font-bold" style={{ color:'#ef4444' }}>Delete</button>
                                 </div>
 
                                 {/* AI Breakdown results */}

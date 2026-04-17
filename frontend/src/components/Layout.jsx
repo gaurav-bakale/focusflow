@@ -168,16 +168,27 @@ export default function Layout() {
         {/* Daily goal */}
         <div className="mx-4 mb-4">
           <div
-            className="p-4 rounded-2xl"
+            className="p-4 rounded-2xl flex items-center gap-3"
             style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(46,52,45,0.05)' }}
           >
-            <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: '#5b6159' }}>Daily Goal</p>
-            <p className="text-2xl font-black" style={{ fontFamily: 'Epilogue, sans-serif', color: '#3a6758' }}>{goalPct}%</p>
-            <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: '#dee4da' }}>
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${goalPct}%`, background: '#3a6758' }}
-              />
+            {/* Circular progress ring */}
+            {(() => {
+              const r = 18, circ = 2 * Math.PI * r
+              const dash = circ * (Math.min(goalPct, 100) / 100)
+              return (
+                <svg width="48" height="48" viewBox="0 0 48 48" className="-rotate-90 shrink-0">
+                  <circle cx="24" cy="24" r={r} fill="none" stroke="#dee4da" strokeWidth="4"/>
+                  <circle cx="24" cy="24" r={r} fill="none" stroke="#3a6758" strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${dash} ${circ}`}
+                    style={{ transition: 'stroke-dasharray 0.7s ease' }}
+                  />
+                </svg>
+              )
+            })()}
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#5b6159' }}>Daily Goal</p>
+              <p className="text-xl font-black leading-tight" style={{ fontFamily: 'Epilogue, sans-serif', color: '#3a6758' }}>{goalPct}%</p>
             </div>
           </div>
         </div>

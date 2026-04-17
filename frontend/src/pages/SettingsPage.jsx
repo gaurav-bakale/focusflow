@@ -78,7 +78,7 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="px-10 py-10 max-w-2xl mx-auto">
+    <div className="px-10 py-10 max-w-2xl mx-auto page-enter">
       <h1 className="text-3xl font-extrabold tracking-tight mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
         Settings
       </h1>

@@ -68,3 +68,26 @@ body {
 @media (max-width: 1024px) {
   .page-wrapper { padding: 1.5rem; }
 }
+
+/* ── Page fade-up animation ────────────────────────────────────────────────── */
+
+@keyframes page-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Staggered card animation */
+@keyframes card-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-enter { animation: card-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.card-enter-1 { animation: card-pop 0.3s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-2 { animation: card-pop 0.3s 0.10s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-3 { animation: card-pop 0.3s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-4 { animation: card-pop 0.3s 0.20s cubic-bezier(0.22, 1, 0.36, 1) both; }

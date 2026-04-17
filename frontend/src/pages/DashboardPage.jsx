@@ -277,6 +277,9 @@ export default function DashboardPage() {
   }
 
   const firstName  = user?.name?.split(' ')[0] || 'there'
+  const hour = new Date().getHours()
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const timeEmoji    = hour < 12 ? '☀️' : hour < 17 ? '⚡' : '🌙'
   const donePct    = analytics ? Math.round(analytics.completion_rate) : 0
   const streakDays = stats.streak_days ?? 0
 
@@ -289,7 +292,7 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="px-10 py-10 max-w-5xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div className="px-10 py-10 max-w-5xl mx-auto page-enter" style={{ background: '#fafaf5', minHeight: '100%' }}>
 
       {/* ── Timer callout ─────────────────────────────────────────────────── */}
       {phase !== PHASES.IDLE && (
@@ -304,18 +307,36 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* ── Greeting ──────────────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>
-          Hello, <span style={{ color: '#3a6758' }}>{firstName}</span>.
-        </h1>
-        <p className="text-base text-gray-400 dark:text-gray-500 mt-1">
-          {loading
-            ? "Loading your plan…"
-            : sortedTasks.length === 0
-              ? "You're all caught up. Add a task to get started."
-              : `${sortedTasks.length} active task${sortedTasks.length !== 1 ? 's' : ''} — let's get to work.`}
-        </p>
+      {/* ── Greeting banner ───────────────────────────────────────────────── */}
+      <div className="rounded-2xl px-7 py-5 mb-8 flex items-center justify-between overflow-hidden relative"
+        style={{ background:'#ecefe7', border:'1px solid #dee4da' }}>
+        {/* Decorative blobs */}
+        <div className="absolute right-0 top-0 w-48 h-48 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(58,103,88,0.10),transparent)', transform:'translate(30%,-30%)' }}/>
+        <div className="absolute right-24 bottom-0 w-32 h-32 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(58,103,88,0.07),transparent)', transform:'translateY(40%)' }}/>
+        <div className="relative">
+          <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color:'#3a6758' }}>
+            {timeEmoji} {timeGreeting}
+          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
+            {firstName}<span style={{ color:'#3a6758' }}>.</span>
+          </h1>
+          <p className="text-sm mt-1" style={{ color:'#5b6159' }}>
+            {loading
+              ? 'Loading your plan…'
+              : sortedTasks.length === 0
+                ? "You're all caught up. Add a task to get started."
+                : `${sortedTasks.length} active task${sortedTasks.length !== 1 ? 's' : ''} — let's get to work.`}
+          </p>
+        </div>
+        {/* Right illustration */}
+        <svg width="90" height="80" viewBox="0 0 90 80" fill="none" className="relative shrink-0 mr-4 opacity-80">
+          <circle cx="45" cy="35" r="28" fill="rgba(58,103,88,0.12)"/>
+          <circle cx="45" cy="35" r="20" fill="rgba(58,103,88,0.10)"/>
+          <text x="28" y="48" fontSize="28">{timeEmoji}</text>
+          <circle cx="70" cy="15" r="6" fill="rgba(58,103,88,0.15)"/>
+          <circle cx="20" cy="60" r="4" fill="rgba(58,103,88,0.12)"/>
+          <circle cx="78" cy="55" r="3" fill="rgba(58,103,88,0.10)"/>
+        </svg>
       </div>
 
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
@@ -326,11 +347,11 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Tasks Done"    value={stats.tasks_done}          color="#34D399" />
-          <StatCard label="Deep Work"     value={`${stats.deep_work_hours}h`} color="#FB7185" />
-          <StatCard label="Streak"        value={`${streakDays}d`}           color="#FBBF24" />
-          <StatCard label="Completion"    value={`${donePct}%`}              color="#A78BFA" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" style={{ opacity:1 }}>
+          <div className="card-enter-1"><StatCard label="Tasks Done"    value={stats.tasks_done}          color="#34D399" /></div>
+          <div className="card-enter-2"><StatCard label="Deep Work"     value={`${stats.deep_work_hours}h`} color="#FB7185" /></div>
+          <div className="card-enter-3"><StatCard label="Streak"        value={`${streakDays}d`}           color="#FBBF24" /></div>
+          <div className="card-enter-4"><StatCard label="Completion"    value={`${donePct}%`}              color="#A78BFA" /></div>
         </div>
       )}
 
