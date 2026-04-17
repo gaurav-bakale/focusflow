@@ -115,7 +115,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto" style={{ scrollbarWidth:'none', msOverflowStyle:'none' }}>
           {NAV.map(({ to, label, end }) => (
             <NavLink
               key={to}

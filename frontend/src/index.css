@@ -20,6 +20,9 @@ body {
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; }
+
+/* Hide scrollbar on sidebar nav */
+aside nav::-webkit-scrollbar { display: none; }
 ::-webkit-scrollbar-track { background: #f3f4ee; }
 ::-webkit-scrollbar-thumb { background: #aeb4aa; border-radius: 9999px; }
 
