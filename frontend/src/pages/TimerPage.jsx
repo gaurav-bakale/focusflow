@@ -26,7 +26,7 @@ import { fetchSessions } from '../services/otherServices'
 // IDLE uses different colors in dark vs light so the ring is always visible.
 function buildPhaseConfig(dark) {
   return {
-    [PHASES.IDLE]:        { label: 'Ready',       color: dark ? '#94a3b8' : '#1e293b', bg: 'bg-slate-50 dark:bg-slate-900',        tab: 'Focus'       },
+    [PHASES.IDLE]:        { label: 'Ready',       color: dark ? '#94a3b8' : '#3a6758', bg: 'bg-slate-50 dark:bg-slate-900',        tab: 'Focus'       },
     [PHASES.FOCUS]:       { label: 'Focus',        color: '#6366f1',                    bg: 'bg-indigo-50 dark:bg-indigo-950/40',   tab: 'Focus'       },
     [PHASES.SHORT_BREAK]: { label: 'Short Break',  color: '#10b981',                    bg: 'bg-emerald-50 dark:bg-emerald-950/40', tab: 'Short Break' },
     [PHASES.LONG_BREAK]:  { label: 'Long Break',   color: '#0ea5e9',                    bg: 'bg-sky-50 dark:bg-sky-950/40',         tab: 'Long Break'  },
@@ -225,7 +225,7 @@ export default function TimerPage() {
   // SVG ring
   const R    = 130
   const CIRC = 2 * Math.PI * R
-  const trackColor = dark ? '#1e293b' : '#f1f5f9'
+  const trackColor = dark ? '#1e293b' : '#dee4da'
   const totalSecs = (isIdle || isFocus) ? focusMins * 60
                   : phase === PHASES.SHORT_BREAK ? shortMins * 60
                   : longMins * 60
@@ -244,17 +244,26 @@ export default function TimerPage() {
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: 'Sessions Today', value: sessionsToday,   unit: '',    accent: '#6366f1' },
-            { label: 'Focus Time',     value: totalFocusMins,  unit: 'min', accent: '#10b981' },
-            { label: 'Full Cycles',    value: cyclesComplete,  unit: '',    accent: '#f59e0b' },
-          ].map(({ label, value, unit, accent }) => (
+            { label: 'Sessions Today', value: sessionsToday,  unit: '',    accent: '#6366f1', icon: (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#6366f1" strokeWidth="1.5"/><path d="M7 10l2 2 4-4" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            )},
+            { label: 'Focus Time',     value: totalFocusMins, unit: 'min', accent: '#10b981', icon: (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5"/><path d="M10 6v4l2.5 2.5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            )},
+            { label: 'Full Cycles',    value: cyclesComplete, unit: '',    accent: '#f59e0b', icon: (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l1.8 3.6L16 7.6l-3 2.9.7 4.1L10 12.5l-3.7 2.1.7-4.1-3-2.9 4.2-.6z" stroke="#f59e0b" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+            )},
+          ].map(({ label, value, unit, accent, icon }) => (
             <div key={label} className="rounded-xl px-5 py-4 relative overflow-hidden"
               style={{ background: '#f3f4ee' }}
             >
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">{label}</p>
+              <div className="flex items-start justify-between mb-1">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color:'#aeb4aa' }}>{label}</p>
+                <span className="opacity-70">{icon}</span>
+              </div>
               <p className="text-3xl font-extrabold font-mono" style={{ color: accent }}>
-                {value}<span className="text-base font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
+                {value}<span className="text-base font-bold ml-1" style={{ color:'#aeb4aa' }}>{unit}</span>
               </p>
             </div>
           ))}
@@ -563,15 +572,25 @@ export default function TimerPage() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 {sessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center px-4">
-                    <div className="w-10 h-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-full
-                                    flex items-center justify-center mb-3">
-                      <svg className="w-4 h-4 text-gray-300 dark:text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-                      </svg>
-                    </div>
-                    <p className="text-xs font-semibold text-gray-400 dark:text-gray-500">No sessions yet today</p>
-                    <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Start a focus session to track your progress</p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                    <svg width="72" height="72" viewBox="0 0 72 72" fill="none" className="mb-3">
+                      {/* Cup body */}
+                      <rect x="16" y="30" width="34" height="26" rx="6" fill="#f3f4ee" stroke="#dee4da" strokeWidth="1.5"/>
+                      {/* Handle */}
+                      <path d="M50 38 Q62 38 62 48 Q62 58 50 56" stroke="#dee4da" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                      {/* Coffee surface */}
+                      <ellipse cx="33" cy="38" rx="12" ry="4" fill="#dee4da"/>
+                      {/* Saucer */}
+                      <ellipse cx="33" cy="57" rx="20" ry="3" fill="#ecefe7"/>
+                      {/* Steam */}
+                      <path d="M24 24 Q22 19 24 14" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                      <path d="M33 22 Q31 16 33 10" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                      <path d="M42 24 Q40 19 42 14" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                      {/* Sparkle */}
+                      <text x="50" y="16" fontSize="13">✨</text>
+                    </svg>
+                    <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>No sessions yet today</p>
+                    <p className="text-xs mt-1" style={{ color:'#aeb4aa' }}>Start a focus session to track your progress</p>
                   </div>
                 ) : (
                   <ul className="divide-y divide-gray-50 dark:divide-gray-800">

@@ -30,11 +30,43 @@ const PRIORITY_DOT = {
 
 const PRIORITY_LABEL = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
 
+const STAT_ICONS = {
+  'Tasks Done': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M7 13l4 4 8-8" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  'Deep Work': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <circle cx="13" cy="13" r="3" fill={c}/>
+      <path d="M13 7v2M13 17v2M7 13h2M17 13h2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ),
+  'Streak': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M13 6c0 3.5-4.5 5.5-4.5 9.5a4.5 4.5 0 009 0c0-2.5-1.5-4-2-6-1 2.5-2.5 3.5-2.5 5.5" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  ),
+  'Completion': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M8 13l3.5 3.5L18 9" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+}
+
 // ── Small inline stat card (matches Layout's daily-goal card style) ───────────
 function StatCard({ label, value, color }) {
+  const icon = STAT_ICONS[label]
   return (
     <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden" style={{ background: '#f3f4ee' }}>
-      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
+        {icon && <span className="shrink-0 -mt-0.5">{icon(color)}</span>}
+      </div>
       <p className="text-3xl font-extrabold font-mono" style={{ color }}>{value}</p>
       <SketchLine color={color} thickness={4} />
     </div>
@@ -464,9 +496,33 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : sortedTasks.length === 0 ? (
-              <div className="py-14 text-center">
-                <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">No active tasks.</p>
-                <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Add one above to get started.</p>
+              <div className="py-10 flex flex-col items-center gap-3">
+                <svg width="110" height="100" viewBox="0 0 110 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* notebook body */}
+                  <rect x="18" y="10" width="68" height="78" rx="6" fill="#f3f4ee" stroke="#dee4da" strokeWidth="2"/>
+                  {/* spine */}
+                  <rect x="18" y="10" width="12" height="78" rx="4" fill="#dee4da"/>
+                  {/* rings */}
+                  {[24, 40, 56, 72].map(y => (
+                    <ellipse key={y} cx="24" cy={y} rx="4" ry="5" fill="#fff" stroke="#aeb4aa" strokeWidth="1.5"/>
+                  ))}
+                  {/* lines */}
+                  <line x1="38" y1="32" x2="78" y2="32" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="38" y1="44" x2="78" y2="44" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="38" y1="56" x2="64" y2="56" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  {/* pencil */}
+                  <g transform="translate(62,52) rotate(-38)">
+                    <rect x="0" y="0" width="8" height="36" rx="2" fill="#3a6758"/>
+                    <polygon points="0,36 8,36 4,44" fill="#f59e0b"/>
+                    <line x1="4" y1="40" x2="4" y2="44" stroke="#2e342d" strokeWidth="1"/>
+                    <rect x="0" y="0" width="8" height="6" rx="2" fill="#aeb4aa"/>
+                  </g>
+                  {/* sparkles */}
+                  <text x="78" y="22" fontSize="12">✨</text>
+                  <text x="14" y="95" fontSize="10">📝</text>
+                </svg>
+                <p className="text-sm font-semibold" style={{ color:'#5b6159' }}>No active tasks yet</p>
+                <p className="text-xs" style={{ color:'#aeb4aa' }}>Add one above and start crushing your goals 🎯</p>
               </div>
             ) : (
               <ul>

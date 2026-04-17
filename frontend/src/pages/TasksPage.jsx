@@ -1239,7 +1239,50 @@ export default function TasksPage() {
                       })}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
-                        <p className="text-xs text-gray-300 dark:text-gray-600 text-center py-8 font-medium">No tasks</p>
+                        <div className="flex flex-col items-center gap-2 py-8">
+                          {colStatus === 'TODO' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <rect x="20" y="22" width="24" height="28" rx="4" fill="#fff" stroke="#dee4da" strokeWidth="1.5"/>
+                                <line x1="25" y1="30" x2="39" y2="30" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <line x1="25" y1="36" x2="39" y2="36" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <line x1="25" y1="42" x2="33" y2="42" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <circle cx="43" cy="43" r="9" fill="#3a6758"/>
+                                <line x1="43" y1="39" x2="43" y2="47" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                                <line x1="39" y1="43" x2="47" y2="43" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>Nothing planned yet</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Hit + to plant your first task</p>
+                            </>
+                          )}
+                          {colStatus === 'IN_PROGRESS' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <circle cx="32" cy="32" r="14" stroke="#dee4da" strokeWidth="3" fill="none"/>
+                                <path d="M32 18 A14 14 0 0 1 46 32" stroke="#3a6758" strokeWidth="3" strokeLinecap="round" fill="none"/>
+                                <circle cx="32" cy="32" r="3" fill="#3a6758"/>
+                                <line x1="32" y1="32" x2="38" y2="26" stroke="#3a6758" strokeWidth="2" strokeLinecap="round"/>
+                                <line x1="32" y1="32" x2="32" y2="25" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round"/>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>Nothing in flight</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Drag a task here to start</p>
+                            </>
+                          )}
+                          {colStatus === 'DONE' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <circle cx="32" cy="32" r="14" fill="#dee4da"/>
+                                <path d="M24 32 l6 6 l10-12" stroke="#aeb4aa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                                <text x="44" y="22" fontSize="12">⭐</text>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>No wins yet</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Complete tasks to fill this up</p>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
