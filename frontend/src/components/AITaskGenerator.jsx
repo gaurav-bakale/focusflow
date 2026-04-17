@@ -132,14 +132,35 @@ export default function AITaskGenerator({ onTasksCreated }) {
   }
 
   return (
-    <div className="sketch-hover border-2 border-gray-900 dark:border-gray-600 rounded-lg relative overflow-hidden">
-      <SketchLine color="#A78BFA" thickness={4} />
+    <div
+      className="rounded-2xl relative overflow-hidden"
+      style={{
+        background: 'rgba(255,255,255,0.72)',
+        backdropFilter: 'blur(16px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(150%)',
+        boxShadow: '0 4px 20px rgba(46,52,45,0.06)',
+        border: '1px solid rgba(255,255,255,0.55)',
+      }}
+    >
+      <SketchLine color="#7a6a89" thickness={4} />
 
-      <div className="px-6 py-5 border-b-2 border-gray-900 dark:border-gray-600">
-        <h2 className="text-lg font-extrabold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          AI Task Planner
-        </h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Describe your goal — AI will break it into 5 tasks</p>
+      <div className="px-6 py-4 flex items-start gap-3" style={{ borderBottom: '1px solid #dee4da' }}>
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+          style={{ background: '#ede9fe', color: '#6d28d9' }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-widest mb-0.5" style={{ color: '#6d28d9' }}>AI Task Planner</p>
+          <h2 className="text-base font-extrabold" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
+            Describe your goal<span style={{ color: '#7a6a89' }}>.</span>
+          </h2>
+          <p className="text-xs mt-0.5" style={{ color: '#5b6159' }}>AI will break it into 5 actionable tasks.</p>
+        </div>
       </div>
 
       <div className="px-6 py-5">
@@ -165,11 +186,13 @@ export default function AITaskGenerator({ onTasksCreated }) {
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
                 placeholder="Paste your Gemini API key..."
-                className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none transition-colors"
+                style={{ background: '#f3f4ee', border: '1px solid #dee4da', color: '#2e342d' }}
               />
               <button
                 type="submit"
-                className="px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-600 hover:bg-gray-800"
+                className="px-5 py-2.5 font-bold text-sm rounded-xl transition-colors hover:opacity-90"
+                style={{ background: '#3a6758', color: '#ffffff' }}
               >
                 Save
               </button>
@@ -185,14 +208,18 @@ export default function AITaskGenerator({ onTasksCreated }) {
               value={goal}
               onChange={e => setGoal(e.target.value)}
               placeholder="e.g., Build a personal portfolio website"
-              className="flex-1 px-3 py-2.5 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none transition-colors placeholder-gray-400"
+              style={{ background: '#f3f4ee', border: '1px solid #dee4da', color: '#2e342d' }}
             />
             <button
               type="submit"
               disabled={!goal.trim()}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-600
-                         hover:bg-gray-800 disabled:opacity-40 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 font-bold text-sm rounded-xl transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: '#3a6758', color: '#ffffff' }}
             >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
               Generate
             </button>
           </form>
@@ -201,8 +228,8 @@ export default function AITaskGenerator({ onTasksCreated }) {
         {/* Step: Loading */}
         {step === 'loading' && (
           <div className="flex items-center gap-3 py-4">
-            <div className="w-5 h-5 border-2 border-gray-900 dark:border-gray-100 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-bold text-gray-500 dark:text-gray-400">AI is thinking...</span>
+            <div className="w-5 h-5 rounded-full animate-spin" style={{ border: '2px solid #3a6758', borderTopColor: 'transparent' }} />
+            <span className="text-sm font-bold" style={{ color: '#5b6159' }}>AI is thinking…</span>
           </div>
         )}
 
@@ -216,8 +243,8 @@ export default function AITaskGenerator({ onTasksCreated }) {
             {/* Task list */}
             <div className="space-y-2 mb-5">
               {tasks.map((task, i) => (
-                <div key={i} className="border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 flex items-start gap-3">
-                  <span className="text-xs font-mono font-bold text-gray-300 dark:text-gray-600 mt-0.5 w-4 shrink-0">{i + 1}</span>
+                <div key={i} className="rounded-xl p-3 flex items-start gap-3" style={{ background: '#f3f4ee', border: '1px solid #dee4da' }}>
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black font-mono shrink-0 mt-0.5" style={{ background: '#3a6758', color: '#ffffff' }}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{task.title}</p>
@@ -242,22 +269,22 @@ export default function AITaskGenerator({ onTasksCreated }) {
                 <button
                   onClick={handleAccept}
                   disabled={creating}
-                  className="px-5 py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-600
-                             hover:bg-gray-800 disabled:opacity-60 transition-colors"
+                  className="px-5 py-2.5 font-bold text-sm rounded-xl transition-colors hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: '#3a6758', color: '#ffffff' }}
                 >
-                  {creating ? 'Adding...' : 'Add to Board'}
+                  {creating ? 'Adding…' : 'Add to Board'}
                 </button>
                 <button
                   onClick={() => setShowFeedback(true)}
-                  className="px-4 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 font-bold text-sm rounded-lg
-                             hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  className="px-4 py-2.5 font-bold text-sm rounded-xl transition-colors"
+                  style={{ background: '#ecefe7', color: '#5b6159' }}
                 >
                   Suggest Changes
                 </button>
                 <button
                   onClick={handleDiscard}
-                  className="px-4 py-2.5 border-2 border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 font-bold text-sm rounded-lg
-                             hover:border-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+                  className="px-4 py-2.5 font-bold text-sm rounded-xl transition-colors"
+                  style={{ background: 'transparent', border: '1px solid #fecaca', color: '#9f403d' }}
                 >
                   Discard
                 </button>
@@ -267,28 +294,29 @@ export default function AITaskGenerator({ onTasksCreated }) {
             {/* Feedback form */}
             {showFeedback && (
               <form onSubmit={handleRefine} className="mt-1">
-                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">What would you like to change?</p>
+                <p className="text-xs font-bold mb-2" style={{ color: '#5b6159' }}>What would you like to change?</p>
                 <textarea
                   value={feedback}
                   onChange={e => setFeedback(e.target.value)}
-                  placeholder="e.g., make task 3 more specific, add a testing task, simplify the steps..."
+                  placeholder="e.g., make task 3 more specific, add a testing task, simplify the steps…"
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none transition-colors"
+                  style={{ background: '#f3f4ee', border: '1px solid #dee4da', color: '#2e342d' }}
                 />
                 <div className="flex gap-2 mt-2">
                   <button
                     type="submit"
                     disabled={!feedback.trim() || refining}
-                    className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm rounded-lg border-2 border-gray-900 dark:border-gray-600
-                               hover:bg-gray-800 disabled:opacity-40 transition-colors"
+                    className="px-5 py-2 font-bold text-sm rounded-xl transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: '#3a6758', color: '#ffffff' }}
                   >
-                    {refining ? 'Revising...' : 'Revise Tasks'}
+                    {refining ? 'Revising…' : 'Revise Tasks'}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setShowFeedback(false); setFeedback('') }}
-                    className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 font-bold text-sm rounded-lg
-                               hover:border-gray-900 dark:hover:border-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                    className="px-4 py-2 font-bold text-sm rounded-xl transition-colors"
+                    style={{ background: '#ecefe7', color: '#5b6159' }}
                   >
                     Cancel
                   </button>
@@ -301,14 +329,14 @@ export default function AITaskGenerator({ onTasksCreated }) {
         {/* Step: Done */}
         {step === 'done' && (
           <div className="py-2">
-            <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
-              5 tasks added to your board!
+            <p className="text-sm font-extrabold mb-1" style={{ color: '#2e342d' }}>
+              ✓ 5 tasks added to your board
             </p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Head to the Board to start working on them.</p>
+            <p className="text-xs mb-4" style={{ color: '#5b6159' }}>Head to the Board to start working on them.</p>
             <button
               onClick={handleReset}
-              className="px-4 py-2 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-gray-100 font-bold text-sm rounded-lg
-                         hover:bg-gray-900 dark:hover:bg-gray-100 hover:text-white dark:hover:text-gray-900 transition-colors"
+              className="px-4 py-2 font-bold text-sm rounded-xl transition-colors"
+              style={{ background: '#ecefe7', color: '#5b6159' }}
             >
               Plan something else
             </button>

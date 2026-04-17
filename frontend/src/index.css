@@ -145,8 +145,11 @@ aside nav::-webkit-scrollbar { display: none; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* No fill-mode forwards — lingering transform creates a containing block
+   and breaks drag-and-drop on descendant fixed-position elements. Animation
+   runs once; computed transform reverts to none at the end. */
 .page-enter {
-  animation: page-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: page-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Staggered card animation */
@@ -155,11 +158,11 @@ aside nav::-webkit-scrollbar { display: none; }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.card-enter { animation: card-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.card-enter-1 { animation: card-pop 0.3s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.card-enter-2 { animation: card-pop 0.3s 0.10s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.card-enter-3 { animation: card-pop 0.3s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.card-enter-4 { animation: card-pop 0.3s 0.20s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter { animation: card-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.card-enter-1 { animation: card-pop 0.3s 0.05s cubic-bezier(0.22, 1, 0.36, 1); }
+.card-enter-2 { animation: card-pop 0.3s 0.10s cubic-bezier(0.22, 1, 0.36, 1); }
+.card-enter-3 { animation: card-pop 0.3s 0.15s cubic-bezier(0.22, 1, 0.36, 1); }
+.card-enter-4 { animation: card-pop 0.3s 0.20s cubic-bezier(0.22, 1, 0.36, 1); }
 
 /* ── Command palette / overlay entry ──────────────────────────────────────── */
 
@@ -169,16 +172,21 @@ aside nav::-webkit-scrollbar { display: none; }
 }
 
 /* ── Route-level page transition ──────────────────────────────────────────── */
+/*
+ * Opacity-only. `transform`, `filter`, `will-change: transform/filter`, and
+ * `backdrop-filter` all create a containing block for position:fixed
+ * descendants — which breaks react-dnd's drag ghost (jitter + text-select
+ * fallback). Opacity doesn't create a containing block, so the Board stays
+ * smooth to drag.
+ */
 
 @keyframes route-swap {
-  0%   { opacity: 0; transform: translateY(10px); filter: blur(4px); }
-  60%  { filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .route-transition {
-  animation: route-swap 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform, filter;
+  animation: route-swap 0.3s ease-out;
 }
 
 /* ── Magnetic button transition (smooth return) ───────────────────────────── */
@@ -186,6 +194,18 @@ aside nav::-webkit-scrollbar { display: none; }
 .magnetic {
   transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+}
+
+/* ── AI-prioritize flash on touched cards ─────────────────────────────────── */
+
+@keyframes ai-flash-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(109, 40, 217, 0.55), 0 2px 8px rgba(46,52,45,0.06); }
+  40%  { box-shadow: 0 0 0 8px rgba(109, 40, 217, 0.18), 0 8px 24px rgba(109,40,217,0.22); }
+  100% { box-shadow: 0 0 0 0 rgba(109, 40, 217, 0),    0 2px 8px rgba(46,52,45,0.06); }
+}
+
+.ai-flash {
+  animation: ai-flash-pulse 2.2s cubic-bezier(.22,1,.36,1);
 }
 
 /* ── Hide native cursor when custom cursor is active ──────────────────────── */

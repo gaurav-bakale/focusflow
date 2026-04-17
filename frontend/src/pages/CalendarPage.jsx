@@ -61,9 +61,14 @@ const FC_CSS = `
   .fc .fc-scrollgrid-section > * { border: none !important; }
   .fc .fc-scrollgrid-section-header > * { border-bottom: 1px solid #e2e8f0 !important; }
 
-  /* Time grid slots */
-  .fc .fc-timegrid-slot        { border-color: #f1f5f9 !important; height: 52px; }
+  /* Time grid slots — no fixed height so expandRows can pack all hours
+     into the available vertical space without page scroll. */
+  .fc .fc-timegrid-slot        { border-color: #e2e8f0 !important; }
   .fc .fc-timegrid-slot-minor  { border-color: transparent !important; }
+
+  /* Outer FC should be transparent so the wrapper's glass shows through. */
+  .fc, .fc .fc-view-harness, .fc .fc-scrollgrid-sync-table,
+  .fc .fc-timegrid-body, .fc .fc-daygrid-body { background: transparent !important; }
   .fc .fc-timegrid-slot-label  { border: none !important; }
   .fc .fc-timegrid-slot-label-cushion {
     font-size: 10px !important; font-weight: 600 !important;
@@ -72,13 +77,13 @@ const FC_CSS = `
   }
 
   /* Column lines */
-  .fc .fc-timegrid-col { border-color: #f1f5f9 !important; }
-  .fc .fc-col-header-cell { border: none !important; background: white; }
-  .fc .fc-col-header { border-bottom: 1px solid #e2e8f0 !important; }
+  .fc .fc-timegrid-col { border-color: #e2e8f0 !important; }
+  .fc .fc-col-header-cell { border: none !important; background: rgba(255,255,255,0.55) !important; }
+  .fc .fc-col-header { border-bottom: 1px solid #dee4da !important; background: rgba(255,255,255,0.55) !important; backdrop-filter: blur(10px); }
 
-  /* Today column */
-  .fc .fc-day-today                  { background: #f8faff !important; }
-  .fc .fc-timegrid-col.fc-day-today  { background: #f8faff !important; }
+  /* Today column — soft green wash, visible against glass */
+  .fc .fc-day-today                  { background: rgba(58,103,88,0.06) !important; }
+  .fc .fc-timegrid-col.fc-day-today  { background: rgba(58,103,88,0.06) !important; }
 
   /* Events */
   .fc .fc-event {
@@ -1136,19 +1141,39 @@ export default function CalendarPage() {
       )
     }
 
+    // Pick a layout density based on event duration — prevents labels from
+    // spilling out of short blocks and looking like overlap.
+    const durationMins = info.event.end && info.event.start
+      ? Math.round((info.event.end - info.event.start) / 60000)
+      : 0
+    const compact  = durationMins <= 25
+    const tiny     = durationMins <= 12
+
+    if (tiny) {
+      return (
+        <div style={{ padding: '0 6px', height: '100%', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#fff' }}>
+            {info.event.title}
+          </span>
+        </div>
+      )
+    }
+
     return (
-      <div style={{ padding: '3px 6px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: 1 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3, color: '#fff' }}>
+      <div style={{ padding: '2px 6px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: 1, justifyContent: compact ? 'center' : 'flex-start' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.25, color: '#fff' }}>
           {info.event.title}
         </span>
-        {linkedTask && (
+        {!compact && linkedTask && (
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
             ↗ {linkedTask.title}
           </span>
         )}
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', fontFamily: 'monospace', marginTop: 'auto', lineHeight: 1 }}>
-          {fmtTime(info.event.startStr)} – {fmtTime(info.event.endStr)}
-        </span>
+        {!compact && (
+          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.65)', fontFamily: 'monospace', marginTop: 'auto', lineHeight: 1 }}>
+            {fmtTime(info.event.startStr)} – {fmtTime(info.event.endStr)}
+          </span>
+        )}
       </div>
     )
   }, [])
@@ -1576,15 +1601,25 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Calendar */}
-        <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 min-h-0">
+        {/* Calendar — fills remaining vertical space; FullCalendar owns any
+             internal scroll so the page itself never scrolls. */}
+        <div className="flex-1 overflow-hidden px-4 pt-2 pb-4 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-64 gap-3">
               <span className="w-6 h-6 border-3 border-gray-200 dark:border-gray-700 rounded-full animate-spin" style={{ borderWidth: 3, borderTopColor: '#3a6758' }} />
               <span className="text-sm text-gray-400 dark:text-gray-500 font-medium">Loading calendar…</span>
             </div>
           ) : (
-            <div className="rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+            <div
+              className="rounded-2xl overflow-hidden h-full"
+              style={{
+                background: 'rgba(255,255,255,0.82)',
+                backdropFilter: 'blur(18px) saturate(160%)',
+                WebkitBackdropFilter: 'blur(18px) saturate(160%)',
+                boxShadow: '0 8px 28px rgba(46,52,45,0.08)',
+                border: '1px solid rgba(222,228,218,0.6)',
+              }}
+            >
             <FullCalendar
               ref={calRef}
               plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -1604,7 +1639,8 @@ export default function CalendarPage() {
               slotMaxTime={slotRange.max}
               scrollTime={slotRange.scroll}
               slotLabelFormat={{ hour: 'numeric', hour12: true }}
-              height="auto"
+              expandRows={true}
+              height="100%"
               events={filteredEvents}
               select={handleDateSelect}
               eventClick={handleEventClick}

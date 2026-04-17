@@ -70,7 +70,6 @@ export default function CommandPalette() {
     { id: 'nav-calendar',   group: 'Navigation', label: 'Go to Calendar',   hint: 'Schedule blocks',        icon: '▧', run: () => navigate('/calendar') },
     { id: 'nav-shared',     group: 'Navigation', label: 'Go to Shared',     hint: 'Shared tasks',           icon: '⇄', run: () => navigate('/shared') },
     { id: 'nav-workspaces', group: 'Navigation', label: 'Go to Workspaces', hint: 'Teams & workspaces',     icon: '◈', run: () => navigate('/workspaces') },
-    { id: 'nav-activity',   group: 'Navigation', label: 'Go to Activity',   hint: 'Recent activity',        icon: '◉', run: () => navigate('/activity') },
     { id: 'nav-settings',   group: 'Navigation', label: 'Go to Settings',   hint: 'Preferences',            icon: '⚙', run: () => navigate('/settings') },
 
     { id: 'act-focus',      group: 'Actions',    label: 'Start Focus Session', hint: 'Begin pomodoro',      icon: '▶', run: () => { startFocus(null); navigate('/timer') } },

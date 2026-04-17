@@ -13,7 +13,6 @@ const GROUPS = [
       { keys: ['G', 'B'], label: 'Board' },
       { keys: ['G', 'T'], label: 'Timer' },
       { keys: ['G', 'C'], label: 'Calendar' },
-      { keys: ['G', 'A'], label: 'Activity' },
     ],
   },
   {
