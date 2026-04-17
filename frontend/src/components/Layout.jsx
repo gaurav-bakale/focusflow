@@ -33,7 +33,6 @@ const NAV = [
   { to: '/calendar',  label: 'Calendar',   end: false },
   { to: '/shared',    label: 'Shared',     end: false },
   { to: '/workspaces',label: 'Workspaces', end: false },
-  { to: '/activity',  label: 'Activity',   end: false },
   { to: '/settings',  label: 'Settings',   end: false },
 ]
 

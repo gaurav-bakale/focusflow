@@ -109,21 +109,35 @@ async def test_breakdown_returns_subtasks():
 async def test_prioritize_reorders_tasks():
     """
     TC-AI02: POST /ai/prioritize ranks tasks by priority.
-    Input: list of task dicts
-    Oracle: 200 with prioritized_tasks in AI-determined order
+    Input: list of task dicts with ids
+    Oracle: 200 with prioritized_tasks in AI-determined rank order.
+            Response also includes per-task change records + summary.
     """
     app.dependency_overrides[get_current_user_dependency] = _override_user(MOCK_USER)
     app.dependency_overrides[get_db_dependency] = _override_db
 
-    mock_response = "1. Urgent bug fix\n2. Code review\n3. Update docs"
+    # Upgraded PrioritizeStrategy returns structured JSON with explicit
+    # rank + new priority + rationale per task.
+    mock_response = (
+        '{"summary": "Ship the bug first; batch docs after review.",'
+        ' "ranked": ['
+        '  {"id": "t2", "title": "Urgent bug fix", "rank": 1,'
+        '   "priority": "HIGH", "reason": "Blocker due today."},'
+        '  {"id": "t3", "title": "Code review", "rank": 2,'
+        '   "priority": "MEDIUM", "reason": "Unblocks teammate."},'
+        '  {"id": "t1", "title": "Update docs", "rank": 3,'
+        '   "priority": "LOW", "reason": "No hard deadline."}'
+        ']}'
+    )
 
     with patch("app.routers.ai._adapter.call_llm", new=AsyncMock(return_value=mock_response)):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             resp = await client.post("/api/ai/prioritize", json={
                 "tasks": [
-                    {"title": "Update docs", "priority": "LOW"},
-                    {"title": "Urgent bug fix", "priority": "HIGH", "deadline": "2026-04-01"},
-                    {"title": "Code review", "priority": "MEDIUM"},
+                    {"id": "t1", "title": "Update docs", "priority": "LOW"},
+                    {"id": "t2", "title": "Urgent bug fix",
+                     "priority": "HIGH", "deadline": "2026-04-01"},
+                    {"id": "t3", "title": "Code review", "priority": "MEDIUM"},
                 ],
             }, headers=get_auth_header())
 
@@ -131,6 +145,10 @@ async def test_prioritize_reorders_tasks():
     data = resp.json()
     titles = [t["title"] for t in data["prioritized_tasks"]]
     assert titles[0] == "Urgent bug fix"
+    # New contract: changes array + summary included
+    assert data["summary"].startswith("Ship the bug first")
+    assert data["changes"][0]["id"] == "t2"
+    assert data["changes"][0]["rank"] == 1
 
 
 # ── TC-AI03: Generate tasks from a goal ──────────────────────────────────────

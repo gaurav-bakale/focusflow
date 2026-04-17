@@ -132,7 +132,7 @@ function ProgressRing({ pct }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user }               = useAuth()
-  const { phase, focusMins }   = useTimer()
+  const { phase, focusMins, startFocus } = useTimer()
 
   const [stats, setStats]         = useState({ tasks_done: 0, deep_work_hours: 0 })
   const [tasks, setTasks]         = useState([])
@@ -288,6 +288,8 @@ export default function DashboardPage() {
     try {
       await updateTask(aiFrogData.task_id, { status: 'IN_PROGRESS' })
       setTasks(prev => prev.map(t => t.id === aiFrogData.task_id ? { ...t, status: 'IN_PROGRESS' } : t))
+      // Kick off a pomodoro focus session on this task.
+      startFocus(aiFrogData.task_id)
       setAiFrogData(prev => ({ ...prev, started: true }))
     } catch {
       // silently ignore
@@ -435,10 +437,10 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" style={{ opacity:1 }}>
-          <div className="card-enter-1"><StatCard label="Tasks Done" value={<Odometer value={stats.tasks_done ?? 0} />}               color="#34D399" /></div>
-          <div className="card-enter-2"><StatCard label="Deep Work"  value={<Odometer value={stats.deep_work_hours ?? 0} decimals={1} suffix="h" />} color="#FB7185" /></div>
-          <div className="card-enter-3"><StatCard label="Streak"     value={<Odometer value={streakDays} suffix="d" />} flame={streakDays > 0} color="#FBBF24" /></div>
-          <div className="card-enter-4"><StatCard label="Completion" value={<Odometer value={donePct} suffix="%" />}                   color="#A78BFA" /></div>
+          <div className="card-enter-1"><StatCard label="Tasks Done" value={<Odometer value={stats.tasks_done ?? 0} />}               color="#3a6758" /></div>
+          <div className="card-enter-2"><StatCard label="Deep Work"  value={<Odometer value={stats.deep_work_hours ?? 0} decimals={1} suffix="h" />} color="#b5704d" /></div>
+          <div className="card-enter-3"><StatCard label="Streak"     value={<Odometer value={streakDays} suffix="d" />} flame={streakDays > 0} color="#c49a3e" /></div>
+          <div className="card-enter-4"><StatCard label="Completion" value={<Odometer value={donePct} suffix="%" />}                   color="#7a6a89" /></div>
         </div>
       )}
 

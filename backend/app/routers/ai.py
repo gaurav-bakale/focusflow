@@ -248,9 +248,11 @@ class BreakdownStrategy(AIStrategy):
 
 class PrioritizeStrategy(AIStrategy):
     """
-    Strategy for ranking a list of tasks by urgency and importance.
+    Strategy for re-prioritizing a list of tasks by urgency × importance.
 
-    Prompts the LLM to return tasks ordered from highest to lowest priority.
+    Returns not just an ordering, but also a new HIGH/MEDIUM/LOW classification
+    per task along with a one-sentence rationale — so the UI can render a
+    meaningful diff panel rather than silently shuffling priorities.
     """
 
     def build_prompt(self, data: dict) -> str:
@@ -258,29 +260,44 @@ class PrioritizeStrategy(AIStrategy):
         task_lines = []
         for t in tasks:
             task_lines.append(
-                f"- {t.get('title', 'Untitled')} "
-                f"(deadline: {t.get('deadline', 'none')}, "
-                f"priority: {t.get('priority', 'MEDIUM')})"
+                f"- id: {t.get('id', '')} | \"{t.get('title', 'Untitled')}\" "
+                f"| current: {t.get('priority', 'MEDIUM')} "
+                f"| deadline: {t.get('deadline', 'none')} "
+                f"| status: {t.get('status', 'TODO')} "
+                f"| desc: {t.get('description', '') or '(none)'}"
             )
-        task_list = "\n".join(task_lines)
+        task_list = "\n".join(task_lines) or "(none)"
         return (
-            f"Rank these tasks from highest to lowest priority based on "
-            f"urgency and importance:\n"
-            f"{task_list}\n\n"
-            f"Return ONLY a numbered list of task titles in priority order. "
-            f"No extra text."
+            "You are a productivity coach re-prioritizing the user's backlog. "
+            "For EACH task, assign a new priority (HIGH / MEDIUM / LOW) and an "
+            "integer rank (1 = do first). Use urgency × importance — a task due "
+            "today or overdue outranks a nominally HIGH task due in two weeks. "
+            "Change a priority only if deadline pressure, dependencies, or "
+            "blocked work genuinely justify it.\n\n"
+            f"TASKS:\n{task_list}\n\n"
+            "RULES:\n"
+            "1. Rank every task (1..N, unique, no ties).\n"
+            "2. Reason must be 1 short sentence (<= 90 chars) and MUST mention "
+            "the key signal (e.g. deadline, blocker, dependency, quick win).\n"
+            "3. Keep existing priority when no strong reason to change.\n"
+            "4. Return every task id from the input — no additions, no drops.\n\n"
+            "OUTPUT — respond with ONLY valid JSON, no markdown fences:\n"
+            '{\n'
+            '  "summary": "1-2 sentence strategic overview — what should dominate today and why",\n'
+            '  "ranked": [\n'
+            '    {\n'
+            '      "id": "<task id>",\n'
+            '      "title": "<exact title>",\n'
+            '      "rank": 1,\n'
+            '      "priority": "HIGH | MEDIUM | LOW",\n'
+            '      "reason": "short rationale"\n'
+            '    }\n'
+            '  ]\n'
+            '}'
         )
 
-    def parse_response(self, response: str) -> List[str]:
-        lines = response.strip().split("\n")
-        ordered = []
-        for line in lines:
-            line = line.strip()
-            if line and line[0].isdigit():
-                cleaned = line.split(". ", 1)[-1].split(") ", 1)[-1].strip()
-                if cleaned:
-                    ordered.append(cleaned)
-        return ordered
+    def parse_response(self, response: str) -> dict:
+        return _parse_json_response(response)
 
 
 class ScheduleStrategy(AIStrategy):
@@ -294,28 +311,73 @@ class ScheduleStrategy(AIStrategy):
     def build_prompt(self, data: dict) -> str:
         tasks = data["tasks"]
         hours = data.get("available_hours", 8)
+        current_time = data.get("current_time") or ""
+        existing = data.get("existing_blocks") or []
+        focus_mins = data.get("focus_minutes", 25)
+
         task_lines = []
         for t in tasks:
             task_lines.append(
-                f"- {t.get('title', 'Untitled')} "
+                f"- \"{t.get('title', 'Untitled')}\" "
                 f"(priority: {t.get('priority', 'MEDIUM')}, "
                 f"deadline: {t.get('deadline', 'none')}, "
-                f"estimated: {t.get('estimated_minutes', 30)} min)"
+                f"estimated: {t.get('estimated_minutes', focus_mins)} min, "
+                f"status: {t.get('status', 'TODO')})"
             )
-        task_list = "\n".join(task_lines)
+        task_list = "\n".join(task_lines) or "(none)"
+
+        if existing:
+            busy_lines = "\n".join(
+                f"- {b.get('start_time', '')} → {b.get('end_time', '')} "
+                f"({b.get('title', 'busy')})"
+                for b in existing
+            )
+        else:
+            busy_lines = "(none)"
+
         return (
-            f"Create a focused daily schedule for these tasks. "
-            f"The user has {hours} hours available today.\n\n"
-            f"Tasks:\n{task_list}\n\n"
-            f"Rules:\n"
-            f"- Start at 9:00 AM\n"
-            f"- Schedule high-priority tasks in the morning\n"
-            f"- Include short breaks between tasks\n"
-            f"- Include a lunch break around noon\n\n"
-            f"Respond ONLY with valid JSON (no markdown fences):\n"
-            f'{{"summary": "One-line overview", "schedule": ['
-            f'{{"time": "9:00 AM", "task_title": "...", '
-            f'"duration_minutes": 30, "reason": "..."}}]}}'
+            "You are an expert cognitive workload planner. Produce an intelligent "
+            "time-blocked schedule for today that is NOT a naive sequential list — "
+            "you must reason about energy levels, context-switching, and recovery.\n\n"
+            f"CURRENT LOCAL TIME: {current_time or 'unknown — assume start of workday'}\n"
+            f"HOURS REMAINING TODAY: {hours}\n"
+            f"POMODORO UNIT: {focus_mins} minutes (focus work should align to this)\n\n"
+            f"TASKS TO SCHEDULE:\n{task_list}\n\n"
+            f"ALREADY BUSY (avoid these windows):\n{busy_lines}\n\n"
+            "REASONING RULES — apply every single one:\n"
+            "1. ENERGY CURVE: cognitive peak is 9–12am (DEEP work), post-lunch dip 1–3pm "
+            "(SHALLOW / admin), recovery 3–5pm (MEDIUM). Never schedule a DEEP task during "
+            "a dip. Never schedule SHALLOW work during a peak.\n"
+            "2. DEADLINE URGENCY WINS: a task due today or overdue outranks a HIGH-priority "
+            "task due next week. Combine urgency × priority — don't just sort by priority.\n"
+            "3. CONTEXT SWITCHING COST: batch tasks that feel similar (same domain, same "
+            "tools). Insert a 5–10 minute BUFFER when switching contexts is unavoidable.\n"
+            "4. BREAK PACING: a short BREAK (5–10 min) after every focus pomodoro, a long "
+            "BREAK (15–20 min) after 2–3 pomodoros, and one LUNCH block (30–45 min) "
+            "between 11:45am and 1:15pm.\n"
+            "5. RESPECT EXISTING CALENDAR: never overlap an already-busy window.\n"
+            "6. START FROM CURRENT_TIME: do not backfill into the past. Round up to the "
+            "next 15-minute boundary.\n"
+            "7. DON'T OVER-COMMIT: if tasks exceed available time, schedule the highest-leverage "
+            "subset and mention what was deferred in the summary.\n"
+            "8. RATIONALE: the reason field must explain WHY this time (energy, batching, "
+            "deadline pressure) in 1 short sentence — not restate the task.\n\n"
+            "OUTPUT FORMAT — respond ONLY with valid JSON (no markdown fences):\n"
+            '{\n'
+            '  "summary": "1-2 sentence plan overview — lead with the strategic insight",\n'
+            '  "schedule": [\n'
+            '    {\n'
+            '      "task_title": "exact title OR \'Break\' / \'Lunch\' / \'Buffer\'",\n'
+            '      "start_time": "YYYY-MM-DDTHH:MM (local, 24h)",\n'
+            '      "end_time":   "YYYY-MM-DDTHH:MM",\n'
+            '      "time": "human label, e.g. \'10:30 AM\'",\n'
+            '      "duration_minutes": 25,\n'
+            '      "block_type": "TASK | BREAK | LUNCH | BUFFER",\n'
+            '      "energy":     "DEEP | MEDIUM | SHALLOW | REST",\n'
+            '      "reason":     "why this slot — energy/batching/deadline, 1 short sentence"\n'
+            '    }\n'
+            '  ]\n'
+            '}'
         )
 
     def parse_response(self, response: str) -> dict:
@@ -413,25 +475,80 @@ async def breakdown_task(
 async def prioritize_tasks(
     data: AIPrioritizeRequest,
     user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
     """
-    Rank a list of tasks by urgency and importance using PrioritizeStrategy.
+    Re-prioritize a list of tasks by urgency × importance.
+
+    Persists priority changes to the database, and returns a per-task diff
+    (old_priority → new_priority, rank, reason) plus a summary so the UI can
+    render a meaningful confirmation panel.
     """
     _check_rate_limit(str(user["_id"]))
     api_key = _get_api_key(user)
     strategy = PrioritizeStrategy()
-    ordered_titles = await strategy.execute(api_key, {"tasks": data.tasks})
+    parsed = await strategy.execute(api_key, {"tasks": data.tasks})
 
-    # Re-map original task objects to the AI's ordering
-    title_to_task = {t.get("title"): t for t in data.tasks}
-    prioritized = [title_to_task[t] for t in ordered_titles if t in title_to_task]
-    # Append any tasks not matched by the AI
-    matched = set(ordered_titles)
+    ranked = parsed.get("ranked", []) or []
+    summary = parsed.get("summary", "") or ""
+    allowed = {"HIGH", "MEDIUM", "LOW"}
+
+    id_to_input = {t.get("id"): t for t in data.tasks if t.get("id")}
+    tasks_col = db["tasks"]
+    user_id_str = str(user["_id"])
+
+    # Sort by AI-returned rank (fallback to input order)
+    ranked.sort(key=lambda r: r.get("rank", 9_999))
+
+    changes = []
+    prioritized: List[dict] = []
+    seen_ids = set()
+
+    for r in ranked:
+        tid = r.get("id")
+        if not tid or tid in seen_ids or tid not in id_to_input:
+            continue
+        seen_ids.add(tid)
+        original = id_to_input[tid]
+        old_prio = original.get("priority", "MEDIUM")
+        new_prio = str(r.get("priority", old_prio)).upper()
+        if new_prio not in allowed:
+            new_prio = old_prio
+        reason = (r.get("reason") or "").strip()
+        rank = r.get("rank")
+
+        # Persist priority change only when it actually changes.
+        if new_prio != old_prio:
+            try:
+                tasks_col.update_one(
+                    {"id": tid, "user_id": user_id_str},
+                    {"$set": {"priority": new_prio}},
+                )
+            except Exception:
+                # Persistence is best-effort; still surface the AI decision.
+                pass
+
+        changes.append({
+            "id": tid,
+            "title": original.get("title", ""),
+            "old_priority": old_prio,
+            "new_priority": new_prio,
+            "rank": rank,
+            "reason": reason,
+            "changed": new_prio != old_prio,
+        })
+        prioritized.append({**original, "priority": new_prio, "rank": rank})
+
+    # Append any tasks the AI dropped from its output
     for t in data.tasks:
-        if t.get("title") not in matched:
+        if t.get("id") and t["id"] not in seen_ids:
             prioritized.append(t)
 
-    return AIPrioritizeResponse(prioritized_tasks=prioritized)
+    return AIPrioritizeResponse(
+        prioritized_tasks=prioritized,
+        changes=changes,
+        summary=summary,
+    )
 
 
 # ── Gemini-powered Task Generation ──────────────────────────────────────
@@ -558,8 +675,11 @@ async def suggest_schedule(
     api_key = _get_api_key(user)
     strategy = ScheduleStrategy()
     parsed = await strategy.execute(api_key, {
-        "tasks": data.tasks,
+        "tasks":           data.tasks,
         "available_hours": data.available_hours,
+        "current_time":    data.current_time,
+        "existing_blocks": data.existing_blocks,
+        "focus_minutes":   data.focus_minutes,
     })
 
     schedule = []
@@ -569,6 +689,10 @@ async def suggest_schedule(
             task_title=block.get("task_title", ""),
             duration_minutes=block.get("duration_minutes", 30),
             reason=block.get("reason", ""),
+            start_time=block.get("start_time"),
+            end_time=block.get("end_time"),
+            block_type=block.get("block_type", "TASK"),
+            energy=block.get("energy", "MEDIUM"),
         ))
 
     return AIScheduleResponse(
