@@ -223,13 +223,15 @@ describe('data display', () => {
    * DASH-02: Renders "Hello, [firstName]" greeting
    * // Input: user.name = "Alice Smith" | Oracle: "Hello, Alice" visible | Pass: text found
    */
-  it('Renders "Hello, [firstName]" greeting with user first name', async () => {
+  it('Renders time-of-day greeting with user first name', async () => {
     // Arrange / Act
     await renderDashboard()
 
-    // Assert
-    expect(screen.getByText(/hello,/i)).toBeInTheDocument()
-    expect(screen.getByText('Alice')).toBeInTheDocument()
+    // Assert — banner shows time-of-day greeting + the firstName (typed out)
+    expect(screen.getByText(/good (morning|afternoon|evening)/i)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/Alice/)).toBeInTheDocument()
+    })
   })
 
   /**
@@ -269,8 +271,9 @@ describe('data display', () => {
    * // Input: fetchTasks resolves with [] | Oracle: "No active tasks" text visible | Pass: text found
    */
   it('Shows "No active tasks" when tasks array is empty', async () => {
-    // Arrange / Act
-    await renderDashboard({ tasks: [] })
+    // Arrange / Act — tasks_done=0 ensures we hit the empty-state branch,
+    // not the "crushed it" celebration branch.
+    await renderDashboard({ tasks: [], stats: { tasks_done: 0, deep_work_hours: 0 } })
 
     // Assert
     await waitFor(() => {
