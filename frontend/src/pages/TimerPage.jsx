@@ -21,6 +21,9 @@ import { useTheme } from '../context/ThemeContext'
 import { PHASES } from '../context/timerPhases'
 import { fetchTasks, updateTask } from '../services/taskService'
 import { fetchSessions } from '../services/otherServices'
+import useMagnetic from '../hooks/useMagnetic'
+import Odometer from '../components/Odometer'
+import SketchLine from '../components/SketchLine'
 
 // ── Phase config factory ───────────────────────────────────────────────────────
 // IDLE uses different colors in dark vs light so the ring is always visible.
@@ -193,6 +196,7 @@ export default function TimerPage() {
   const [tasks,    setTasks]    = useState([])
   const [sessions, setSessions] = useState([])
   const [showSettings, setShowSettings] = useState(false)
+  const startBtnRef = useMagnetic({ strength: 0.25, radius: 110 })
 
   useEffect(() => {
     fetchTasks().then(ts => setTasks(ts.filter(t => !t.is_complete))).catch(() => {})
@@ -240,37 +244,82 @@ export default function TimerPage() {
   return (
     <div
       style={{
-        background: isFocus ? 'rgba(58,103,88,0.04)' : '#fafaf5',
+        background: isFocus ? 'rgba(58,103,88,0.04)' : 'transparent',
         minHeight: '100%',
         transition: 'background 0.6s ease',
       }}
     >
       <div className="max-w-5xl mx-auto px-8 py-8">
 
+        {/* ── Header ────────────────────────────────────────────────────────── */}
+        <div className="mb-8">
+          <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#3a6758' }}>
+            {isFocus ? 'In Focus' : isBreak ? 'On Break' : 'Pomodoro'}
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#2e342d' }}>
+            {isFocus ? 'Deep work' : isBreak ? 'Breathe' : 'Focus timer'}<span style={{ color: '#3a6758' }}>.</span>
+          </h1>
+          <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: '#5b6159' }}>
+            <span className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'animate-pulse' : ''}`} style={{ background: cfg.color }} />
+              <span className="font-bold">{cfg.label}</span>
+            </span>
+            <span style={{ color: '#dee4da' }}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="font-bold">{sessionsToday}</span>
+              <span>session{sessionsToday !== 1 ? 's' : ''} today</span>
+            </span>
+            <span style={{ color: '#dee4da' }}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span className="font-bold">{totalFocusMins}</span>
+              <span>min focused</span>
+            </span>
+            {activeTask && (
+              <>
+                <span style={{ color: '#dee4da' }}>·</span>
+                <span className="flex items-center gap-1.5 truncate max-w-[260px]">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#3a6758' }} />
+                  <span className="font-bold truncate">{activeTask.title}</span>
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* ── Stats strip ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: 'Sessions Today', value: sessionsToday,  unit: '',    accent: '#6366f1', icon: (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#6366f1" strokeWidth="1.5"/><path d="M7 10l2 2 4-4" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            { label: 'Sessions Today', value: sessionsToday,  suffix: '',    color: '#6366f1', icon: (c) => (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={c} fillOpacity="0.15"/><path d="M8 12.5l3 3 5-6" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             )},
-            { label: 'Focus Time',     value: totalFocusMins, unit: 'min', accent: '#10b981', icon: (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5"/><path d="M10 6v4l2.5 2.5" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            { label: 'Focus Time',     value: totalFocusMins, suffix: 'min', color: '#10b981', icon: (c) => (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5l3.5 2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/></svg>
             )},
-            { label: 'Full Cycles',    value: cyclesComplete, unit: '',    accent: '#f59e0b', icon: (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l1.8 3.6L16 7.6l-3 2.9.7 4.1L10 12.5l-3.7 2.1.7-4.1-3-2.9 4.2-.6z" stroke="#f59e0b" strokeWidth="1.5" strokeLinejoin="round"/></svg>
+            { label: 'Full Cycles',    value: cyclesComplete, suffix: '',    color: '#f59e0b', icon: (c) => (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 3l2 4 4.5 0.6-3.3 3.2 0.8 4.5-4-2.1-4 2.1 0.8-4.5-3.3-3.2 4.5-0.6z" fill={c} fillOpacity="0.18" stroke={c} strokeWidth="1.5" strokeLinejoin="round"/></svg>
             )},
-          ].map(({ label, value, unit, accent, icon }) => (
-            <div key={label} className="rounded-xl px-5 py-4 relative overflow-hidden"
-              style={{ background: '#f3f4ee' }}
+          ].map(({ label, value, suffix, color, icon }, i) => (
+            <div
+              key={label}
+              className={`rounded-2xl p-5 relative overflow-hidden card-enter-${i + 1}`}
+              style={{
+                background: 'rgba(243,244,238,0.72)',
+                backdropFilter: 'blur(14px) saturate(140%)',
+                WebkitBackdropFilter: 'blur(14px) saturate(140%)',
+                border: '1px solid rgba(222,228,218,0.7)',
+              }}
             >
-              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-              <div className="flex items-start justify-between mb-1">
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color:'#aeb4aa' }}>{label}</p>
-                <span className="opacity-70">{icon}</span>
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#aeb4aa' }}>{label}</p>
+                <span className="shrink-0 -mt-0.5">{icon(color)}</span>
               </div>
-              <p className="text-3xl font-extrabold font-mono" style={{ color: accent }}>
-                {value}<span className="text-base font-bold ml-1" style={{ color:'#aeb4aa' }}>{unit}</span>
+              <p className="text-3xl font-extrabold font-mono flex items-baseline gap-1" style={{ color }}>
+                <Odometer value={value} />
+                {suffix && <span className="text-base font-bold" style={{ color: '#aeb4aa' }}>{suffix}</span>}
               </p>
+              <SketchLine color={color} thickness={4} />
             </div>
           ))}
         </div>
@@ -280,7 +329,7 @@ export default function TimerPage() {
 
           {/* ── Left: timer ──────────────────────────────────────────────────── */}
           <div className="col-span-3 rounded-2xl p-8 flex flex-col items-center"
-            style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+            style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}
           >
 
             {/* Phase tabs */}
@@ -390,9 +439,10 @@ export default function TimerPage() {
               {/* Primary action: Start / Pause */}
               {!isRunning && !isIdle ? (
                 <button
+                  ref={startBtnRef}
                   onClick={resume}
-                  className="flex items-center gap-2 text-white font-bold text-sm
-                             px-8 py-3.5 rounded-2xl transition-all duration-300"
+                  className="magnetic flex items-center gap-2 text-white font-bold text-sm
+                             px-8 py-3.5 rounded-2xl"
                   style={{ background: '#3a6758' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -402,6 +452,7 @@ export default function TimerPage() {
                 </button>
               ) : !isRunning ? (
                 <button
+                  ref={startBtnRef}
                   onClick={() => {
                     if (isIdle || isFocus) {
                       // Auto-move the selected task to IN_PROGRESS when focus starts
@@ -418,8 +469,8 @@ export default function TimerPage() {
                       startBreak(phase)
                     }
                   }}
-                  className="flex items-center gap-2 text-white font-bold text-sm
-                             px-8 py-3.5 rounded-2xl transition-all duration-300"
+                  className="magnetic flex items-center gap-2 text-white font-bold text-sm
+                             px-8 py-3.5 rounded-2xl"
                   style={{ background: '#3a6758' }}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -476,7 +527,7 @@ export default function TimerPage() {
 
             {/* Task picker */}
             <div className="rounded-2xl p-5"
-              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+              style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}
             >
               <p className="text-xs font-bold uppercase tracking-widest mb-3"
                 style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 700, color: '#2e342d' }}
@@ -515,7 +566,7 @@ export default function TimerPage() {
 
             {/* Duration settings */}
             <div className="rounded-2xl overflow-hidden"
-              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+              style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}
             >
               <button
                 onClick={() => setShowSettings(s => !s)}
@@ -567,7 +618,7 @@ export default function TimerPage() {
 
             {/* Session log */}
             <div className="rounded-2xl flex-1 overflow-hidden flex flex-col"
-              style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}
+              style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}
             >
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
                 <p className="text-xs font-bold uppercase tracking-widest"

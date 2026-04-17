@@ -14,6 +14,8 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import Odometer from '../components/Odometer'
+import SketchLine from '../components/SketchLine'
 import {
   fetchTasks,
   createTask,
@@ -723,28 +725,52 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto page-enter" style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div className="p-10 max-w-7xl mx-auto page-enter" style={{ background: 'transparent', minHeight: '100%' }}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>Project Board</h1>
-          {overlappingIds.size > 0 && (
-            <p className="text-xs font-bold text-amber-600 mt-1 flex items-center gap-1.5">
-              <span>⚠</span>
-              {overlappingIds.size} task{overlappingIds.size !== 1 ? 's' : ''} have scheduling conflicts
-            </p>
-          )}
+          <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#3a6758' }}>
+            Kanban
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#2e342d' }}>
+            Project Board<span style={{ color: '#3a6758' }}>.</span>
+          </h1>
+          <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: '#5b6159' }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#3a6758' }} />
+              <span className="font-bold">{analytics.total}</span>
+              <span>active task{analytics.total !== 1 ? 's' : ''}</span>
+            </span>
+            <span style={{ color: '#dee4da' }}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="font-bold">{analytics.completion_rate}%</span>
+              <span>completion</span>
+            </span>
+            {overlappingIds.size > 0 && (
+              <>
+                <span style={{ color: '#dee4da' }}>·</span>
+                <span className="flex items-center gap-1.5 text-amber-600 font-bold">
+                  <span>⚠</span>
+                  {overlappingIds.size} conflict{overlappingIds.size !== 1 ? 's' : ''}
+                </span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleAIPrioritize}
             disabled={aiLoading}
-            className={`flex items-center gap-2 border-2 font-bold text-sm px-4 py-2 rounded-lg transition-colors ${
-              aiLoading
-                ? 'border-purple-300 text-purple-300 cursor-wait'
-                : 'border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
-            }`}
+            className="flex items-center gap-2 font-bold text-sm px-4 py-2 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-wait"
+            style={{
+              background: 'rgba(255,255,255,0.72)',
+              backdropFilter: 'blur(14px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+              border: '1px solid #3a6758',
+              color: '#3a6758',
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
@@ -767,33 +793,47 @@ export default function TasksPage() {
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
       <div data-testid="analytics-strip" className="grid grid-cols-5 gap-4 mb-8">
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Total</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.total}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-0.5">To Do</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.TODO}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-sky-500 mb-0.5">In Progress</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.IN_PROGRESS}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-0.5">Done</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.DONE}</p>
-        </div>
-        {analytics.overdue > 0 ? (
-          <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-0.5">Overdue</p>
-            <p className="text-2xl font-extrabold text-red-600 font-mono">{analytics.overdue}</p>
+        {[
+          { label: 'Total',       value: analytics.total,                     color: '#3a6758', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/></svg>
+          )},
+          { label: 'To Do',       value: analytics.by_status.TODO,            color: '#f59e0b', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><circle cx="12" cy="12" r="3.5" fill={c} fillOpacity="0.25"/></svg>
+          )},
+          { label: 'In Progress', value: analytics.by_status.IN_PROGRESS,     color: '#0ea5e9', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5l3 2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          )},
+          { label: 'Done',        value: analytics.by_status.DONE,            color: '#10b981', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={c} fillOpacity="0.15"/><path d="M8 12.5l3 3 5-6" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )},
+          analytics.overdue > 0
+            ? { label: 'Overdue',   value: analytics.overdue,                 color: '#ef4444', icon: (c) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5" stroke={c} strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="16" r="1" fill={c}/></svg>
+              )}
+            : { label: 'Done Rate', value: analytics.completion_rate, suffix: '%', color: '#A78BFA', icon: (c) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5" strokeOpacity="0.35"/><path d="M12 3a9 9 0 019 9" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>
+              )},
+        ].map(({ label, value, color, icon, suffix }, i) => (
+          <div
+            key={label}
+            className={`rounded-2xl p-5 relative overflow-hidden card-enter-${Math.min(i + 1, 4)}`}
+            style={{
+              background: 'rgba(243,244,238,0.72)',
+              backdropFilter: 'blur(14px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(140%)',
+              border: '1px solid rgba(222,228,218,0.7)',
+            }}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#aeb4aa' }}>{label}</p>
+              <span className="shrink-0 -mt-0.5">{icon(color)}</span>
+            </div>
+            <p className="text-3xl font-extrabold font-mono" style={{ color }}>
+              <Odometer value={value} suffix={suffix || ''} />
+            </p>
+            <SketchLine color={color} thickness={4} />
           </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Done Rate</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.completion_rate}%</p>
-          </div>
-        )}
+        ))}
       </div>
 
       {/* ── AI Error banner ─────────────────────────────────────────────── */}
@@ -1007,12 +1047,29 @@ export default function TasksPage() {
             const colStripColor = colStatus === 'TODO' ? '#aeb4aa' : colStatus === 'IN_PROGRESS' ? '#3a6758' : '#10b981'
             return (
               <div key={colStatus} className="rounded-2xl p-4 min-h-[300px]" style={{ background: '#f3f4ee', boxShadow: '0 4px 12px rgba(46,52,45,0.04)' }}>
-                {/* Thin color strip at top of column */}
-                <div className="h-1 rounded-full mb-4 -mx-4 -mt-4 rounded-t-2xl" style={{ background: colStripColor }} />
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-extrabold text-gray-900 dark:text-gray-100">{config.label}</h2>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#dee4da', color: '#5b6159' }}>
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        background: colStripColor,
+                        boxShadow: `0 0 0 3px ${colStripColor}22`,
+                      }}
+                    />
+                    <h2
+                      className="font-extrabold text-sm uppercase tracking-widest"
+                      style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}
+                    >
+                      {config.label}
+                    </h2>
+                    <span
+                      className="text-xs font-mono font-black px-2 py-0.5 rounded-full"
+                      style={{
+                        background: `${colStripColor}1a`,
+                        color: colStripColor,
+                        border: `1px solid ${colStripColor}33`,
+                      }}
+                    >
                       {colTasks.length}
                     </span>
                   </div>
@@ -1049,11 +1106,13 @@ export default function TasksPage() {
                                   ${hasOverlap ? 'ring-2 ring-amber-400' : ''}
                                   ${snapshot.isDragging ? 'rotate-1' : ''}`}
                                 style={{
-                                  background: '#ffffff',
+                                  background: 'rgba(255,255,255,0.78)',
+                                  backdropFilter: 'blur(14px) saturate(150%)',
+                                  WebkitBackdropFilter: 'blur(14px) saturate(150%)',
                                   boxShadow: snapshot.isDragging
                                     ? '0 12px 32px rgba(46,52,45,0.18)'
                                     : '0 2px 8px rgba(46,52,45,0.06)',
-                                  border: '1px solid #dee4da',
+                                  border: '1px solid rgba(222,228,218,0.9)',
                                   transition: 'box-shadow 0.2s ease, transform 0.15s ease',
                                   borderLeft: `3px solid ${
                                     task.priority === 'HIGH' ? '#ef4444'

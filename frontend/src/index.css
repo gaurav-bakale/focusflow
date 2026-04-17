@@ -160,3 +160,39 @@ aside nav::-webkit-scrollbar { display: none; }
 .card-enter-2 { animation: card-pop 0.3s 0.10s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .card-enter-3 { animation: card-pop 0.3s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .card-enter-4 { animation: card-pop 0.3s 0.20s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ── Command palette / overlay entry ──────────────────────────────────────── */
+
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Route-level page transition ──────────────────────────────────────────── */
+
+@keyframes route-swap {
+  0%   { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  60%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+.route-transition {
+  animation: route-swap 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
+}
+
+/* ── Magnetic button transition (smooth return) ───────────────────────────── */
+
+.magnetic {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* ── Hide native cursor when custom cursor is active ──────────────────────── */
+
+html.custom-cursor,
+html.custom-cursor *,
+html.custom-cursor *::before,
+html.custom-cursor *::after {
+  cursor: none !important;
+}

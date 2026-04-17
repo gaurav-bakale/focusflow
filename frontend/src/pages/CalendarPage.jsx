@@ -1336,11 +1336,11 @@ export default function CalendarPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full overflow-hidden" style={{ background: '#fafaf5', minHeight: '100%' }} onClick={() => setPopover(null)}>
+    <div className="flex h-full overflow-hidden" style={{ background: 'transparent', minHeight: '100%' }} onClick={() => setPopover(null)}>
       <style>{FC_CSS}</style>
 
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
-      <aside className="w-56 shrink-0 flex flex-col overflow-y-auto rounded-2xl m-3 mr-0" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+      <aside className="w-56 shrink-0 flex flex-col overflow-y-auto rounded-2xl m-3 mr-0" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
 
         {/* Create button */}
         <div className="p-4 space-y-2">
