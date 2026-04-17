@@ -10,7 +10,7 @@
  *   • "This Week" summary
  */
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 import { useAuth } from '../context/AuthContext'
@@ -415,7 +415,7 @@ export default function DashboardPage() {
         {/* Right: rotating quote */}
         <div className="relative min-w-0 hidden md:block">
           <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#3a6758' }}>
-            Today's note
+            Today&apos;s note
           </p>
           <p key={quoteIdx} className="text-base italic leading-snug page-enter" style={{ color: '#2e342d', fontFamily: 'Epilogue, sans-serif' }}>
             &ldquo;{currentQuote.q}&rdquo;
