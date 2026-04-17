@@ -20,6 +20,9 @@ body {
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; }
+
+/* Hide scrollbar on sidebar nav */
+aside nav::-webkit-scrollbar { display: none; }
 ::-webkit-scrollbar-track { background: #f3f4ee; }
 ::-webkit-scrollbar-thumb { background: #aeb4aa; border-radius: 9999px; }
 
@@ -67,4 +70,129 @@ body {
 
 @media (max-width: 1024px) {
   .page-wrapper { padding: 1.5rem; }
+}
+
+/* ── Dot-grid background texture ───────────────────────────────────────────── */
+
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(46,52,45,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Ripple effect ─────────────────────────────────────────────────────────── */
+
+.ripple-btn { position: relative; overflow: hidden; }
+
+@keyframes ripple-spread {
+  from { transform: scale(0); opacity: 0.4; }
+  to   { transform: scale(4); opacity: 0; }
+}
+
+.ripple-btn .ripple-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  width: 80px;
+  height: 80px;
+  margin-top: -40px;
+  margin-left: -40px;
+  pointer-events: none;
+  animation: ripple-spread 0.55s ease-out forwards;
+}
+
+/* ── Shimmer sweep on cards ────────────────────────────────────────────────── */
+
+@keyframes shimmer-sweep {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.55) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.8s ease-in-out 0.2s 1 forwards;
+}
+
+/* ── Card 3D tilt utility ──────────────────────────────────────────────────── */
+
+.tilt-card { transform-style: preserve-3d; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+
+/* ── Typing cursor ─────────────────────────────────────────────────────────── */
+
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+.typing-cursor { display: inline-block; width: 2px; height: 1em; background: #3a6758; margin-left: 2px; vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+
+/* ── Focus mode dim ────────────────────────────────────────────────────────── */
+
+.focus-mode-sidebar { opacity: 0.45; transition: opacity 0.5s ease; }
+.focus-mode-sidebar:hover { opacity: 1; }
+
+/* ── Flame pulse ───────────────────────────────────────────────────────────── */
+
+@keyframes flame-dance {
+  0%,100% { transform: scale(1) rotate(-3deg); }
+  25%      { transform: scale(1.15) rotate(3deg); }
+  50%      { transform: scale(1.05) rotate(-2deg); }
+  75%      { transform: scale(1.1) rotate(2deg); }
+}
+
+.flame-animate { display: inline-block; animation: flame-dance 0.8s ease-in-out infinite; transform-origin: bottom center; }
+
+/* ── Page fade-up animation ────────────────────────────────────────────────── */
+
+@keyframes page-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: page-fade-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Staggered card animation */
+@keyframes card-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.card-enter { animation: card-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.card-enter-1 { animation: card-pop 0.3s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-2 { animation: card-pop 0.3s 0.10s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-3 { animation: card-pop 0.3s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.card-enter-4 { animation: card-pop 0.3s 0.20s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* ── Command palette / overlay entry ──────────────────────────────────────── */
+
+@keyframes palette-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Route-level page transition ──────────────────────────────────────────── */
+
+@keyframes route-swap {
+  0%   { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  60%  { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+.route-transition {
+  animation: route-swap 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
+}
+
+/* ── Magnetic button transition (smooth return) ───────────────────────────── */
+
+.magnetic {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* ── Hide native cursor when custom cursor is active ──────────────────────── */
+
+html.custom-cursor,
+html.custom-cursor *,
+html.custom-cursor *::before,
+html.custom-cursor *::after {
+  cursor: none !important;
 }

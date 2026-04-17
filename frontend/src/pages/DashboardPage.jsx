@@ -12,6 +12,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { useAuth } from '../context/AuthContext'
 import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
@@ -20,6 +21,33 @@ import { fetchTasks, markTaskComplete, createTask, updateTask, fetchTaskAnalytic
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
+import Odometer from '../components/Odometer'
+import useMagnetic from '../hooks/useMagnetic'
+
+// ── Motivational quotes ───────────────────────────────────────────────────────
+const QUOTES = [
+  { q: 'Focus is the new IQ.', a: 'Cal Newport' },
+  { q: 'Deep work is like a superpower.', a: 'Cal Newport' },
+  { q: 'The secret of getting ahead is getting started.', a: 'Mark Twain' },
+  { q: 'Done is better than perfect.', a: 'Sheryl Sandberg' },
+  { q: 'Small daily improvements are the key to staggering long-term results.', a: 'Robin Sharma' },
+  { q: 'What gets measured gets managed.', a: 'Peter Drucker' },
+  { q: 'You will never find time for anything. You must make it.', a: 'Charles Buxton' },
+  { q: 'Either you run the day or the day runs you.', a: 'Jim Rohn' },
+  { q: 'Action is the foundational key to all success.', a: 'Pablo Picasso' },
+  { q: 'Discipline equals freedom.', a: 'Jocko Willink' },
+  { q: 'The best way to predict the future is to create it.', a: 'Peter Drucker' },
+  { q: 'Slow is smooth. Smooth is fast.', a: 'Navy SEALs' },
+]
+
+function fireConfetti() {
+  confetti({
+    particleCount: 80,
+    spread: 70,
+    origin: { y: 0.7 },
+    colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+  })
+}
 
 // ── Priority config ───────────────────────────────────────────────────────────
 const PRIORITY_DOT = {
@@ -30,12 +58,47 @@ const PRIORITY_DOT = {
 
 const PRIORITY_LABEL = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low' }
 
+const STAT_ICONS = {
+  'Tasks Done': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M7 13l4 4 8-8" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  'Deep Work': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <circle cx="13" cy="13" r="3" fill={c}/>
+      <path d="M13 7v2M13 17v2M7 13h2M17 13h2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  ),
+  'Streak': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M13 6c0 3.5-4.5 5.5-4.5 9.5a4.5 4.5 0 009 0c0-2.5-1.5-4-2-6-1 2.5-2.5 3.5-2.5 5.5" stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  ),
+  'Completion': (c) => (
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="11" fill={c} fillOpacity="0.14"/>
+      <path d="M8 13l3.5 3.5L18 9" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+}
+
 // ── Small inline stat card (matches Layout's daily-goal card style) ───────────
-function StatCard({ label, value, color }) {
+function StatCard({ label, value, color, flame }) {
+  const icon = STAT_ICONS[label]
   return (
-    <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden" style={{ background: '#f3f4ee' }}>
-      <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-2">{label}</p>
-      <p className="text-3xl font-extrabold font-mono" style={{ color }}>{value}</p>
+    <div className="sketch-hover rounded-2xl p-5 relative overflow-hidden shimmer" style={{ background: '#f3f4ee' }}>
+      <div className="flex items-start justify-between mb-2">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">{label}</p>
+        {icon && <span className="shrink-0 -mt-0.5">{icon(color)}</span>}
+      </div>
+      <p className="text-3xl font-extrabold font-mono flex items-center gap-1.5" style={{ color }}>
+        {value}
+        {flame && <span className="flame-animate text-2xl leading-none">🔥</span>}
+      </p>
       <SketchLine color={color} thickness={4} />
     </div>
   )
@@ -120,6 +183,7 @@ export default function DashboardPage() {
       // result = { completed, next_task }
       setTasks(prev => prev.filter(t => t.id !== taskId))
       setStats(s => ({ ...s, tasks_done: s.tasks_done + 1 }))
+      fireConfetti()
 
       // If the completed task was recurring, the backend created the next
       // occurrence task. Auto-schedule a calendar block for it silently.
@@ -245,8 +309,37 @@ export default function DashboardPage() {
   }
 
   const firstName  = user?.name?.split(' ')[0] || 'there'
+  const hour = new Date().getHours()
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const timeEmoji    = hour < 12 ? '☀️' : hour < 17 ? '⚡' : '🌙'
   const donePct    = analytics ? Math.round(analytics.completion_rate) : 0
   const streakDays = stats.streak_days ?? 0
+
+  // ── Typing effect on the name ──────────────────────────────────────────────
+  const [typed, setTyped] = useState('')
+  useEffect(() => {
+    setTyped('')
+    let i = 0
+    const id = setInterval(() => {
+      i += 1
+      setTyped(firstName.slice(0, i))
+      if (i >= firstName.length) clearInterval(id)
+    }, 90)
+    return () => clearInterval(id)
+  }, [firstName])
+
+  // ── Rotating quotes ────────────────────────────────────────────────────────
+  const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length))
+  useEffect(() => {
+    const id = setInterval(() => {
+      setQuoteIdx(i => (i + 1) % QUOTES.length)
+    }, 15000)
+    return () => clearInterval(id)
+  }, [])
+  const currentQuote = QUOTES[quoteIdx]
+
+  // Magnetic ref for the Add Task primary CTA
+  const addTaskRef = useMagnetic({ strength: 0.3, radius: 100 })
 
   // Sort: HIGH → MEDIUM → LOW, then by deadline asc
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -257,7 +350,7 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="px-10 py-10 max-w-5xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div className="px-10 py-10 max-w-5xl mx-auto page-enter" style={{ background: 'transparent', minHeight: '100%' }}>
 
       {/* ── Timer callout ─────────────────────────────────────────────────── */}
       {phase !== PHASES.IDLE && (
@@ -272,18 +365,65 @@ export default function DashboardPage() {
         </Link>
       )}
 
-      {/* ── Greeting ──────────────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>
-          Hello, <span style={{ color: '#3a6758' }}>{firstName}</span>.
-        </h1>
-        <p className="text-base text-gray-400 dark:text-gray-500 mt-1">
-          {loading
-            ? "Loading your plan…"
-            : sortedTasks.length === 0
-              ? "You're all caught up. Add a task to get started."
-              : `${sortedTasks.length} active task${sortedTasks.length !== 1 ? 's' : ''} — let's get to work.`}
-        </p>
+      {/* ── Greeting banner (glass) — absorbs the rotating quote ─────────── */}
+      <div
+        className="rounded-2xl px-7 py-6 mb-8 grid grid-cols-1 md:grid-cols-[1.1fr_1px_1fr] md:gap-6 items-center overflow-hidden relative"
+        style={{
+          background: 'rgba(236,239,231,0.55)',
+          backdropFilter: 'blur(16px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(150%)',
+          border: '1px solid rgba(222,228,218,0.8)',
+          boxShadow: '0 4px 20px rgba(46,52,45,0.05)',
+        }}
+      >
+        {/* Decorative blobs */}
+        <div className="absolute right-0 top-0 w-48 h-48 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(58,103,88,0.08),transparent)', transform:'translate(30%,-30%)' }}/>
+        <div className="absolute left-1/3 bottom-0 w-32 h-32 rounded-full pointer-events-none" style={{ background:'radial-gradient(circle,rgba(58,103,88,0.06),transparent)', transform:'translateY(40%)' }}/>
+
+        {/* Left: greeting */}
+        <div className="relative flex items-center gap-4">
+          {/* Time-of-day badge */}
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(58,103,88,0.12)', border: '1px solid rgba(58,103,88,0.18)' }}
+          >
+            <span className="text-2xl leading-none">{timeEmoji}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color:'#3a6758' }}>
+              {timeGreeting}
+            </p>
+            <h1 className="text-3xl font-extrabold tracking-tight truncate" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
+              {typed}
+              {typed.length < firstName.length
+                ? <span className="typing-cursor" />
+                : <span style={{ color:'#3a6758' }}>.</span>}
+            </h1>
+            <p className="text-sm mt-1" style={{ color:'#5b6159' }}>
+              {loading
+                ? 'Loading your plan…'
+                : sortedTasks.length === 0
+                  ? "You're all caught up. Add a task to get started."
+                  : `${sortedTasks.length} active task${sortedTasks.length !== 1 ? 's' : ''} — let's get to work.`}
+            </p>
+          </div>
+        </div>
+
+        {/* Vertical divider (only on md+) */}
+        <div className="hidden md:block h-20 w-px" style={{ background: 'linear-gradient(to bottom, transparent, #dee4da, transparent)' }} />
+
+        {/* Right: rotating quote */}
+        <div className="relative min-w-0 hidden md:block">
+          <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#3a6758' }}>
+            Today&apos;s note
+          </p>
+          <p key={quoteIdx} className="text-base italic leading-snug page-enter" style={{ color: '#2e342d', fontFamily: 'Epilogue, sans-serif' }}>
+            &ldquo;{currentQuote.q}&rdquo;
+          </p>
+          <p className="text-xs font-bold mt-2" style={{ color: '#5b6159' }}>
+            — {currentQuote.a}
+          </p>
+        </div>
       </div>
 
       {/* ── Stats row ─────────────────────────────────────────────────────── */}
@@ -294,11 +434,11 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Tasks Done"    value={stats.tasks_done}          color="#34D399" />
-          <StatCard label="Deep Work"     value={`${stats.deep_work_hours}h`} color="#FB7185" />
-          <StatCard label="Streak"        value={`${streakDays}d`}           color="#FBBF24" />
-          <StatCard label="Completion"    value={`${donePct}%`}              color="#A78BFA" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" style={{ opacity:1 }}>
+          <div className="card-enter-1"><StatCard label="Tasks Done" value={<Odometer value={stats.tasks_done ?? 0} />}               color="#34D399" /></div>
+          <div className="card-enter-2"><StatCard label="Deep Work"  value={<Odometer value={stats.deep_work_hours ?? 0} decimals={1} suffix="h" />} color="#FB7185" /></div>
+          <div className="card-enter-3"><StatCard label="Streak"     value={<Odometer value={streakDays} suffix="d" />} flame={streakDays > 0} color="#FBBF24" /></div>
+          <div className="card-enter-4"><StatCard label="Completion" value={<Odometer value={donePct} suffix="%" />}                   color="#A78BFA" /></div>
         </div>
       )}
 
@@ -309,7 +449,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Quick-add card */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               New Task
             </h2>
@@ -410,10 +550,11 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 <button
+                  ref={addTaskRef}
                   type="submit"
                   disabled={adding || !newTitle.trim()}
-                  className="ml-auto flex items-center gap-1.5 px-4 py-1.5 text-white
-                             text-xs font-bold rounded-xl hover:opacity-90 transition-colors
+                  className="magnetic ml-auto flex items-center gap-1.5 px-4 py-1.5 text-white
+                             text-xs font-bold rounded-xl hover:opacity-90
                              disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: '#3a6758' }}
                 >
@@ -440,7 +581,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Task list card */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <div className="px-6 py-4 border-b border-[#dee4da] flex items-center justify-between">
               <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 Active Tasks
@@ -463,10 +604,63 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+            ) : sortedTasks.length === 0 && stats.tasks_done > 0 ? (
+              <div className="py-10 px-6 flex flex-col items-center gap-3 text-center relative overflow-hidden">
+                {/* Decorative burst */}
+                <div className="absolute inset-0 pointer-events-none opacity-60" style={{
+                  background: 'radial-gradient(circle at 50% 40%, rgba(58,103,88,0.10), transparent 60%)'
+                }} />
+                <svg width="120" height="100" viewBox="0 0 120 100" fill="none" className="relative">
+                  {/* Trophy */}
+                  <path d="M45 22h30v18a15 15 0 01-30 0V22z" fill="#fbbf24" stroke="#b45309" strokeWidth="2"/>
+                  <path d="M45 28c-6 0-10 4-10 10s4 10 10 10M75 28c6 0 10 4 10 10s-4 10-10 10" stroke="#b45309" strokeWidth="2" fill="none"/>
+                  <rect x="50" y="58" width="20" height="8" fill="#fbbf24" stroke="#b45309" strokeWidth="2"/>
+                  <rect x="40" y="66" width="40" height="6" rx="1" fill="#3a6758" stroke="#2e342d" strokeWidth="1.5"/>
+                  {/* Star sparkles */}
+                  <text x="18" y="30" fontSize="18">✨</text>
+                  <text x="92" y="24" fontSize="16">⭐</text>
+                  <text x="10" y="78" fontSize="14">🎉</text>
+                  <text x="96" y="82" fontSize="14">🎊</text>
+                </svg>
+                <h3 className="text-2xl font-extrabold relative" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
+                  You crushed it!
+                </h3>
+                <p className="text-sm relative" style={{ color:'#5b6159' }}>
+                  {stats.tasks_done} task{stats.tasks_done !== 1 ? 's' : ''} done today
+                  {streakDays > 0 && <> · {streakDays}-day streak <span className="flame-animate inline-block">🔥</span></>}
+                </p>
+                <p className="text-xs relative" style={{ color:'#aeb4aa' }}>
+                  Add another below, or take a well-earned break.
+                </p>
+              </div>
             ) : sortedTasks.length === 0 ? (
-              <div className="py-14 text-center">
-                <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">No active tasks.</p>
-                <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Add one above to get started.</p>
+              <div className="py-10 flex flex-col items-center gap-3">
+                <svg width="110" height="100" viewBox="0 0 110 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* notebook body */}
+                  <rect x="18" y="10" width="68" height="78" rx="6" fill="#f3f4ee" stroke="#dee4da" strokeWidth="2"/>
+                  {/* spine */}
+                  <rect x="18" y="10" width="12" height="78" rx="4" fill="#dee4da"/>
+                  {/* rings */}
+                  {[24, 40, 56, 72].map(y => (
+                    <ellipse key={y} cx="24" cy={y} rx="4" ry="5" fill="#fff" stroke="#aeb4aa" strokeWidth="1.5"/>
+                  ))}
+                  {/* lines */}
+                  <line x1="38" y1="32" x2="78" y2="32" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="38" y1="44" x2="78" y2="44" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  <line x1="38" y1="56" x2="64" y2="56" stroke="#dee4da" strokeWidth="2" strokeLinecap="round"/>
+                  {/* pencil */}
+                  <g transform="translate(62,52) rotate(-38)">
+                    <rect x="0" y="0" width="8" height="36" rx="2" fill="#3a6758"/>
+                    <polygon points="0,36 8,36 4,44" fill="#f59e0b"/>
+                    <line x1="4" y1="40" x2="4" y2="44" stroke="#2e342d" strokeWidth="1"/>
+                    <rect x="0" y="0" width="8" height="6" rx="2" fill="#aeb4aa"/>
+                  </g>
+                  {/* sparkles */}
+                  <text x="78" y="22" fontSize="12">✨</text>
+                  <text x="14" y="95" fontSize="10">📝</text>
+                </svg>
+                <p className="text-sm font-semibold" style={{ color:'#5b6159' }}>No active tasks yet</p>
+                <p className="text-xs" style={{ color:'#aeb4aa' }}>Add one above and start crushing your goals 🎯</p>
               </div>
             ) : (
               <ul>
@@ -566,7 +760,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
 
           {/* Completion ring */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               Progress
             </h2>
@@ -621,7 +815,7 @@ export default function DashboardPage() {
           )}
 
           {/* Eat That Frog */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <div className="flex items-center justify-between mb-1">
               <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 Eat That Frog 🐸
@@ -707,7 +901,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Priority breakdown */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               By Priority
             </h2>
@@ -743,7 +937,7 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Productivity Tips */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xs font-bold uppercase tracking-widest" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
                 AI Tips
@@ -776,7 +970,7 @@ export default function DashboardPage() {
           </div>
 
           {/* This week */}
-          <div className="rounded-2xl p-6" style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(46,52,45,0.06)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(150%)', WebkitBackdropFilter: 'blur(16px) saturate(150%)', boxShadow: '0 4px 20px rgba(46,52,45,0.06)', border: '1px solid rgba(255,255,255,0.55)' }}>
             <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}>
               This Week
             </h2>

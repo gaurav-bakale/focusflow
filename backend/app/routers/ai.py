@@ -86,11 +86,21 @@ class GeminiAdapter:
     calls call_llm().
     """
 
-    MODEL = "gemini-2.5-flash"
+    # Try models in order. If the primary is overloaded (503/UNAVAILABLE),
+    # fall back to a lighter/older sibling before giving up.
+    MODEL_FALLBACKS = [
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+    ]
+    MODEL = MODEL_FALLBACKS[0]  # legacy attribute, kept for back-compat
 
     async def call_llm(self, api_key: str, prompt: str) -> str:
         """
         Send a prompt to the Gemini API and return the response text.
+
+        Walks the MODEL_FALLBACKS list on 503/UNAVAILABLE so a momentary
+        spike in demand on one model doesn't break the feature.
 
         Args:
             api_key: The user's Gemini API key.
@@ -102,7 +112,7 @@ class GeminiAdapter:
         Raises:
             HTTPException 400: If no API key is provided.
             HTTPException 429: If Gemini rate limit is exceeded.
-            HTTPException 502: If the Gemini API call fails.
+            HTTPException 502: If every fallback model fails.
         """
         if not api_key:
             raise HTTPException(
@@ -113,26 +123,36 @@ class GeminiAdapter:
         from google import genai
 
         client = genai.Client(api_key=api_key)
-        try:
-            response = client.models.generate_content(
-                model=self.MODEL,
-                contents=prompt,
-            )
-            return response.text.strip()
-        except Exception as e:
-            err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                raise HTTPException(
-                    status_code=429,
-                    detail=(
-                        "Gemini API quota exceeded. Please wait a minute "
-                        "and try again, or use a different API key."
-                    ),
+        last_err = None
+        for model in self.MODEL_FALLBACKS:
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
                 )
-            raise HTTPException(
-                status_code=502,
-                detail=f"AI service error: {err_str}",
-            )
+                return response.text.strip()
+            except Exception as e:
+                err_str = str(e)
+                last_err = err_str
+                # Rate-limit is the user's quota — don't bother falling back.
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    raise HTTPException(
+                        status_code=429,
+                        detail=(
+                            "Gemini API quota exceeded. Please wait a minute "
+                            "and try again, or use a different API key."
+                        ),
+                    )
+                # 503 / UNAVAILABLE — model is overloaded, try next fallback.
+                if "503" in err_str or "UNAVAILABLE" in err_str or "overload" in err_str.lower():
+                    continue
+                # Any other error — don't keep burning fallbacks.
+                break
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI service error: {last_err}",
+        )
 
 
 _adapter = GeminiAdapter()

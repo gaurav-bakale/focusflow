@@ -78,27 +78,30 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="px-10 py-10 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight mb-2">
+    <div className="px-10 py-10 max-w-2xl mx-auto page-enter">
+      <h1 className="text-3xl font-extrabold tracking-tight mb-1" style={{ fontFamily:'Epilogue,sans-serif', color:'#2e342d' }}>
         Settings
       </h1>
-      <p className="text-base text-gray-400 dark:text-gray-500 mb-8">
+      <p className="text-sm mb-8" style={{ color:'#767c74' }}>
         Manage your account settings and integrations.
       </p>
 
       {/* ── Gemini API Key ─────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6 mb-6">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
-          Gemini API Key
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <div className="rounded-2xl p-6 mb-5" style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 4px 16px rgba(46,52,45,0.05)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#ecefe7"/><path d="M9 5v4l2.5 2" stroke="#3a6758" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color:'#5b6159' }}>
+            Gemini API Key
+          </h2>
+        </div>
+        <p className="text-sm mb-4" style={{ color:'#767c74' }}>
           Required for AI features (Prioritize, Breakdown, Schedule, Frog, Tips).
           Get a free key from{' '}
           <a
             href="https://aistudio.google.com/apikey"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300"
+            style={{ color:'#3a6758', textDecoration:'underline' }}
           >
             Google AI Studio
           </a>.
@@ -109,8 +112,8 @@ export default function SettingsPage() {
         ) : (
           <>
             <div className="flex items-center gap-2 mb-4">
-              <span className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-400' : 'bg-red-400'}`} />
-              <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+              <span className="w-2 h-2 rounded-full" style={{ background: hasKey ? '#3a6758' : '#ef4444' }} />
+              <span className="text-sm font-semibold" style={{ color:'#5b6159' }}>
                 {hasKey ? 'API key configured' : 'No API key set'}
               </span>
             </div>
@@ -121,43 +124,43 @@ export default function SettingsPage() {
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
                 placeholder={hasKey ? 'Enter new key to replace…' : 'Paste your Gemini API key…'}
-                className="flex-1 px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                           focus:border-gray-900 dark:focus:border-gray-400 focus:ring-0 outline-none transition-colors
-                           placeholder-gray-300 dark:placeholder-gray-600"
+                className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none transition-colors"
+                style={{ border:'1.5px solid #dee4da', background:'#f3f4ee', color:'#2e342d' }}
               />
               <button
                 type="submit"
                 disabled={saving || !apiKey.trim()}
-                className="px-5 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-bold text-sm
-                           rounded-lg border-2 border-gray-900 dark:border-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200
-                           transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 font-bold text-sm rounded-xl text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background:'#3a6758' }}
               >
                 {saving ? 'Saving…' : 'Save Key'}
               </button>
             </form>
 
             {message && (
-              <p className="mt-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400">{message}</p>
+              <p className="mt-3 text-sm font-semibold" style={{ color:'#3a6758' }}>{message}</p>
             )}
             {error && (
-              <p className="mt-3 text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>
+              <p className="mt-3 text-sm font-semibold" style={{ color:'#b91c1c' }}>{error}</p>
             )}
           </>
         )}
       </div>
 
       {/* ── Data Export ────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-gray-900 border-2 border-gray-900 dark:border-gray-700 rounded-lg p-6">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">
-          Export Your Data
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
+      <div className="rounded-2xl p-6" style={{ background:'#ffffff', border:'1px solid #dee4da', boxShadow:'0 4px 16px rgba(46,52,45,0.05)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="#ecefe7"/><path d="M9 5v6M6 9l3 3 3-3" stroke="#3a6758" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color:'#5b6159' }}>
+            Export Your Data
+          </h2>
+        </div>
+        <p className="text-sm mb-5" style={{ color:'#767c74' }}>
           Download your data as CSV (for Excel/Sheets) or JSON (for programmatic access).
         </p>
 
         {exportError && (
-          <p className="mb-4 text-sm font-semibold text-red-600 dark:text-red-400">{exportError}</p>
+          <p className="mb-4 text-sm font-semibold" style={{ color:'#b91c1c' }}>{exportError}</p>
         )}
 
         {/* Individual exports */}
@@ -165,33 +168,30 @@ export default function SettingsPage() {
           {exportOptions.map(({ type, label, description, icon }) => (
             <div
               key={type}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              className="flex items-center justify-between p-3 rounded-xl"
+              style={{ background:'#f3f4ee' }}
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">{icon}</span>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{label}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">{description}</p>
+                  <p className="text-sm font-semibold" style={{ color:'#2e342d' }}>{label}</p>
+                  <p className="text-xs" style={{ color:'#aeb4aa' }}>{description}</p>
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => handleExport(type, 'csv')}
                   disabled={exportLoading === `${type}-csv`}
-                  className="px-3 py-1.5 text-xs font-bold border-2 border-gray-900 dark:border-gray-400
-                             text-gray-900 dark:text-gray-300 rounded-lg hover:bg-gray-900 hover:text-white
-                             dark:hover:bg-gray-400 dark:hover:text-gray-900 transition-colors
-                             disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ border:'1.5px solid #dee4da', color:'#5b6159', background:'#ffffff' }}
                 >
                   {exportLoading === `${type}-csv` ? '…' : 'CSV'}
                 </button>
                 <button
                   onClick={() => handleExport(type, 'json')}
                   disabled={exportLoading === `${type}-json`}
-                  className="px-3 py-1.5 text-xs font-bold border-2 border-indigo-600 dark:border-indigo-400
-                             text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-600 hover:text-white
-                             dark:hover:bg-indigo-400 dark:hover:text-gray-900 transition-colors
-                             disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-white"
+                  style={{ background:'#3a6758' }}
                 >
                   {exportLoading === `${type}-json` ? '…' : 'JSON'}
                 </button>
@@ -201,23 +201,21 @@ export default function SettingsPage() {
         </div>
 
         {/* Full dump */}
-        <div className="border-t-2 border-gray-100 dark:border-gray-700 pt-4">
+        <div className="pt-4 mt-2" style={{ borderTop:'1px solid #dee4da' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              <p className="text-sm font-semibold" style={{ color:'#2e342d' }}>
                 🗂️ Complete Data Dump
               </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-xs mt-0.5" style={{ color:'#aeb4aa' }}>
                 All tasks, sessions, and calendar blocks in one JSON file
               </p>
             </div>
             <button
               onClick={() => handleExport('all', 'json')}
               disabled={exportLoading === 'all-json'}
-              className="px-4 py-2 text-xs font-bold bg-gray-900 dark:bg-gray-100
-                         text-white dark:text-gray-900 rounded-lg border-2 border-gray-900 dark:border-gray-100
-                         hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors
-                         disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-xs font-bold rounded-xl text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background:'#3a6758' }}
             >
               {exportLoading === 'all-json' ? 'Exporting…' : 'Export All (JSON)'}
             </button>

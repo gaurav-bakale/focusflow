@@ -12,7 +12,10 @@
 
 import React, { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import Odometer from '../components/Odometer'
+import SketchLine from '../components/SketchLine'
 import {
   fetchTasks,
   createTask,
@@ -504,6 +507,12 @@ export default function TasksPage() {
       // result = { completed, next_task }
       const completed = result?.completed ?? result
       setTasks(prev => prev.map(t => t.id === completed.id ? completed : t))
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+      })
 
       // If recurring, add the new next-occurrence task to the board and
       // auto-schedule a calendar block for it silently.
@@ -603,6 +612,14 @@ export default function TasksPage() {
     if (source.droppableId === destination.droppableId && source.index === destination.index) return
     const newStatus = destination.droppableId
     setTasks(prev => prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t))
+    if (newStatus === 'DONE' && source.droppableId !== 'DONE') {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: ['#3a6758', '#ecefe7', '#dee4da', '#fbbf24'],
+      })
+    }
     try {
       await updateTask(draggableId, { status: newStatus })
     } catch {
@@ -708,28 +725,52 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="p-10 max-w-7xl mx-auto" style={{ background: '#fafaf5', minHeight: '100%' }}>
+    <div className="p-10 max-w-7xl mx-auto page-enter" style={{ background: 'transparent', minHeight: '100%' }}>
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#3a6758' }}>Project Board</h1>
-          {overlappingIds.size > 0 && (
-            <p className="text-xs font-bold text-amber-600 mt-1 flex items-center gap-1.5">
-              <span>⚠</span>
-              {overlappingIds.size} task{overlappingIds.size !== 1 ? 's' : ''} have scheduling conflicts
-            </p>
-          )}
+          <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#3a6758' }}>
+            Kanban
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'Epilogue, sans-serif', fontWeight: 900, color: '#2e342d' }}>
+            Project Board<span style={{ color: '#3a6758' }}>.</span>
+          </h1>
+          <div className="flex items-center gap-4 mt-2 text-xs" style={{ color: '#5b6159' }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#3a6758' }} />
+              <span className="font-bold">{analytics.total}</span>
+              <span>active task{analytics.total !== 1 ? 's' : ''}</span>
+            </span>
+            <span style={{ color: '#dee4da' }}>·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="font-bold">{analytics.completion_rate}%</span>
+              <span>completion</span>
+            </span>
+            {overlappingIds.size > 0 && (
+              <>
+                <span style={{ color: '#dee4da' }}>·</span>
+                <span className="flex items-center gap-1.5 text-amber-600 font-bold">
+                  <span>⚠</span>
+                  {overlappingIds.size} conflict{overlappingIds.size !== 1 ? 's' : ''}
+                </span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleAIPrioritize}
             disabled={aiLoading}
-            className={`flex items-center gap-2 border-2 font-bold text-sm px-4 py-2 rounded-lg transition-colors ${
-              aiLoading
-                ? 'border-purple-300 text-purple-300 cursor-wait'
-                : 'border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white'
-            }`}
+            className="flex items-center gap-2 font-bold text-sm px-4 py-2 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-wait"
+            style={{
+              background: 'rgba(255,255,255,0.72)',
+              backdropFilter: 'blur(14px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+              border: '1px solid #3a6758',
+              color: '#3a6758',
+            }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
@@ -752,33 +793,47 @@ export default function TasksPage() {
 
       {/* ── Analytics strip ───────────────────────────────────────────────── */}
       <div data-testid="analytics-strip" className="grid grid-cols-5 gap-4 mb-8">
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Total</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.total}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-amber-500 mb-0.5">To Do</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.TODO}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-sky-500 mb-0.5">In Progress</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.IN_PROGRESS}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-500 mb-0.5">Done</p>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.by_status.DONE}</p>
-        </div>
-        {analytics.overdue > 0 ? (
-          <div className="bg-red-50 dark:bg-red-950/50 border-2 border-red-300 dark:border-red-800 rounded-lg px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-0.5">Overdue</p>
-            <p className="text-2xl font-extrabold text-red-600 font-mono">{analytics.overdue}</p>
+        {[
+          { label: 'Total',       value: analytics.total,                     color: '#3a6758', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke={c} strokeWidth="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill={c} fillOpacity="0.18"/></svg>
+          )},
+          { label: 'To Do',       value: analytics.by_status.TODO,            color: '#f59e0b', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><circle cx="12" cy="12" r="3.5" fill={c} fillOpacity="0.25"/></svg>
+          )},
+          { label: 'In Progress', value: analytics.by_status.IN_PROGRESS,     color: '#0ea5e9', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5l3 2" stroke={c} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          )},
+          { label: 'Done',        value: analytics.by_status.DONE,            color: '#10b981', icon: (c) => (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" fill={c} fillOpacity="0.15"/><path d="M8 12.5l3 3 5-6" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          )},
+          analytics.overdue > 0
+            ? { label: 'Overdue',   value: analytics.overdue,                 color: '#ef4444', icon: (c) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5"/><path d="M12 7v5" stroke={c} strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="16" r="1" fill={c}/></svg>
+              )}
+            : { label: 'Done Rate', value: analytics.completion_rate, suffix: '%', color: '#A78BFA', icon: (c) => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke={c} strokeWidth="1.5" strokeOpacity="0.35"/><path d="M12 3a9 9 0 019 9" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>
+              )},
+        ].map(({ label, value, color, icon, suffix }, i) => (
+          <div
+            key={label}
+            className={`rounded-2xl p-5 relative overflow-hidden card-enter-${Math.min(i + 1, 4)}`}
+            style={{
+              background: 'rgba(243,244,238,0.72)',
+              backdropFilter: 'blur(14px) saturate(140%)',
+              WebkitBackdropFilter: 'blur(14px) saturate(140%)',
+              border: '1px solid rgba(222,228,218,0.7)',
+            }}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#aeb4aa' }}>{label}</p>
+              <span className="shrink-0 -mt-0.5">{icon(color)}</span>
+            </div>
+            <p className="text-3xl font-extrabold font-mono" style={{ color }}>
+              <Odometer value={value} suffix={suffix || ''} />
+            </p>
+            <SketchLine color={color} thickness={4} />
           </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-lg px-4 py-3" style={{ border: '1px solid #dee4da' }}>
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-0.5">Done Rate</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 font-mono">{analytics.completion_rate}%</p>
-          </div>
-        )}
+        ))}
       </div>
 
       {/* ── AI Error banner ─────────────────────────────────────────────── */}
@@ -992,12 +1047,29 @@ export default function TasksPage() {
             const colStripColor = colStatus === 'TODO' ? '#aeb4aa' : colStatus === 'IN_PROGRESS' ? '#3a6758' : '#10b981'
             return (
               <div key={colStatus} className="rounded-2xl p-4 min-h-[300px]" style={{ background: '#f3f4ee', boxShadow: '0 4px 12px rgba(46,52,45,0.04)' }}>
-                {/* Thin color strip at top of column */}
-                <div className="h-1 rounded-full mb-4 -mx-4 -mt-4 rounded-t-2xl" style={{ background: colStripColor }} />
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-extrabold text-gray-900 dark:text-gray-100">{config.label}</h2>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: '#dee4da', color: '#5b6159' }}>
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        background: colStripColor,
+                        boxShadow: `0 0 0 3px ${colStripColor}22`,
+                      }}
+                    />
+                    <h2
+                      className="font-extrabold text-sm uppercase tracking-widest"
+                      style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}
+                    >
+                      {config.label}
+                    </h2>
+                    <span
+                      className="text-xs font-mono font-black px-2 py-0.5 rounded-full"
+                      style={{
+                        background: `${colStripColor}1a`,
+                        color: colStripColor,
+                        border: `1px solid ${colStripColor}33`,
+                      }}
+                    >
                       {colTasks.length}
                     </span>
                   </div>
@@ -1030,11 +1102,54 @@ export default function TasksPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing
+                                className={`rounded-2xl p-4 group cursor-grab active:cursor-grabbing overflow-hidden relative
                                   ${hasOverlap ? 'ring-2 ring-amber-400' : ''}
-                                  ${snapshot.isDragging ? 'shadow-lg rotate-1' : ''}`}
-                                style={{ background: '#ffffff', boxShadow: '0 2px 8px rgba(46,52,45,0.05)' }}
+                                  ${snapshot.isDragging ? 'rotate-1' : ''}`}
+                                style={{
+                                  background: 'rgba(255,255,255,0.78)',
+                                  backdropFilter: 'blur(14px) saturate(150%)',
+                                  WebkitBackdropFilter: 'blur(14px) saturate(150%)',
+                                  boxShadow: snapshot.isDragging
+                                    ? '0 12px 32px rgba(46,52,45,0.18)'
+                                    : '0 2px 8px rgba(46,52,45,0.06)',
+                                  border: '1px solid rgba(222,228,218,0.9)',
+                                  transition: 'box-shadow 0.2s ease, transform 0.15s ease',
+                                  borderLeft: `3px solid ${
+                                    task.priority === 'HIGH' ? '#ef4444'
+                                    : task.priority === 'MEDIUM' ? '#f59e0b'
+                                    : '#3a6758'
+                                  }`,
+                                }}
+                                onMouseMove={e => {
+                                  if (snapshot.isDragging) return
+                                  const el = e.currentTarget
+                                  const rect = el.getBoundingClientRect()
+                                  const px = (e.clientX - rect.left) / rect.width
+                                  const py = (e.clientY - rect.top) / rect.height
+                                  const ry = (px - 0.5) * 8
+                                  const rx = (0.5 - py) * 8
+                                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-2px)`
+                                  el.style.boxShadow = '0 10px 28px rgba(46,52,45,0.14)'
+                                  const spot = el.querySelector('[data-tilt-spotlight]')
+                                  if (spot) {
+                                    spot.style.opacity = '1'
+                                    spot.style.background = `radial-gradient(circle at ${px*100}% ${py*100}%, rgba(58,103,88,0.18), transparent 60%)`
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  const el = e.currentTarget
+                                  el.style.transform = 'perspective(600px) rotateX(0) rotateY(0) translateY(0)'
+                                  el.style.boxShadow = '0 2px 8px rgba(46,52,45,0.06)'
+                                  const spot = el.querySelector('[data-tilt-spotlight]')
+                                  if (spot) spot.style.opacity = '0'
+                                }}
                               >
+                                {/* Spotlight overlay */}
+                                <div
+                                  data-tilt-spotlight
+                                  className="absolute inset-0 pointer-events-none rounded-2xl"
+                                  style={{ opacity: 0, transition: 'opacity 0.25s ease' }}
+                                />
                                 {/* Title + priority */}
                                 <div className="flex justify-between items-start mb-2 gap-2">
                                   <div className="flex items-start gap-1.5 flex-1 min-w-0">
@@ -1063,7 +1178,7 @@ export default function TasksPage() {
                                 </div>
 
                                 {task.description && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
+                                  <p className="text-xs mb-2 line-clamp-2" style={{ color:'#767c74' }}>{task.description}</p>
                                 )}
 
                                 {/* Subtask progress + list */}
@@ -1074,21 +1189,20 @@ export default function TasksPage() {
                                   return (
                                     <div className="mb-2">
                                       <div className="flex items-center gap-2 mb-1.5">
-                                        <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                          <div className="h-full bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+                                        <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background:'#dee4da' }}>
+                                          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background:'#3a6758' }} />
                                         </div>
-                                        <span className="text-xs font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">{done}/{total}</span>
+                                        <span className="text-xs font-mono font-bold shrink-0" style={{ color:'#aeb4aa' }}>{done}/{total}</span>
                                       </div>
                                       <ul className="space-y-0.5">
                                         {task.subtasks.map(sub => (
                                           <li key={sub.id} className="flex items-center gap-1.5 group/sub">
                                             <button
                                               onClick={(e) => { e.stopPropagation(); handleToggleSubtask(task, sub.id) }}
-                                              className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                                                sub.status === 'DONE'
-                                                  ? 'bg-emerald-500 border-emerald-500'
-                                                  : 'border-gray-300 dark:border-gray-600 hover:border-emerald-400'
-                                              }`}
+                                              className="w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors"
+                                              style={sub.status === 'DONE'
+                                                ? { background:'#3a6758', borderColor:'#3a6758' }
+                                                : { borderColor:'#dee4da' }}
                                             >
                                               {sub.status === 'DONE' && (
                                                 <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1096,12 +1210,13 @@ export default function TasksPage() {
                                                 </svg>
                                               )}
                                             </button>
-                                            <span className={`text-xs flex-1 truncate ${sub.status === 'DONE' ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-600 dark:text-gray-400'}`}>
+                                            <span className="text-xs flex-1 truncate" style={{ color: sub.status === 'DONE' ? '#aeb4aa' : '#5b6159', textDecoration: sub.status === 'DONE' ? 'line-through' : 'none' }}>
                                               {sub.title}
                                             </span>
                                             <button
                                               onClick={(e) => { e.stopPropagation(); handleDeleteSubtask(task, sub.id) }}
-                                              className="text-gray-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                              className="opacity-0 group-hover/sub:opacity-100 transition-opacity shrink-0"
+                                              style={{ color:'#aeb4aa' }}
                                             >
                                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -1122,13 +1237,13 @@ export default function TasksPage() {
                                       ↻ {RECURRENCE_LABELS[task.recurrence]}
                                     </span>
                                   ) : (
-                                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color:'#aeb4aa', background:'#f3f4ee', border:'1px solid #dee4da' }}>
                                       One-time
                                     </span>
                                   )}
                                   {task.estimated_minutes && (
-                                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                                      {task.estimated_minutes}m
+                                    <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ color:'#aeb4aa', background:'#f3f4ee' }}>
+                                      ⏱ {task.estimated_minutes}m
                                     </span>
                                   )}
                                   {(() => {
@@ -1151,8 +1266,12 @@ export default function TasksPage() {
                                     ))
                                   })()}
                                   {task.deadline && (
-                                    <span className={`text-xs font-mono ml-auto shrink-0 ${isOverdue ? 'text-red-500 font-bold' : 'text-gray-400 dark:text-gray-300'}`}>
-                                      {isOverdue && '⚠ '}
+                                    <span className="text-xs font-semibold ml-auto shrink-0 px-1.5 py-0.5 rounded-full"
+                                      style={isOverdue
+                                        ? { background:'rgba(239,68,68,0.08)', color:'#ef4444', border:'1px solid rgba(239,68,68,0.2)' }
+                                        : { background:'#f3f4ee', color:'#aeb4aa', border:'1px solid #dee4da' }
+                                      }>
+                                      {isOverdue ? '⚠ ' : '📅 '}
                                       {new Date(task.deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                       {task.due_time && ` · ${fmt12h(task.due_time)}`}
                                     </span>
@@ -1190,24 +1309,24 @@ export default function TasksPage() {
                                 )}
 
                                 {/* Hover actions */}
-                                <div className="flex gap-3 mt-2 pt-2 border-t border-gray-200/60 dark:border-gray-700/60 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
+                                <div className="flex gap-3 mt-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap" style={{ borderTop:'1px solid #dee4da' }}>
                                   <button onClick={() => openModal(task)}
-                                    className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Edit</button>
+                                    className="text-xs font-bold" style={{ color:'#5b6159' }}>Edit</button>
                                   {task.status !== 'DONE' && (
                                     <button onClick={() => handleComplete(task.id)}
-                                      className="text-xs font-bold text-emerald-600 hover:text-emerald-700">
+                                      className="text-xs font-bold" style={{ color:'#3a6758' }}>
                                       {isRecurring ? 'Complete (↻ next)' : 'Complete'}
                                     </button>
                                   )}
                                   <button onClick={() => handleBreakdown(task)}
                                     disabled={breakdownLoading && breakdownTaskId === task.id}
-                                    className={`text-xs font-bold ${breakdownTaskId === task.id ? 'text-purple-600' : 'text-purple-500 hover:text-purple-700'}`}>
+                                    className="text-xs font-bold" style={{ color: breakdownTaskId === task.id ? '#7c3aed' : '#8b5cf6' }}>
                                     {breakdownLoading && breakdownTaskId === task.id ? 'Loading…' : breakdownTaskId === task.id ? 'Hide AI' : 'AI Breakdown'}
                                   </button>
                                   <button onClick={() => openShareModal(task)}
-                                    className="text-xs font-bold text-[#3a6758] hover:opacity-70">Share</button>
+                                    className="text-xs font-bold" style={{ color:'#3a6758' }}>Share</button>
                                   <button onClick={() => handleDelete(task.id)}
-                                    className="text-xs font-bold text-red-500 hover:text-red-700">Delete</button>
+                                    className="text-xs font-bold" style={{ color:'#ef4444' }}>Delete</button>
                                 </div>
 
                                 {/* AI Breakdown results */}
@@ -1239,7 +1358,50 @@ export default function TasksPage() {
                       })}
                       {provided.placeholder}
                       {colTasks.length === 0 && !snapshot.isDraggingOver && (
-                        <p className="text-xs text-gray-300 dark:text-gray-600 text-center py-8 font-medium">No tasks</p>
+                        <div className="flex flex-col items-center gap-2 py-8">
+                          {colStatus === 'TODO' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <rect x="20" y="22" width="24" height="28" rx="4" fill="#fff" stroke="#dee4da" strokeWidth="1.5"/>
+                                <line x1="25" y1="30" x2="39" y2="30" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <line x1="25" y1="36" x2="39" y2="36" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <line x1="25" y1="42" x2="33" y2="42" stroke="#dee4da" strokeWidth="1.5" strokeLinecap="round"/>
+                                <circle cx="43" cy="43" r="9" fill="#3a6758"/>
+                                <line x1="43" y1="39" x2="43" y2="47" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                                <line x1="39" y1="43" x2="47" y2="43" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>Nothing planned yet</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Hit + to plant your first task</p>
+                            </>
+                          )}
+                          {colStatus === 'IN_PROGRESS' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <circle cx="32" cy="32" r="14" stroke="#dee4da" strokeWidth="3" fill="none"/>
+                                <path d="M32 18 A14 14 0 0 1 46 32" stroke="#3a6758" strokeWidth="3" strokeLinecap="round" fill="none"/>
+                                <circle cx="32" cy="32" r="3" fill="#3a6758"/>
+                                <line x1="32" y1="32" x2="38" y2="26" stroke="#3a6758" strokeWidth="2" strokeLinecap="round"/>
+                                <line x1="32" y1="32" x2="32" y2="25" stroke="#aeb4aa" strokeWidth="1.5" strokeLinecap="round"/>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>Nothing in flight</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Drag a task here to start</p>
+                            </>
+                          )}
+                          {colStatus === 'DONE' && (
+                            <>
+                              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <circle cx="32" cy="32" r="28" fill="#ecefe7"/>
+                                <circle cx="32" cy="32" r="14" fill="#dee4da"/>
+                                <path d="M24 32 l6 6 l10-12" stroke="#aeb4aa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                                <text x="44" y="22" fontSize="12">⭐</text>
+                              </svg>
+                              <p className="text-xs font-semibold" style={{ color:'#5b6159' }}>No wins yet</p>
+                              <p className="text-xs" style={{ color:'#aeb4aa' }}>Complete tasks to fill this up</p>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -1256,9 +1418,26 @@ export default function TasksPage() {
           <div className="rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
             style={{ background: '#ffffff', boxShadow: '0 20px 50px rgba(46,52,45,0.12)' }}
             onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 mb-5">
-              {editingTask ? 'Edit Task' : 'New Task'}
-            </h2>
+            <div className="flex items-center justify-between mb-5">
+              <h2
+                className="text-xl font-extrabold tracking-tight"
+                style={{ fontFamily: 'Epilogue, sans-serif', color: '#2e342d' }}
+              >
+                {editingTask ? 'Edit Task' : 'New Task'}
+                <span style={{ color: '#3a6758' }}>.</span>
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label="Close"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: '#ecefe7', color: '#5b6159' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Title */}
