@@ -44,6 +44,11 @@ async def log_session(
 
     Returns:
         The logged PomodoroSessionResponse with server-assigned id and timestamp.
+
+    Side effects (best-effort, never fatal):
+      • Fires POMODORO_COMPLETE notification on a completed FOCUS session.
+      • If the completion pushes the user's streak to 3, 7, 14, or 30 days,
+        fires a STREAK_MILESTONE notification as well.
     """
     doc = {
         "user_id": user["_id"],
@@ -54,6 +59,45 @@ async def log_session(
     }
     result = await db["sessions"].insert_one(doc)
     doc["_id"] = result.inserted_id
+
+    # ── Notifications — wrap in try so an outage never blocks session logging
+    try:
+        from app.notifications.models import NotificationType
+        from app.notifications.service import NotificationService
+        nsvc = NotificationService(db)
+
+        if data.phase == "FOCUS":
+            await nsvc.emit(
+                user_id=str(user["_id"]),
+                ntype=NotificationType.POMODORO_COMPLETE,
+                message=(
+                    f"🍅 Pomodoro complete — "
+                    f"{data.duration_minutes} focused minutes. Take a 5-min break."
+                ),
+            )
+
+            # Streak milestones — 3 / 7 / 14 / 30 days. De-duped per-day by
+            # the (user_id, task_id='streak:<n>', type) uniqueness check.
+            streak = await _calculate_streak(db, user["_id"])
+            milestones = {3: "3-day", 7: "7-day", 14: "2-week", 30: "30-day"}
+            if streak in milestones:
+                sentinel_id = f"streak:{streak}:{datetime.utcnow().date().isoformat()}"
+                already = await nsvc.exists(
+                    str(user["_id"]), sentinel_id, NotificationType.STREAK_MILESTONE
+                )
+                if not already:
+                    label = milestones[streak]
+                    await nsvc.emit(
+                        user_id=str(user["_id"]),
+                        ntype=NotificationType.STREAK_MILESTONE,
+                        message=f"🔥 {label} streak! You're on fire. Keep it going.",
+                        task_id=sentinel_id,
+                        task_title=f"{label} streak",
+                    )
+    except Exception:
+        # Non-critical — never fail the session log on notification issues.
+        pass
+
     return _doc_to_session(doc)
 
 

@@ -18,6 +18,7 @@ import { useTimer } from '../context/TimerContext'
 import { PHASES } from '../context/timerPhases'
 import { fetchStats, fetchBlocks, createBlock, createBlocksBulk, aiFrog, aiTips } from '../services/otherServices'
 import { fetchTasks, markTaskComplete, createTask, updateTask, fetchTaskAnalytics } from '../services/taskService'
+import { fetchWorkspaces } from '../services/sharingService'
 import { generateRecurringSlots } from '../utils/smartSchedule'
 import SketchLine from '../components/SketchLine'
 import AITaskGenerator from '../components/AITaskGenerator'
@@ -147,9 +148,13 @@ export default function DashboardPage() {
   const [newDeadline, setNewDeadline]     = useState('')
   const [newTime, setNewTime]             = useState('')
   const [newRecurrence, setNewRecurrence] = useState('NONE')
+  const [newWorkspaceId, setNewWorkspaceId] = useState('')
   const [adding, setAdding]               = useState(false)
   const [addError, setAddError]           = useState('')
   const [scheduleMsg, setScheduleMsg]     = useState('')
+
+  // Workspaces available to this user — powers the quick-add workspace selector.
+  const [workspaces, setWorkspaces] = useState([])
 
   // AI widgets
   const [aiFrogData, setAiFrogData]         = useState(null)
@@ -162,14 +167,18 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [s, t, a] = await Promise.all([
+        // Fetch in parallel. Workspaces is non-critical (empty list is fine
+        // for users who haven't joined any), so we let it fail silently.
+        const [s, t, a, ws] = await Promise.all([
           fetchStats(),
           fetchTasks(),
           fetchTaskAnalytics(),
+          fetchWorkspaces().catch(() => []),
         ])
         setStats(s ?? { tasks_done: 0, deep_work_hours: 0 })
         setTasks(t.filter(tk => !tk.is_complete).slice(0, 8))
         setAnalytics(a)
+        setWorkspaces(Array.isArray(ws) ? ws : [])
       } catch (_) { /* non-blocking */ }
       setLoading(false)
     }
@@ -220,6 +229,9 @@ export default function DashboardPage() {
         deadline: newDeadline || null,
         due_time: newTime || null,
         recurrence: newRecurrence,
+        // Empty string → personal task. Otherwise the backend validates
+        // that the caller is a member of the chosen workspace.
+        workspace_id: newWorkspaceId || null,
       })
       setTasks(prev => [created, ...prev].slice(0, 8))
 
@@ -258,8 +270,16 @@ export default function DashboardPage() {
       setNewDeadline('')
       setNewTime('')
       setNewRecurrence('NONE')
-    } catch {
-      setAddError('Could not add task — try again.')
+      setNewWorkspaceId('')
+    } catch (err) {
+      // Surface a clear message for the common failure modes — lost access
+      // to the chosen workspace, or anything else unexpected.
+      const msg = err?.response?.data?.detail
+      setAddError(
+        msg && typeof msg === 'string'
+          ? msg
+          : 'Could not add task — try again.'
+      )
     }
     setAdding(false)
   }
@@ -500,6 +520,32 @@ export default function DashboardPage() {
                              disabled:opacity-40 disabled:cursor-not-allowed"
                 />
               </div>
+
+              {/* Workspace — only shown when the user has at least one workspace */}
+              {workspaces.length > 0 && (
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span
+                    className="text-xs font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 shrink-0"
+                    title="Pick a workspace to share this task with its members, or keep it personal."
+                  >
+                    Workspace
+                  </span>
+                  <select
+                    value={newWorkspaceId}
+                    onChange={e => setNewWorkspaceId(e.target.value)}
+                    className="flex-1 min-w-0 px-3 py-1.5 border border-[#dee4da] rounded-xl text-xs font-medium
+                               bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200
+                               focus:border-[#3a6758] focus:ring-0 outline-none transition-colors"
+                  >
+                    <option value="">Personal — only you can see this</option>
+                    {workspaces.map(w => (
+                      <option key={w.id} value={w.id}>
+                        👥 {w.name} — shared with all members
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Task type chips */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
