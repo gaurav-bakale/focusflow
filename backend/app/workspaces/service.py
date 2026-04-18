@@ -363,6 +363,25 @@ class WorkspaceService:
         }
         await self.db["workspace_members"].insert_one(member_doc)
 
+        # Welcome the new member with a notification. Best-effort — if the
+        # notification subsystem errors, the invite itself must still succeed.
+        try:
+            from app.notifications.models import NotificationType
+            from app.notifications.service import NotificationService
+            workspace = await self.db["workspaces"].find_one(
+                {"_id": self._object_id(workspace_id)}
+            )
+            ws_name = workspace.get("name", "a workspace") if workspace else "a workspace"
+            inviter_name = user.get("name") or user.get("email") or "A teammate"
+            await NotificationService(self.db).emit(
+                user_id=target_id,
+                ntype=NotificationType.WORKSPACE_INVITED,
+                message=f"👥 {inviter_name} added you to {ws_name}",
+            )
+        except Exception:
+            # Don't let notification failure break the invite flow.
+            pass
+
         return MemberResponse(
             user_id=target_id,
             user_name=target.get("name", "Unknown"),

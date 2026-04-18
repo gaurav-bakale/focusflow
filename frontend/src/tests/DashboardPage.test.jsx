@@ -64,6 +64,13 @@ jest.mock('../services/authService', () => ({
   getProfile: (...a) => mockGetProfile(...a),
 }))
 
+// sharingService is called for the workspace selector. The tests don't care
+// about workspaces, so always return an empty list — this also keeps axios
+// from firing a real network request.
+jest.mock('../services/sharingService', () => ({
+  fetchWorkspaces: jest.fn().mockResolvedValue([]),
+}))
+
 // ── Mock AITaskGenerator (tested separately) ──────────────────────────────────
 jest.mock('../components/AITaskGenerator', () => {
   function AITaskGeneratorMock() { return <div data-testid="ai-task-generator" /> }

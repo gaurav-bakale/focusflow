@@ -1,20 +1,26 @@
 """
-Notifications Service — business logic for deadline notifications.
+Notifications Service — business logic for all user notifications.
 
 Responsibilities:
-  • Create notifications (used by the background deadline scanner)
+  • Create notifications (deadline scanner, task events, collaboration, etc.)
   • List notifications for a user (newest first)
   • Mark individual or all notifications as read
   • Delete a notification
   • Check for duplicate notifications (prevent re-alerting)
+  • One-shot ``emit()`` helper that persists a notification AND pushes the
+    real-time WebSocket event — used by every feature that fires
+    notifications outside the scheduled scanner.
 
 Design Patterns:
   Repository — all MongoDB access is encapsulated here; the router
                never touches the database directly.
+  Observer   — `emit()` publishes to subscribed WebSocket clients via
+               the ConnectionManager singleton.
 """
 
+import logging
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from bson import ObjectId
 
@@ -24,11 +30,14 @@ from app.notifications.models import (
     NotificationType,
 )
 
+logger = logging.getLogger("focusflow.notifications")
+
 
 class NotificationService:
     """Encapsulates all notification persistence and business logic."""
 
     def __init__(self, db):
+        self.db = db
         self.col = db["notifications"]
 
     async def create(self, data: NotificationCreate) -> NotificationResponse:
@@ -45,6 +54,98 @@ class NotificationService:
         result = await self.col.insert_one(doc)
         doc["_id"] = result.inserted_id
         return self._to_response(doc)
+
+    # ── Emit — persist + push via WebSocket in one call ───────────────────
+
+    async def emit(
+        self,
+        *,
+        user_id: str,
+        ntype: NotificationType,
+        message: str,
+        task_id: Optional[str] = None,
+        task_title: Optional[str] = None,
+    ) -> Optional[NotificationResponse]:
+        """
+        Persist a notification AND push it to the user in real time.
+
+        All callers outside the scheduled deadline scanner should use this
+        method rather than ``create`` directly — it guarantees the WebSocket
+        event fires so the bell updates instantly.
+
+        Returns the created notification, or None if the DB insert failed
+        (logged, not raised, because a dropped notification must not roll
+        back the originating business operation).
+        """
+        try:
+            notification = await self.create(NotificationCreate(
+                user_id=user_id,
+                task_id=task_id,
+                task_title=task_title,
+                type=ntype,
+                message=message,
+            ))
+        except Exception as exc:
+            logger.warning("emit: failed to persist notification: %s", exc)
+            return None
+
+        # Push to WebSocket — import inline to avoid a circular import at
+        # module load time (ws.py also imports from the app package).
+        try:
+            from app.ws import manager as ws_manager
+            await ws_manager.send_to_user(user_id, {
+                "type": "notification",
+                "notification": {
+                    "id": notification.id,
+                    "task_id": task_id,
+                    "task_title": task_title,
+                    "notification_type": ntype.value,
+                    "message": message,
+                },
+            })
+        except Exception as exc:
+            # WebSocket push failure should never break the caller — the
+            # notification is already persisted; the client will pick it up
+            # on the next poll.
+            logger.debug("emit: websocket push failed (non-critical): %s", exc)
+
+        return notification
+
+    async def emit_to_workspace_peers(
+        self,
+        *,
+        workspace_id: str,
+        actor_user_id: str,
+        ntype: NotificationType,
+        message: str,
+        task_id: Optional[str] = None,
+        task_title: Optional[str] = None,
+    ) -> int:
+        """
+        Emit a notification to every workspace member except the actor.
+
+        Used when a member does something (adds / completes a task) that the
+        rest of the team should see in their bell. The actor does not
+        receive their own notification — that would be noise.
+
+        Returns the number of notifications successfully persisted.
+        """
+        sent = 0
+        cursor = self.db["workspace_members"].find({"workspace_id": workspace_id})
+        async for member in cursor:
+            recipient = member.get("user_id")
+            if not recipient or recipient == str(actor_user_id):
+                continue
+            result = await self.emit(
+                user_id=recipient,
+                ntype=ntype,
+                message=message,
+                task_id=task_id,
+                task_title=task_title,
+            )
+            if result:
+                sent += 1
+        return sent
 
     async def exists(
         self, user_id: str, task_id: str, ntype: NotificationType

@@ -19,16 +19,48 @@ import {
 } from '../services/otherServices'
 import { useNotifications } from '../context/NotificationContext'
 
+// ── Visual vocabulary for every notification type ─────────────────────────
+// Adding a new type? Add an entry here and the bell picks it up automatically.
 const TYPE_STYLES = {
-  OVERDUE:       'bg-red-100 text-red-700 border-red-200',
-  DEADLINE_1H:   'bg-amber-100 text-amber-700 border-amber-200',
-  DEADLINE_24H:  'bg-blue-100 text-blue-700 border-blue-200',
+  OVERDUE:                  'bg-red-100    text-red-700     border-red-200',
+  DEADLINE_1H:              'bg-amber-100  text-amber-700   border-amber-200',
+  DEADLINE_24H:             'bg-blue-100   text-blue-700    border-blue-200',
+  TASK_COMPLETED:           'bg-emerald-100 text-emerald-700 border-emerald-200',
+  ALL_SUBTASKS_DONE:        'bg-emerald-100 text-emerald-700 border-emerald-200',
+  POMODORO_COMPLETE:        'bg-rose-100   text-rose-700    border-rose-200',
+  STREAK_MILESTONE:         'bg-orange-100 text-orange-700  border-orange-200',
+  FROG_IDENTIFIED:          'bg-lime-100   text-lime-700    border-lime-200',
+  WORKSPACE_INVITED:        'bg-indigo-100 text-indigo-700  border-indigo-200',
+  WORKSPACE_TASK_ADDED:     'bg-sky-100    text-sky-700     border-sky-200',
+  WORKSPACE_TASK_COMPLETED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 }
 
 const TYPE_LABELS = {
-  OVERDUE:       'Overdue',
-  DEADLINE_1H:   'Due in 1h',
-  DEADLINE_24H:  'Due in 24h',
+  OVERDUE:                  'Overdue',
+  DEADLINE_1H:              'Due in 1h',
+  DEADLINE_24H:             'Due in 24h',
+  TASK_COMPLETED:           'Completed',
+  ALL_SUBTASKS_DONE:        'Subtasks done',
+  POMODORO_COMPLETE:        'Pomodoro',
+  STREAK_MILESTONE:         'Streak',
+  FROG_IDENTIFIED:          'Frog',
+  WORKSPACE_INVITED:        'Workspace',
+  WORKSPACE_TASK_ADDED:     'New task',
+  WORKSPACE_TASK_COMPLETED: 'Completed',
+}
+
+const TYPE_ICONS = {
+  OVERDUE:                  '⚠️',
+  DEADLINE_1H:              '⏰',
+  DEADLINE_24H:             '📅',
+  TASK_COMPLETED:           '🎉',
+  ALL_SUBTASKS_DONE:        '🎯',
+  POMODORO_COMPLETE:        '🍅',
+  STREAK_MILESTONE:         '🔥',
+  FROG_IDENTIFIED:          '🐸',
+  WORKSPACE_INVITED:        '👥',
+  WORKSPACE_TASK_ADDED:     '📋',
+  WORKSPACE_TASK_COMPLETED: '✅',
 }
 
 export default function NotificationBell() {
@@ -61,9 +93,15 @@ export default function NotificationBell() {
     return () => clearInterval(interval)
   }, [refreshCount])
 
-  // Listen for real-time WebSocket notifications
+  // Listen for real-time WebSocket notifications.
+  // Two event types come through this channel:
+  //   • 'deadline_notification' — legacy, fired by the background scanner
+  //   • 'notification'          — generic, fired by any feature via emit()
   useEffect(() => {
-    if (lastMessage?.type === 'deadline_notification') {
+    if (
+      lastMessage?.type === 'deadline_notification' ||
+      lastMessage?.type === 'notification'
+    ) {
       setUnreadCount(prev => prev + 1)
       // If dropdown is open, refresh the list
       if (open) {
@@ -72,8 +110,11 @@ export default function NotificationBell() {
       // Browser push notification
       const n = lastMessage.notification
       if (n && 'Notification' in window && Notification.permission === 'granted') {
-        const typeLabel = TYPE_LABELS[n.notification_type] || 'Deadline'
-        new Notification(`${typeLabel}: ${n.task_title}`, {
+        const icon = TYPE_ICONS[n.notification_type] || '🔔'
+        const title = n.task_title
+          ? `${icon}  ${n.task_title}`
+          : `${icon}  ${TYPE_LABELS[n.notification_type] || 'FocusFlow'}`
+        new Notification(title, {
           body: n.message,
           icon: '/favicon.ico',
           tag: n.id, // prevent duplicate browser notifications
@@ -203,19 +244,32 @@ export default function NotificationBell() {
                     n.read ? 'opacity-60' : 'bg-indigo-50/30 dark:bg-indigo-950/20'
                   }`}
                 >
-                  {/* Type badge */}
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded border shrink-0 mt-0.5 ${TYPE_STYLES[n.type] || TYPE_STYLES.DEADLINE_24H}`}>
-                    {TYPE_LABELS[n.type] || n.type}
-                  </span>
+                  {/* Icon + Type badge stacked */}
+                  <div className="flex flex-col items-center gap-1 shrink-0 mt-0.5">
+                    <span className="text-base leading-none" aria-hidden="true">
+                      {TYPE_ICONS[n.type] || '🔔'}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase px-1 py-0.5 rounded border ${
+                        TYPE_STYLES[n.type] || TYPE_STYLES.DEADLINE_24H
+                      }`}
+                    >
+                      {TYPE_LABELS[n.type] || n.type}
+                    </span>
+                  </div>
 
-                  {/* Content */}
+                  {/* Content — fall back to the message on the title line when
+                      the notification isn't tied to a named task (e.g.
+                      workspace invites and streak milestones). */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {n.task_title}
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {n.task_title || n.message}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      {n.message}
-                    </p>
+                    {n.task_title && n.message && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        {n.message}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">
                       {timeAgo(n.created_at)}
                     </p>

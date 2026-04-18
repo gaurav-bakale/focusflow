@@ -707,21 +707,52 @@ async def suggest_schedule(
 async def find_frog(
     data: AIPrioritizeRequest,
     user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
     """
     Identify the user's 'frog' — the single most important or
     challenging task they should tackle first today.
 
     Based on Brian Tracy's 'Eat That Frog' productivity method.
+
+    Side effect: fires a FROG_IDENTIFIED notification (deduped to once per
+    task per day) so the bell surfaces the suggestion even if the user
+    didn't have the dashboard open when the frog was computed.
     """
     _check_rate_limit(str(user["_id"]))
     api_key = _get_api_key(user)
     strategy = FrogStrategy()
     parsed = await strategy.execute(api_key, {"tasks": data.tasks})
 
+    task_title = parsed.get("task_title", "")
+    task_id = parsed.get("task_id")
+
+    # Best-effort notification — never block the AI response on a notif failure.
+    if task_title:
+        try:
+            from app.notifications.models import NotificationType
+            from app.notifications.service import NotificationService
+            svc = NotificationService(db)
+            # De-dup: only fire once per (user, task) to avoid spamming the
+            # bell if the user re-runs the Frog action several times in a day.
+            already = task_id and await svc.exists(
+                str(user["_id"]), str(task_id), NotificationType.FROG_IDENTIFIED
+            )
+            if not already:
+                await svc.emit(
+                    user_id=str(user["_id"]),
+                    ntype=NotificationType.FROG_IDENTIFIED,
+                    message=f"🐸 Your frog today: \"{task_title}\" — start with this.",
+                    task_id=str(task_id) if task_id else None,
+                    task_title=task_title,
+                )
+        except Exception:
+            # Swallow — notification is non-critical to the AI response.
+            pass
+
     return AIFrogResponse(
-        task_title=parsed.get("task_title", ""),
-        task_id=parsed.get("task_id"),
+        task_title=task_title,
+        task_id=task_id,
         reason=parsed.get("reason", ""),
     )
 

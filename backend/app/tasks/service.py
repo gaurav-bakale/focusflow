@@ -25,6 +25,7 @@ This mirrors the pattern established by app.authentication.service.AuthService.
 # ─────────────────────────────────────────────────────────────────────────────
 
 import calendar as cal_module
+import logging
 from datetime import datetime, timedelta, date as date_type
 from typing import List, Optional
 
@@ -40,6 +41,8 @@ from app.tasks.models import (
     TaskStatus,
     TaskUpdate,
 )
+
+logger = logging.getLogger("focusflow.tasks")
 
 
 class TaskService:
@@ -122,6 +125,26 @@ class TaskService:
             "user_id": str(user["_id"]),
         })
         return member is not None
+
+    # ── Notifications helper ──────────────────────────────────────────────
+
+    def _notif_svc(self):
+        """Lazily build a NotificationService — import inline to prevent
+        a cyclic import (notifications service does not import tasks, but
+        keeping the import local future-proofs the circular dependency
+        risk and makes TaskService importable in isolation for tests)."""
+        from app.notifications.service import NotificationService
+        return NotificationService(self.db)
+
+    async def _workspace_name(self, workspace_id: str) -> str:
+        """Return the workspace name for a given id, or '' if missing."""
+        if not workspace_id:
+            return ""
+        try:
+            ws = await self.db["workspaces"].find_one({"_id": self._object_id(workspace_id)})
+        except Exception:
+            return ""
+        return ws.get("name", "") if ws else ""
 
     async def _workspace_name_map(
         self, workspace_ids: List[str]
@@ -354,6 +377,25 @@ class TaskService:
                 {"_id": self._object_id(ws_id)}
             )
             ws_name = ws_doc.get("name") if ws_doc else None
+
+        # Notify every other workspace member that a new task landed in the
+        # shared pool. Failure must not roll back the task insert — logged
+        # and swallowed.
+        if ws_id and ws_name:
+            try:
+                from app.notifications.models import NotificationType
+                actor_name = user.get("name") or user.get("email") or "A teammate"
+                await self._notif_svc().emit_to_workspace_peers(
+                    workspace_id=ws_id,
+                    actor_user_id=str(user["_id"]),
+                    ntype=NotificationType.WORKSPACE_TASK_ADDED,
+                    message=f"{actor_name} added \"{data.title}\" to {ws_name}",
+                    task_id=str(doc["_id"]),
+                    task_title=data.title,
+                )
+            except Exception as exc:
+                logger.debug("create_task: peer notification failed: %s", exc)
+
         return self._doc_to_task(doc, workspace_name=ws_name)
 
     async def get_task(self, user: dict, task_id: str) -> TaskResponse:
@@ -442,6 +484,31 @@ class TaskService:
                 {"_id": self._object_id(new_ws_id)}
             )
             ws_name = ws_doc.get("name") if ws_doc else None
+
+        # ── All-subtasks-done nudge ──────────────────────────────────────
+        # When a subtask check turns the last incomplete box into DONE,
+        # nudge the task owner that the parent is ready to be finished.
+        try:
+            from app.notifications.models import NotificationType
+            subtasks = result.get("subtasks") or []
+            if (
+                "subtasks" in update_fields
+                and result.get("status") != TaskStatus.DONE
+                and len(subtasks) > 0
+                and all(s.get("status") == "DONE" for s in subtasks)
+            ):
+                owner_id = str(result.get("user_id", user["_id"]))
+                title = result.get("title", "Untitled")
+                await self._notif_svc().emit(
+                    user_id=owner_id,
+                    ntype=NotificationType.ALL_SUBTASKS_DONE,
+                    message=f"🎯 All subtasks done on \"{title}\" — ready to mark it complete?",
+                    task_id=str(result["_id"]),
+                    task_title=title,
+                )
+        except Exception as exc:
+            logger.debug("update_task: subtasks notification failed: %s", exc)
+
         return self._doc_to_task(result, workspace_name=ws_name)
 
     async def complete_task(self, user: dict, task_id: str) -> dict:
@@ -502,6 +569,39 @@ class TaskService:
                 insert_result = await self.db["tasks"].insert_one(new_doc)
                 new_doc["_id"] = insert_result.inserted_id
                 next_task_response = self._doc_to_task(new_doc)
+
+        # ── Notifications ────────────────────────────────────────────────
+        # 1. Celebrate the completion for the user.
+        # 2. If the task belongs to a workspace, notify every peer.
+        # Both emits are non-critical; failures are logged, not raised.
+        try:
+            from app.notifications.models import NotificationType
+            ws_id = result.get("workspace_id")
+            task_title = result.get("title", "Untitled")
+            task_id_str = str(result["_id"])
+
+            await self._notif_svc().emit(
+                user_id=str(user["_id"]),
+                ntype=NotificationType.TASK_COMPLETED,
+                message=f"🎉 Nice work on \"{task_title}\"!",
+                task_id=task_id_str,
+                task_title=task_title,
+            )
+
+            if ws_id:
+                ws_name = await self._workspace_name(ws_id)
+                actor_name = user.get("name") or user.get("email") or "A teammate"
+                await self._notif_svc().emit_to_workspace_peers(
+                    workspace_id=ws_id,
+                    actor_user_id=str(user["_id"]),
+                    ntype=NotificationType.WORKSPACE_TASK_COMPLETED,
+                    message=f"✅ {actor_name} completed \"{task_title}\""
+                            f"{f' in {ws_name}' if ws_name else ''}",
+                    task_id=task_id_str,
+                    task_title=task_title,
+                )
+        except Exception as exc:
+            logger.debug("complete_task: notification emit failed: %s", exc)
 
         return {
             "completed": self._doc_to_task(result),
